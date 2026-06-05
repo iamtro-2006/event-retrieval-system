@@ -1,0 +1,35 @@
+input_dir: data/videos
+output_dir: data/processed/keyframes
+
+scene:
+  threshold: 27.0
+
+sampling:
+  candidate_fps: 1.0
+  min_candidates_per_shot: 3
+  max_candidates_per_shot: 80
+
+selection:
+  alpha: 1.5
+  min_k: 1
+  max_k: 6
+  random_state: 42
+
+quality:
+  min_blur: 80.0
+  min_brightness: 30.0
+  max_brightness: 225.0
+
+dedup:
+  phash_threshold: 6
+  clip_duplicate_threshold: 0.965
+
+clip:
+  model_name: ViT-B-32
+  pretrained: laion2b_s34b_b79k
+  device: cuda
+  batch_size: 32
+
+save:
+  image_quality: 95
+  metadata_name: keyframes_metadata.csv
