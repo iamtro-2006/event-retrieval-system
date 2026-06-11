@@ -1,0 +1,29 @@
+faiss:
+  index_path: data/database/faiss_clip_vitb16_quickgelu/keyframes.faiss
+  metadata_path: data/database/faiss_clip_vitb16_quickgelu/metadata.csv
+
+model:
+  name: ViT-B-16-quickgelu
+  pretrained: metaclip_fullcc
+  device: auto
+  precision: fp32
+  normalize: true
+
+paths:
+  keyframes_root: data/processed/keyframes
+  videos_root: data/raw/videos
+  map_keyframe_path: data/processed/map_keyframes
+
+search:
+  candidate_multiplier: 5
+  default_top_k: 20
+  max_top_k: 200
+
+ui:
+  surrounding_radius: 5
+  max_surrounding_radius: 10
+
+translate:
+  enabled_default: true 
+  source: vi
+  target: en 

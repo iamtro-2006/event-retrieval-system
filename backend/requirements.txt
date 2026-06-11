@@ -1,0 +1,10 @@
+opencv-python
+numpy
+pandas
+tqdm
+Pillow
+imagehash
+scenedetect[opencv]
+open_clip_torch
+torch
+scikit-learn

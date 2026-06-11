@@ -1,0 +1,45 @@
+project:
+  name: keyframe_pipeline
+  seed: 42
+
+paths:
+  input_dir: data/raw/videos
+  output_dir: data/processed
+
+logging:
+  level: INFO
+  log_dir: logs
+  log_to_file: true
+  filename: extract_keyframes.log
+
+transnet:
+  repo_dir: external/TransNetV2
+  weights_path: weights/transnetv2-pytorch-weights.pth
+  threshold: 0.5
+  batch_size: 100
+  device: auto
+  skip_existing: true
+
+frame_loader:
+  backend: decord
+  image_size: null
+  num_workers: 0
+  pin_memory: true
+  persistent_workers: false
+
+embedding:
+  model_name: MobileCLIP2-S0
+  pretrained: dfndr2b
+  batch_size: 16
+  device: auto
+  precision: fp16
+  skip_existing: true
+
+keyframe:
+  min_scene_frames: 3
+  max_scene_gap_frames: 5000
+  hist_threshold: 0.90
+  min_hist_bins: 10
+  image_quality: 95
+  save_images: true
+  skip_existing: true
