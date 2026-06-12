@@ -2,16 +2,17 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    // Cấu hình bắt buộc cho Vite khi chạy qua proxy/tunnel như ngrok
+    host: "0.0.0.0",     // Lắng nghe trên toàn bộ giao diện mạng
+    port: 5173,          // Cố định port 5173
+    strictPort: true,    // Không tự động đổi port
+    
+    // Nếu "all" chạy tốt thì giữ nguyên, nếu lỗi hãy đổi thành mảng dưới đây:
     allowedHosts: [
-      "exemplifiable-gauntly-naomi.ngrok-free.dev", // Điền chính xác domain ngrok hiện tại của bạn
-      ".ngrok-free.dev"                             // Hoặc thêm pattern này để cho phép mọi subdomain của ngrok
-    ],
-    // Hoặc nếu muốn nhanh gọn cho phép tất cả các host trong môi trường dev:
-    // allowedHosts: "all"
+      "app.tku.life", 
+      ".tku.life"        // Cho phép tất cả subdomain của tku.life nếu cần
+    ], 
   }
 });

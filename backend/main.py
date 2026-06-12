@@ -4,13 +4,15 @@ import time
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import yaml
+from deep_translator import GoogleTranslator
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from deep_translator import GoogleTranslator
 
 from src.index.retrieval_system import FaissRetrievalSystem
 from src.ui import (
@@ -37,15 +39,6 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def resolve_backend_path(path_value: str) -> Path:
-    """
-    Resolve relative path theo backend/.
-
-    Ví dụ YAML:
-        data/processed/keyframes
-
-    Sẽ thành:
-        D:/event-retrieval-system/backend/data/processed/keyframes
-    """
     path = Path(path_value)
 
     if path.is_absolute():
@@ -73,18 +66,24 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Thêm cấu hình allow host/origin linh hoạt cho ngrok
+
+@app.middleware("http")
+async def normalize_double_slash(request: Request, call_next):
+    path = request.url.path
+
+    if path.startswith("//"):
+        normalized_path = "/" + path.lstrip("/")
+        normalized_url = request.url.replace(path=normalized_path)
+        return RedirectResponse(str(normalized_url), status_code=307)
+
+    return await call_next(request)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://exemplifiable-gauntly-naomi.ngrok-free.dev", # Domain ngrok Frontend hiện tại của bạn
-        "*" # Dấu "*" cho phép TẤT CẢ các origin truy cập vào (Khuyên dùng khi bạn thường xuyên đổi ngrok ngẫu nhiên)
-    ],
-    allow_credentials=True,
-    allow_methods=["*"], 
-    allow_headers=["*"], 
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 if KEYFRAMES_ROOT.exists():
@@ -127,6 +126,9 @@ class SearchRequest(BaseModel):
     candidate_multiplier: int | None = None
     use_split: bool | None = None
     use_translate: bool | None = None
+    search_mode: str | None = "semantic"
+    duration_limit: float | None = -1
+
 
 # ============================================================
 # 5. Helper Functions
@@ -134,6 +136,8 @@ class SearchRequest(BaseModel):
 
 def safe_float(value: Any, default: float = 0.0) -> float:
     try:
+        if value is None:
+            return default
         if pd.isna(value):
             return default
         return float(value)
@@ -143,20 +147,44 @@ def safe_float(value: Any, default: float = 0.0) -> float:
 
 def safe_int(value: Any, default: int = 0) -> int:
     try:
+        if value is None:
+            return default
         if pd.isna(value):
             return default
-        return int(value)
+        return int(float(value))
     except Exception:
         return default
 
 
+def json_safe(value: Any) -> Any:
+    if value is None:
+        return None
+
+    if isinstance(value, Path):
+        return str(value)
+
+    if isinstance(value, np.integer):
+        return int(value)
+
+    if isinstance(value, np.floating):
+        return float(value)
+
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+
+    if isinstance(value, float) and (np.isnan(value) or np.isinf(value)):
+        return None
+
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+
+    return value
+
+
 def format_keyframe_id(row: pd.Series) -> str:
-    """
-    Ưu tiên:
-    1. keyframe_id
-    2. keyframe_id_int
-    3. frame_idx
-    """
     if "keyframe_id" in row:
         value = str(row["keyframe_id"])
 
@@ -166,24 +194,33 @@ def format_keyframe_id(row: pd.Series) -> str:
         return value
 
     if "keyframe_id_int" in row:
-        return f"{int(row['keyframe_id_int']):06d}"
+        return f"{safe_int(row['keyframe_id_int'], 0):06d}"
 
     if "frame_idx" in row:
-        return f"{int(row['frame_idx']):06d}"
+        return f"{safe_int(row['frame_idx'], 0):06d}"
+
+    return "000000"
+
+
+def format_keyframe_id_from_dict(item: dict[str, Any]) -> str:
+    value = item.get("keyframe_id", None)
+
+    if value is not None:
+        value_text = str(value)
+        if value_text.isdigit():
+            return value_text.zfill(6)
+        return value_text
+
+    if "keyframe_id_int" in item:
+        return f"{safe_int(item.get('keyframe_id_int'), 0):06d}"
+
+    if "frame_idx" in item:
+        return f"{safe_int(item.get('frame_idx'), 0):06d}"
 
     return "000000"
 
 
 def make_static_keyframe_url(keyframe_path: str | Path) -> str:
-    """
-    Convert keyframe_path trong metadata thành URL static cho frontend.
-
-    Ví dụ metadata:
-        data/processed/keyframes/L21_a/L21_V001/000001.jpg
-
-    API trả:
-        /static/keyframes/L21_a/L21_V001/000001.jpg
-    """
     raw_path = str(keyframe_path or "")
 
     if not raw_path:
@@ -202,12 +239,6 @@ def make_static_keyframe_url(keyframe_path: str | Path) -> str:
 
 
 def find_video_path(row: pd.Series) -> Path | None:
-    """
-    Tìm video gốc dựa trên:
-    1. row["video_path"] nếu có
-    2. videos_root/dataset/video_id.ext
-    3. videos_root/video_id.ext
-    """
     if "video_path" in row and isinstance(row["video_path"], str):
         video_path = Path(row["video_path"])
 
@@ -248,16 +279,60 @@ def make_static_video_url(video_path: Path | None) -> str:
     except Exception:
         return "#"
 
+
 def translate_query_if_needed(query: str, use_translate: bool) -> str:
     if not use_translate:
         return query
 
     translate_cfg = CFG.get("translate", {})
-
     source = translate_cfg.get("source", "vi")
     target = translate_cfg.get("target", "en")
 
     return GoogleTranslator(source=source, target=target).translate(query)
+
+
+def serialize_matched_sequence(sequence: Any) -> list[dict[str, Any]]:
+    if not isinstance(sequence, list):
+        return []
+
+    rows: list[dict[str, Any]] = []
+
+    for idx, item in enumerate(sequence):
+        if not isinstance(item, dict):
+            continue
+
+        keyframe_path = str(json_safe(item.get("keyframe_path", "")) or "")
+        frame_id_text = format_keyframe_id_from_dict(item)
+        timestamp = safe_float(
+            item.get("timestamp_sec", item.get("timestamp", 0.0)),
+            0.0,
+        )
+        score = safe_float(
+            item.get("score", item.get("candidate_score", 0.0)),
+            0.0,
+        )
+
+        rows.append(
+            {
+                "video_id": str(json_safe(item.get("video_id", "")) or ""),
+                "source_name": str(json_safe(item.get("source_name", "")) or ""),
+                "keyframe_id": frame_id_text,
+                "frame_id": safe_int(frame_id_text, 0),
+                "frame_idx": safe_int(item.get("frame_idx", 0), 0),
+                "timestamp_sec": timestamp,
+                "fps": safe_float(item.get("fps", 0), 0.0),
+                "keyframe_path": keyframe_path,
+                "image_url": make_static_keyframe_url(keyframe_path),
+                "sub_query_idx": safe_int(item.get("sub_query_idx", idx), idx),
+                "sub_query": str(json_safe(item.get("sub_query", "")) or ""),
+                "score": score,
+                "candidate_score": safe_float(item.get("candidate_score", score), score),
+                "candidate_rank": safe_int(item.get("candidate_rank", 0), 0),
+            }
+        )
+
+    return rows
+
 
 def row_to_result(row: pd.Series) -> dict[str, Any]:
     video_id = str(row.get("video_id", "unknown_video") or "unknown_video")
@@ -286,6 +361,23 @@ def row_to_result(row: pd.Series) -> dict[str, Any]:
         retrieval_score,
     )
 
+    matched_sequence = serialize_matched_sequence(
+        row.get("matched_sequence", [])
+    )
+
+    temporal_start = safe_float(
+        row.get("temporal_start_time", timestamp),
+        timestamp,
+    )
+    temporal_end = safe_float(
+        row.get("temporal_end_time", timestamp),
+        timestamp,
+    )
+    temporal_duration = safe_float(
+        row.get("temporal_duration_sec", max(0.0, temporal_end - temporal_start)),
+        max(0.0, temporal_end - temporal_start),
+    )
+
     return {
         "id": f"{video_id}_{frame_id_text}",
         "video_id": video_id,
@@ -298,9 +390,20 @@ def row_to_result(row: pd.Series) -> dict[str, Any]:
         "timestamp": timestamp,
         "similarity": retrieval_score,
         "caption": str(row.get("caption", "") or ""),
-        "rank": safe_int(row.get("display_rank", 0), 0),
+        "rank": safe_int(row.get("display_rank", row.get("rank", 0)), 0),
+
+        "matched_sequence": matched_sequence,
+        "temporal": {
+            "video_score": safe_float(row.get("video_score", 0), 0.0),
+            "start_time": temporal_start,
+            "end_time": temporal_end,
+            "duration_sec": temporal_duration,
+            "avg_score": avg_score,
+        },
+
         "raw": {
             "dataset": str(row.get("dataset", "") or ""),
+            "source_name": str(row.get("source_name", "") or ""),
             "avg_score": avg_score,
             "retrieval_score": retrieval_score,
             "alignment_score": safe_float(
@@ -311,20 +414,53 @@ def row_to_result(row: pd.Series) -> dict[str, Any]:
                 row.get("frame_idx", frame_id_number),
                 frame_id_number,
             ),
+            "video_score": safe_float(row.get("video_score", 0), 0.0),
+            "temporal_start_time": temporal_start,
+            "temporal_end_time": temporal_end,
+            "temporal_duration_sec": temporal_duration,
+            "matched_sequence": matched_sequence,
         },
     }
 
 
+def normalize_search_mode(search_mode: str | None) -> str:
+    mode = (search_mode or "semantic").strip().lower()
+
+    aliases = {
+        "text": "semantic",
+        "normal": "semantic",
+        "semantic": "semantic",
+        "temporal": "temporal",
+    }
+
+    if mode not in aliases:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported search_mode: {search_mode}",
+        )
+
+    return aliases[mode]
+
+
 def run_search(
-    query: str,
+    sub_queries: list[str],
     top_k: int,
     candidate_multiplier: int,
-    use_split: bool,
-    use_translate: bool = False,
+    search_mode: str = "semantic",
+    duration_limit: float = -1,
+) -> pd.DataFrame:
+    if not sub_queries:
+        return pd.DataFrame()
 
-):
-    sub_queries = split_query(query) if use_split else [query]
-    candidate_k = top_k * candidate_multiplier
+    candidate_k = max(top_k * candidate_multiplier, top_k)
+
+    if search_mode == "temporal":
+        return retrieval_system.temporal_search(
+            sub_queries=sub_queries[1:],
+            top_k=top_k,
+            candidate_k=candidate_k,
+            duration_limit=duration_limit,
+        )
 
     all_results = []
 
@@ -337,7 +473,7 @@ def run_search(
     results = rerank_multi_query(all_results)
 
     if results.empty:
-        return results, sub_queries
+        return results
 
     if "alignment_score" in results.columns and "retrieval_score" not in results.columns:
         results["retrieval_score"] = results["alignment_score"]
@@ -345,7 +481,7 @@ def run_search(
     results = results.head(top_k).copy()
     results["display_rank"] = range(1, len(results) + 1)
 
-    return results, sub_queries
+    return results
 
 
 # ============================================================
@@ -378,6 +514,9 @@ def get_public_config():
             "default_top_k": int(CFG["search"].get("default_top_k", 20)),
             "max_top_k": int(CFG["search"].get("max_top_k", 200)),
             "candidate_multiplier": int(CFG["search"].get("candidate_multiplier", 5)),
+            "available_modes": ["semantic", "temporal"],
+            "default_search_mode": "semantic",
+            "default_duration_limit": -1,
         },
         "ui": {
             "surrounding_radius": int(CFG["ui"].get("surrounding_radius", 5)),
@@ -416,6 +555,7 @@ def search_api(payload: SearchRequest):
     candidate_multiplier = payload.candidate_multiplier or int(
         CFG["search"].get("candidate_multiplier", 5)
     )
+    candidate_multiplier = max(1, int(candidate_multiplier))
 
     use_split = True if payload.use_split is None else payload.use_split
 
@@ -424,6 +564,12 @@ def search_api(payload: SearchRequest):
         if payload.use_translate is None
         else payload.use_translate
     )
+
+    search_mode = normalize_search_mode(payload.search_mode)
+
+    duration_limit = -1.0 if payload.duration_limit is None else float(payload.duration_limit)
+    if duration_limit == 0:
+        duration_limit = -1.0
 
     start = time.perf_counter()
 
@@ -435,17 +581,32 @@ def search_api(payload: SearchRequest):
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Translate failed: {exc}",
+            detail=f"Translate failed: {type(exc).__name__}: {exc}",
         )
 
-    results_df, sub_queries = run_search(
-        query=search_query,
-        top_k=top_k,
-        candidate_multiplier=candidate_multiplier,
-        use_split=use_split,
-    )
+    sub_queries = split_query(search_query) if use_split else [search_query]
+    sub_queries = [q.strip() for q in sub_queries if q.strip()]
+
+    if not sub_queries:
+        raise HTTPException(status_code=400, detail="No valid sub queries")
+
+    try:
+        results_df = run_search(
+            sub_queries=sub_queries,
+            top_k=top_k,
+            candidate_multiplier=candidate_multiplier,
+            search_mode=search_mode,
+            duration_limit=duration_limit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Search failed: {type(exc).__name__}: {exc}",
+        )
 
     latency_ms = round((time.perf_counter() - start) * 1000)
+
+    candidate_k = max(top_k * candidate_multiplier, top_k)
 
     response_base = {
         "original_query": original_query,
@@ -454,6 +615,11 @@ def search_api(payload: SearchRequest):
         "use_translate": use_translate,
         "use_split": use_split,
         "sub_queries": sub_queries,
+        "search_mode": search_mode,
+        "duration_limit": duration_limit,
+        "top_k": top_k,
+        "candidate_multiplier": candidate_multiplier,
+        "candidate_k": candidate_k,
         "latency_ms": latency_ms,
     }
 
@@ -464,7 +630,13 @@ def search_api(payload: SearchRequest):
             "results": [],
         }
 
-    results = [row_to_result(row) for _, row in results_df.iterrows()]
+    try:
+        results = [row_to_result(row) for _, row in results_df.iterrows()]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Serialize results failed: {type(exc).__name__}: {exc}",
+        )
 
     return {
         **response_base,

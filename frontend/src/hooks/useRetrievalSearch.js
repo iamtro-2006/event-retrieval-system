@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { searchRetrieval } from "../api/retrievalApi";
+import { searchRetrieval } from "../api/retrievalAPI";
 
 export function useRetrievalSearch() {
   const [results, setResults] = useState([]);
@@ -9,6 +9,8 @@ export function useRetrievalSearch() {
   const [lastQuery, setLastQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchMode, setSearchMode] = useState("semantic");
+  const [durationLimit, setDurationLimit] = useState(-1);
 
   async function search({
     query,
@@ -16,8 +18,10 @@ export function useRetrievalSearch() {
     candidateMultiplier,
     useSplit = true,
     useTranslate = true,
+    searchMode: requestedSearchMode = "semantic",
+    durationLimit: requestedDurationLimit = -1,
   }) {
-    const cleanQuery = query?.trim();
+    const cleanQuery = typeof query === "string" ? query.trim() : "";
 
     if (!cleanQuery) {
       return;
@@ -33,6 +37,8 @@ export function useRetrievalSearch() {
         candidateMultiplier,
         useSplit,
         useTranslate,
+        searchMode: requestedSearchMode,
+        durationLimit: requestedDurationLimit,
       });
 
       setResults(data.results ?? []);
@@ -40,6 +46,8 @@ export function useRetrievalSearch() {
       setSubQueries(data.subQueries ?? []);
       setCount(data.count ?? 0);
       setLastQuery(data.query ?? cleanQuery);
+      setSearchMode(data.searchMode ?? requestedSearchMode);
+      setDurationLimit(data.durationLimit ?? requestedDurationLimit);
     } catch (err) {
       setResults([]);
       setLatency(null);
@@ -58,6 +66,8 @@ export function useRetrievalSearch() {
     setCount(0);
     setLastQuery("");
     setError("");
+    setSearchMode("semantic");
+    setDurationLimit(-1);
   }
 
   return {
@@ -68,6 +78,8 @@ export function useRetrievalSearch() {
     lastQuery,
     loading,
     error,
+    searchMode,
+    durationLimit,
     search,
     reset,
   };

@@ -7,12 +7,13 @@ import GroupedResults from "./components/GroupedResults";
 import DetailPanel from "./components/DetailPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
-import { getBackendConfig, checkBackendHealth } from "./api/retrievalApi";
+import { getBackendConfig, checkBackendHealth } from "./api/retrievalAPI";
 
 export default function App() {
   const [theme, setTheme] = useState("dark");
   const [model, setModel] = useState("ViT-B-16-quickgelu");
   const [mode, setMode] = useState("text");
+  const [durationLimit, setDurationLimit] = useState(-1);
   const [columns, setColumns] = useState(4);
   const [grouped, setGrouped] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -78,7 +79,21 @@ export default function App() {
     setGrouped(false);
   }
 
-  function handleSearch(query) {
+  function handleSearch(payload) {
+    const query = typeof payload === "string" ? payload : payload?.query;
+    const searchMode =
+      typeof payload === "object" && payload?.searchMode
+        ? payload.searchMode
+        : mode === "temporal"
+          ? "temporal"
+          : "semantic";
+    const nextDurationLimit =
+      typeof payload === "object" && payload?.durationLimit !== undefined
+        ? Number(payload.durationLimit)
+        : searchMode === "temporal"
+          ? Number(durationLimit)
+          : -1;
+
     setSelected(null);
 
     search({
@@ -87,6 +102,8 @@ export default function App() {
       candidateMultiplier: settings.candidateMultiplier,
       useSplit: settings.useSplit,
       useTranslate: settings.useTranslate,
+      searchMode,
+      durationLimit: nextDurationLimit,
     });
   }
 
@@ -124,8 +141,10 @@ export default function App() {
                 mode={mode}
                 loading={loading}
                 disabled={!backendReady}
+                durationLimit={durationLimit}
                 onModelChange={setModel}
                 onModeChange={setMode}
+                onDurationLimitChange={setDurationLimit}
                 onSearch={handleSearch}
               />
             </section>
@@ -184,8 +203,10 @@ export default function App() {
                   mode={mode}
                   loading={loading}
                   disabled={!backendReady}
+                  durationLimit={durationLimit}
                   onModelChange={setModel}
                   onModeChange={setMode}
+                  onDurationLimitChange={setDurationLimit}
                   onSearch={handleSearch}
                 />
 
