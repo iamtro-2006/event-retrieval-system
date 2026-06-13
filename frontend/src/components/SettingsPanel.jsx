@@ -1,6 +1,14 @@
-import { X, SlidersHorizontal, ShieldCheck } from "lucide-react";
+import { X, SlidersHorizontal, ShieldCheck, LogIn, LogOut } from "lucide-react";
 
-export default function SettingsPanel({ open, settings, onChange, onClose }) {
+export default function SettingsPanel({
+  open,
+  settings,
+  dres,
+  onChange,
+  onClose,
+  onDresLogin,
+  onDresLogout,
+}) {
   function updateField(key, value) {
     onChange({
       ...settings,
@@ -53,22 +61,31 @@ export default function SettingsPanel({ open, settings, onChange, onClose }) {
       </div>
 
       <div className="settings-section">
-        <h4>Submission Config</h4>
+        <h4>DRES Submission</h4>
 
         <label className="setting-field">
-          <span>Submit URL</span>
+          <span>DRES URL</span>
           <input
             value={settings.submitUrl}
-            placeholder="https://example.com/submit"
+            placeholder="https://dres-or-ngrok-url"
             onChange={(e) => updateField("submitUrl", e.target.value)}
           />
         </label>
 
         <label className="setting-field">
-          <span>Username</span>
+          <span>Evaluation ID</span>
+          <input
+            value={settings.evaluationId}
+            placeholder="Optional. Empty = legacy v1 submit"
+            onChange={(e) => updateField("evaluationId", e.target.value)}
+          />
+        </label>
+
+        <label className="setting-field">
+          <span>Team ID</span>
           <input
             value={settings.username}
-            placeholder="username"
+            placeholder="team"
             onChange={(e) => updateField("username", e.target.value)}
           />
         </label>
@@ -83,10 +100,28 @@ export default function SettingsPanel({ open, settings, onChange, onClose }) {
           />
         </label>
 
+        <div className={dres?.sessionId ? "dres-status connected" : "dres-status"}>
+          <span />
+          {dres?.sessionId
+            ? `DRES logged in · ${dres.sessionId.slice(0, 10)}...`
+            : "DRES not logged in"}
+        </div>
+
+        <div className="settings-actions">
+          <button type="button" onClick={onDresLogin} disabled={dres?.loading}>
+            <LogIn size={15} />
+            {dres?.loading ? "Logging in..." : "Login DRES"}
+          </button>
+
+          <button type="button" onClick={onDresLogout}>
+            <LogOut size={15} />
+            Clear
+          </button>
+        </div>
+
         <p className="settings-warning">
           <ShieldCheck size={14} />
-          Hiện tại các giá trị này chỉ giữ trong frontend state. Khi làm thật,
-          không nên lưu mật khẩu plaintext ở browser.
+          Frontend chỉ gọi backend proxy. Backend mới gọi DRES qua /api/dres/login và /api/dres/submit.
         </p>
       </div>
     </aside>

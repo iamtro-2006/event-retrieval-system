@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   Info,
@@ -9,33 +9,92 @@ import {
   Clock,
   Video,
   Gauge,
+  Star,
+  Send,
 } from "lucide-react";
 import { getNeighborFrames } from "../utils/frameUtils";
 import { buildSurroundingFrames } from "../utils/surroundingFrames";
 import VideoModal from "./VideoModal";
+import { getFrameInfo } from "../api/retrievalAPI";
 
-export default function DetailPanel({ result, onClose }) {
+export default function DetailPanel({ result, onClose, onSubmit }) {
   const [videoOpen, setVideoOpen] = useState(false);
+  const [activeResult, setActiveResult] = useState(result);
+  const [timelineLoadingId, setTimelineLoadingId] = useState(null);
+  const centerRef = useRef(null);
 
-  if (!result) return null;
+  useEffect(() => {
+    setActiveResult(result);
+  }, [result]);
 
-  const similarity = Number(result.similarity ?? 0);
+  useEffect(() => {
+    centerRef.current?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }, [activeResult?.id, activeResult?.frame_id]);
+
+  const surroundingFrames = useMemo(() => {
+    if (!activeResult) return [];
+    return buildSurroundingFrames(activeResult, 5);
+  }, [activeResult]);
+
+  if (!activeResult) return null;
+
+  const similarity = Number(activeResult.similarity ?? 0);
   const scoreNumber = Math.max(0, Math.min(similarity * 100, 100));
   const scoreText = scoreNumber.toFixed(1);
 
-  const frameId = Number(result.frame_id ?? 0);
-  const { prev, current, next } = getNeighborFrames(frameId);
+  const keyframeId = Number(
+    activeResult.raw?.keyframe_id_int ??
+      activeResult.raw?.keyframe_id ??
+      activeResult.frame_id ??
+      0
+  );
 
-  const timestamp = Number(result.timestamp ?? 0);
-  const surroundingFrames = buildSurroundingFrames(result, 5);
+  const frameIdx = Number(activeResult.raw?.frame_idx ?? activeResult.frame_id ?? 0);
+  const { prev, current, next } = getNeighborFrames(keyframeId);
+
+  const timestamp = Number(activeResult.timestamp ?? 0);
 
   async function handleCopyPath() {
     try {
-      await navigator.clipboard.writeText(result.path ?? "");
-      alert("Đã copy path frame.");
+      await navigator.clipboard.writeText(activeResult.path ?? "");
     } catch {
-      alert("Không thể copy path.");
+      console.error("Cannot copy path");
     }
+  }
+
+  async function handleTimelineClick(frame) {
+    const clickedKeyframeId = Number(frame.keyframeId ?? frame.frameId ?? 0);
+
+    if (!Number.isFinite(clickedKeyframeId)) {
+      return;
+    }
+
+    setTimelineLoadingId(clickedKeyframeId);
+
+    try {
+      const nextResult = await getFrameInfo(
+        activeResult.video_id,
+        clickedKeyframeId
+      );
+
+      setActiveResult({
+        ...nextResult,
+        similarity: activeResult.similarity,
+        caption: nextResult.caption || activeResult.caption || "",
+      });
+    } catch (err) {
+      console.error("Cannot load frame info:", err);
+    } finally {
+      setTimelineLoadingId(null);
+    }
+  }
+
+  function handleSubmit() {
+    onSubmit?.(activeResult);
   }
 
   return (
@@ -54,8 +113,8 @@ export default function DetailPanel({ result, onClose }) {
 
         <div className="detail-preview">
           <img
-            src={result.image_url}
-            alt={result.path ?? "selected frame"}
+            src={activeResult.image_url}
+            alt={activeResult.path ?? "selected frame"}
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
@@ -70,23 +129,41 @@ export default function DetailPanel({ result, onClose }) {
         </div>
 
         <div className="surrounding-timeline">
-          {surroundingFrames.map((frame) => (
-            <div
-              key={frame.offset}
-              className={
-                frame.isCurrent
-                  ? "timeline-frame current"
-                  : "timeline-frame"
-              }
-              title={`${frame.frameName} (${frame.offset})`}
-            >
-              <img src={frame.imageUrl} alt={frame.frameName} />
-              <span>{frame.offset === 0 ? "0" : frame.offset}</span>
-            </div>
-          ))}
+          {surroundingFrames.map((frame) => {
+            const clickedKeyframeId = Number(frame.keyframeId ?? frame.frameId ?? 0);
+            const isLoading = timelineLoadingId === clickedKeyframeId;
+
+            return (
+              <button
+                key={`${frame.frameId}-${frame.offset}`}
+                ref={frame.isCurrent ? centerRef : null}
+                type="button"
+                className={
+                  frame.isCurrent
+                    ? "timeline-frame current center"
+                    : "timeline-frame"
+                }
+                title={`${frame.frameName} (${frame.offset})`}
+                disabled={isLoading}
+                onClick={() => handleTimelineClick(frame)}
+              >
+                <img src={frame.imageUrl} alt={frame.frameName} />
+
+                {frame.isCurrent && (
+                  <span className="timeline-center-star">
+                    <Star size={12} fill="currentColor" />
+                  </span>
+                )}
+
+                <span className="timeline-offset">
+                  {isLoading ? "..." : frame.offset === 0 ? "0" : frame.offset}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="detail-actions">
+        <div className="detail-actions detail-actions-4">
           <button type="button" onClick={() => setVideoOpen(true)}>
             <Play size={14} />
             Play
@@ -97,8 +174,8 @@ export default function DetailPanel({ result, onClose }) {
             Copy Path
           </button>
 
-          {result.image_url ? (
-            <a href={result.image_url} target="_blank" rel="noreferrer">
+          {activeResult.image_url ? (
+            <a href={activeResult.image_url} target="_blank" rel="noreferrer">
               <ExternalLink size={14} />
               Open Image
             </a>
@@ -108,6 +185,15 @@ export default function DetailPanel({ result, onClose }) {
               No Image
             </button>
           )}
+
+          <button
+            type="button"
+            className="detail-submit-inline"
+            onClick={handleSubmit}
+          >
+            <Send size={14} />
+            Submit
+          </button>
         </div>
 
         <div className="detail-section">
@@ -115,14 +201,20 @@ export default function DetailPanel({ result, onClose }) {
 
           <MetadataRow
             icon={<FileImage size={14} />}
-            label="Frame"
-            value={result.frame_name ?? current}
+            label="Keyframe"
+            value={activeResult.frame_name ?? current}
+          />
+
+          <MetadataRow
+            icon={<FileImage size={14} />}
+            label="Frame idx"
+            value={frameIdx}
           />
 
           <MetadataRow
             icon={<Video size={14} />}
             label="Video"
-            value={result.video_id ?? "Unknown"}
+            value={activeResult.video_id ?? "Unknown"}
           />
 
           <MetadataRow
@@ -146,13 +238,13 @@ export default function DetailPanel({ result, onClose }) {
         <div className="detail-section">
           <h4>Path</h4>
 
-          <p className="detail-path" title={result.path}>
-            {result.path ?? "No path available"}
+          <p className="detail-path" title={activeResult.path}>
+            {activeResult.path ?? "No path available"}
           </p>
         </div>
 
         <div className="detail-section">
-          <h4>Neighbor Frames</h4>
+          <h4>Neighbor Keyframes</h4>
 
           <div className="neighbor-grid">
             <NeighborFrame label="Previous" value={prev} />
@@ -165,14 +257,14 @@ export default function DetailPanel({ result, onClose }) {
           <h4>Caption</h4>
 
           <p className="detail-caption">
-            {result.caption || "No caption available for this frame."}
+            {activeResult.caption || "No caption available for this frame."}
           </p>
         </div>
       </aside>
 
       <VideoModal
         open={videoOpen}
-        result={result}
+        result={activeResult}
         onClose={() => setVideoOpen(false)}
       />
     </>

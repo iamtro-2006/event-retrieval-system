@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import ResultCard from "./ResultCard";
 import { groupByVideoSorted } from "../utils/groupByVideo";
 
-function TemporalSequenceBlock({ result, sequenceIndex, selectedId, onSelect }) {
+function TemporalSequenceBlock({ result, sequenceIndex, selectedId, onSelect, onSubmit }) {
   const sequence = result.matched_sequence || [];
 
   function handleSelectFrame(frame, idx) {
@@ -45,6 +45,10 @@ function TemporalSequenceBlock({ result, sequenceIndex, selectedId, onSelect }) 
         <button type="button" onClick={handlePlaySequence}>
           <Play size={14} fill="currentColor" />
           Play
+        </button>
+
+        <button type="button" onClick={() => onSubmit?.(result)}>
+          Submit
         </button>
       </div>
 
@@ -95,6 +99,7 @@ export default function GroupedResults({
   columns,
   selectedId,
   onSelect,
+  onSubmit,
 }) {
   const groups = groupByVideoSorted(results);
   const [pageByVideo, setPageByVideo] = useState({});
@@ -148,6 +153,7 @@ export default function GroupedResults({
                           sequenceIndex={idx}
                           selectedId={selectedId}
                           onSelect={onSelect}
+                          onSubmit={onSubmit}
                         />
                       ))}
                     </div>
@@ -213,6 +219,7 @@ export default function GroupedResults({
                             result={result}
                             selected={result.id === selectedId}
                             onSelect={onSelect}
+                            onSubmit={onSubmit}
                           />
                         ))}
                       </div>

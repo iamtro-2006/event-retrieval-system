@@ -40,4 +40,4 @@ export default function ResultToolbar({
       </div>
     </div>
   );
-}
+} 

@@ -4,11 +4,13 @@ import time
 from pathlib import Path
 from typing import Any
 
+import requests
+
 import numpy as np
 import pandas as pd
 import yaml
 from deep_translator import GoogleTranslator
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -128,6 +130,22 @@ class SearchRequest(BaseModel):
     use_translate: bool | None = None
     search_mode: str | None = "semantic"
     duration_limit: float | None = -1
+
+
+class DresLoginRequest(BaseModel):
+    dres_url: str
+    username: str
+    password: str
+
+
+class DresSubmitRequest(BaseModel):
+    dres_url: str
+    session_id: str
+    evaluation_id: str | None = None
+    video_id: str
+    frame_id: int
+    timestamp: float | None = None
+
 
 
 # ============================================================
@@ -484,6 +502,98 @@ def run_search(
     return results
 
 
+
+# ============================================================
+# 6. DRES Proxy Helpers
+# ============================================================
+
+DRES_HEADERS = {"ngrok-skip-browser-warning": "true"}
+
+
+def clean_external_url(url: str) -> str:
+    cleaned = str(url or "").strip().rstrip("/")
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Missing DRES URL")
+    if not (cleaned.startswith("http://") or cleaned.startswith("https://")):
+        raise HTTPException(
+            status_code=400,
+            detail="DRES URL must start with http:// or https://",
+        )
+    return cleaned
+
+
+def fetch_dres_evaluations(dres_url: str, session_id: str) -> list[dict]:
+    """Gọi endpoint GET /api/v2/client/evaluation/list để lấy danh sách trận đấu"""
+    try:
+        res = requests.get(
+            f"{dres_url}/api/v2/client/evaluation/list",
+            params={"session": session_id},
+            headers=DRES_HEADERS,
+            timeout=10,
+        )
+        if res.ok:
+            return res.json()
+        return []
+    except Exception:
+        return []
+
+
+def pick_active_evaluation_id(evaluations: list) -> str | None:
+    """Tự động tìm kiếm evaluation đang 'ACTIVE' từ danh sách trả về của DRES"""
+    if not evaluations or not isinstance(evaluations, list):
+        return None
+    for ev in evaluations:
+        # Check theo Schema ApiClientEvaluationInfo, trạng thái nằm trong trường 'status'
+        if ev.get("status") == "ACTIVE":
+            return ev.get("id")
+    # Dự phòng nếu không thấy cụ thể trạng thái ACTIVE thì bốc đại ID đầu tiên
+    return evaluations[0].get("id")
+
+
+def normalize_dres_verdict(response: requests.Response) -> dict[str, Any]:
+    """Chuẩn hóa trạng thái trả về theo SuccessfulSubmissionsStatus hoặc ErrorStatus"""
+    try:
+        data = response.json()
+    except Exception:
+        data = {"raw": response.text or ""}
+
+    raw_text = (response.text or "").lower()
+
+    # DRES trả về 412 khi Submission bị Reject (Sai kết quả)
+    if response.status_code == 412:
+        return {"status": "wrong", "message": "Wrong Answer", "data": data}
+
+    if not response.ok:
+        desc = data.get("description", f"HTTP Error {response.status_code}")
+        return {"status": "error", "message": desc, "data": data}
+
+    # Trường hợp 202: Server đã nhận bài nhưng chưa có kết quả chấm lập tức
+    if response.status_code == 202:
+        return {
+            "status": "pending",
+            "message": "Submitted, waiting for verdict",
+            "data": data,
+        }
+
+    # Trường hợp 200: Có kết quả trả về luôn (Dựa vào schema ApiVerdictStatus)
+    verdict = str(data.get("submission", "")).upper()
+    if "CORRECT" in verdict or "CORRECT" in raw_text:
+        return {"status": "correct", "message": "Correct!", "data": data}
+    if "WRONG" in verdict or "WRONG" in raw_text:
+        return {"status": "wrong", "message": "Wrong Answer", "data": data}
+
+    return {"status": "pending", "message": "Submitted", "data": data}
+def timestamp_to_milliseconds(timestamp: float | None, fallback_frame_id: int) -> int:
+    if timestamp is None:
+        return int(fallback_frame_id)
+
+    value = safe_float(timestamp, -1.0)
+
+    if value < 0:
+        return int(fallback_frame_id)
+
+    return int(round(value * 1000))
+
 # ============================================================
 # 6. API Routes
 # ============================================================
@@ -538,6 +648,151 @@ def get_public_config():
         },
     }
 
+
+
+@app.post("/api/dres/login")
+def dres_login(payload: DresLoginRequest):
+    dres_url = clean_external_url(payload.dres_url)
+
+    if not payload.username.strip() or not payload.password:
+        raise HTTPException(
+            status_code=400, detail="Missing username or password"
+        )
+
+    session = requests.Session()
+    session.headers.update(DRES_HEADERS)
+
+    # 1. Thực hiện đăng nhập thông qua POST /api/v2/login
+    try:
+        login_res = session.post(
+            f"{dres_url}/api/v2/login",
+            json={"username": payload.username, "password": payload.password},
+            timeout=15,
+        )
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=502, detail=f"DRES login connection failed: {e}"
+        )
+
+    if not login_res.ok:
+        try:
+            err_desc = login_res.json().get("description", "Login failed")
+        except Exception:
+            err_desc = login_res.text or "Login failed"
+        raise HTTPException(status_code=login_res.status_code, detail=err_desc)
+
+    # 2. Lấy Session ID từ endpoint GET /api/v2/user/session
+    try:
+        sess_res = session.get(f"{dres_url}/api/v2/user/session", timeout=15)
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=502, detail=f"DRES session fetch failed: {e}"
+        )
+
+    if not sess_res.ok:
+        raise HTTPException(
+            status_code=sess_res.status_code, detail="Cannot fetch DRES session"
+        )
+
+    # Làm sạch chuỗi session_id trả về dạng plain text
+    session_id = sess_res.text.strip().strip('"')
+
+    # 3. Tự động lấy danh sách cuộc thi và bốc active evaluationId ra cho Client UI
+    evaluations = fetch_dres_evaluations(dres_url, session_id)
+    evaluation_id = pick_active_evaluation_id(evaluations)
+
+    return {
+        "status": "ok",
+        "session_id": session_id,
+        "evaluation_id": evaluation_id,
+        "evaluations": evaluations,
+        "user": login_res.json() if login_res.text else {},
+    }
+
+
+@app.post("/api/dres/submit")
+def dres_submit(payload: DresSubmitRequest):
+    dres_url = clean_external_url(payload.dres_url)
+
+    if not payload.session_id.strip():
+        raise HTTPException(status_code=400, detail="Missing active session_id")
+
+    # Nếu Front-end không truyền lên evaluation_id, tự động quét tìm lại để tránh lỗi sập hệ thống
+    evaluation_id = payload.evaluation_id
+    if not evaluation_id:
+        evals = fetch_dres_evaluations(dres_url, payload.session_id)
+        evaluation_id = pick_active_evaluation_id(evals)
+
+    if not evaluation_id:
+        raise HTTPException(
+            status_code=400, detail="No active DRES evaluation found to submit"
+        )
+
+    # Quy đổi thời gian sang mili-giây theo đúng mô tả dữ liệu ApiClientAnswer (start/end: int64 ms)
+    # Nếu UI không có timestamp (ví dụ ảnh đơn lẻ), xử lý fallback an toàn theo frame_id
+    if payload.timestamp is not None and payload.timestamp >= 0:
+        time_ms = int(round(payload.timestamp * 1000))
+    else:
+        # Trường hợp giả định frame_id tương ứng mili-giây nếu UI bắn frame index trực tiếp
+        time_ms = int(payload.frame_id)
+
+    # Xây dựng Payload Object khớp 100% cấu trúc ApiClientSubmission trong OpenAPI docs của bạn
+    submit_payload = {
+        "answerSets": [
+            {
+                "answers": [
+                    {
+                        "mediaItemName": str(payload.video_id).strip(),
+                        "start": time_ms,
+                        "end": time_ms,
+                        "text": None,
+                        "mediaItemCollectionName": None,
+                    }
+                ]
+            }
+        ]
+    }
+
+    # Gọi chính xác cổng POST /api/v2/submit/{evaluationId} kèm tham số query session
+    submit_url = f"{dres_url}/api/v2/submit/{evaluation_id}"
+    params = {"session": payload.session_id}
+
+    try:
+        res = requests.post(
+            submit_url, params=params, json=submit_payload, timeout=15
+        )
+        # Trả trạng thái chuẩn hóa về cho giao diện hiển thị (Correct, Wrong, Pending)
+        return normalize_dres_verdict(res)
+
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=502, detail=f"Connection to DRES submit failed: {e}"
+        )
+
+@app.get("/api/frame-info")
+def get_frame_info(video_id: str, keyframe_id: int):
+    metadata_df = retrieval_system.metadata
+
+    if "keyframe_id_int" in metadata_df.columns:
+        mask = (
+            (metadata_df["video_id"].astype(str) == str(video_id))
+            & (metadata_df["keyframe_id_int"].astype(int) == int(keyframe_id))
+        )
+    else:
+        mask = (
+            (metadata_df["video_id"].astype(str) == str(video_id))
+            & (metadata_df["keyframe_id"].astype(int) == int(keyframe_id))
+        )
+
+    matched = metadata_df[mask]
+
+    if matched.empty:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Frame not found: {video_id}/{keyframe_id}",
+        )
+
+    return row_to_result(matched.iloc[0])
 
 @app.post("/api/search")
 def search_api(payload: SearchRequest):

@@ -1,6 +1,6 @@
-import { Play, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Play, ThumbsDown, ThumbsUp, Send } from "lucide-react";
 
-export default function ResultCard({ result, selected, onSelect }) {
+export default function ResultCard({ result, selected, onSelect, onSubmit }) {
   const score = (result.similarity * 100).toFixed(1);
   const label = `${result.video_id}/${String(result.frame_id).padStart(6, "0")}`;
   const sequence = result.matched_sequence || [];
@@ -22,7 +22,7 @@ export default function ResultCard({ result, selected, onSelect }) {
 
   function handleSubmit(e) {
     e.stopPropagation();
-    alert(`Submit frame: ${label}`);
+    onSubmit?.(result);
   }
 
   return (
@@ -35,15 +35,15 @@ export default function ResultCard({ result, selected, onSelect }) {
 
         <span className="score-badge">{score}%</span>
 
-        <button className="vote-button like" onClick={(e) => e.stopPropagation()}>
+        <button className="vote-button like" type="button" onClick={(e) => e.stopPropagation()}>
           <ThumbsUp size={12} />
         </button>
 
-        <button className="vote-button dislike" onClick={(e) => e.stopPropagation()}>
+        <button className="vote-button dislike" type="button" onClick={(e) => e.stopPropagation()}>
           <ThumbsDown size={12} />
         </button>
 
-        <button className="play-button" onClick={handlePlay}>
+        <button className="play-button" type="button" onClick={handlePlay}>
           <Play size={16} fill="currentColor" />
         </button>
       </div>
@@ -54,6 +54,7 @@ export default function ResultCard({ result, selected, onSelect }) {
             <button
               key={`${item.video_id || result.video_id}-${item.keyframe_id}-${idx}`}
               className="temporal-step"
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 openVideoAt(item.timestamp_sec);
@@ -77,7 +78,14 @@ export default function ResultCard({ result, selected, onSelect }) {
 
       <div className="card-footer">
         <span title={label}>{label}</span>
-        <button onClick={handleSubmit}>Submit</button>
+          <button
+            type="button"
+            className="result-submit-button"
+            onClick={handleSubmit}
+          >
+          <Send size={12} />
+          Submit
+        </button>
       </div>
     </article>
   );

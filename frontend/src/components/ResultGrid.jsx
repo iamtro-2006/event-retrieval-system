@@ -1,7 +1,7 @@
 import { Play } from "lucide-react";
 import ResultCard from "./ResultCard";
 
-function TemporalFlatSequence({ result, sequenceIndex, selectedId, onSelect }) {
+function TemporalFlatSequence({ result, sequenceIndex, selectedId, onSelect, onSubmit }) {
   const sequence = result.matched_sequence || [];
 
   function handleSelectFrame(frame, idx) {
@@ -47,6 +47,10 @@ function TemporalFlatSequence({ result, sequenceIndex, selectedId, onSelect }) {
         <button type="button" onClick={handlePlay} title="Play sequence">
           <Play size={13} fill="currentColor" />
           Play
+        </button>
+
+        <button type="button" onClick={() => onSubmit?.(result)} title="Submit sequence start frame">
+          Submit
         </button>
       </div>
 
@@ -101,6 +105,7 @@ export default function ResultGrid({
   columns,
   selectedId,
   onSelect,
+  onSubmit,
 }) {
   return (
     <div
@@ -122,6 +127,7 @@ export default function ResultGrid({
               sequenceIndex={index}
               selectedId={selectedId}
               onSelect={onSelect}
+              onSubmit={onSubmit}
             />
           );
         }
@@ -132,6 +138,7 @@ export default function ResultGrid({
             result={result}
             selected={result.id === selectedId}
             onSelect={onSelect}
+            onSubmit={onSubmit}
           />
         );
       })}

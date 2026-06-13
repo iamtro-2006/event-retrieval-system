@@ -195,3 +195,24 @@ function safeNumber(value, fallback = 0) {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
+
+
+export async function getFrameInfo(videoId, keyframeId) {
+  const params = new URLSearchParams({
+    video_id: videoId,
+    keyframe_id: String(keyframeId),
+  });
+
+  const response = await fetch(`${API_BASE_URL}/api/frame-info?${params}`, {
+    headers: NGROK_HEADER,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Cannot load frame info");
+  }
+
+  const data = await response.json();
+
+  return normalizeResults([data])[0];
+}

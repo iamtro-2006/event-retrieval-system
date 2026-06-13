@@ -6,10 +6,19 @@ import ResultGrid from "./components/ResultGrid";
 import GroupedResults from "./components/GroupedResults";
 import DetailPanel from "./components/DetailPanel";
 import SettingsPanel from "./components/SettingsPanel";
+import ToastHost from "./components/ToastHost";
 import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
 import { getBackendConfig, checkBackendHealth } from "./api/retrievalAPI";
+import {
+  getDefaultSubmissionSettings,
+  loginDresViaBackend,
+  submitDresViaBackend,
+} from "./api/submissionAPI";
+import { playNotifySound } from "./utils/notifySound";
 
 export default function App() {
+  const defaultSubmission = getDefaultSubmissionSettings();
+
   const [theme, setTheme] = useState("dark");
   const [model, setModel] = useState("ViT-B-16-quickgelu");
   const [mode, setMode] = useState("text");
@@ -24,13 +33,22 @@ export default function App() {
     useTranslate: true,
     topK: 20,
     candidateMultiplier: 5,
-    submitUrl: "",
-    username: "",
-    password: "",
+    submitUrl: defaultSubmission.dresUrl,
+    evaluationId: defaultSubmission.evaluationId,
+    username: defaultSubmission.teamId,
+    password: defaultSubmission.teamPassword,
   });
 
   const [backendReady, setBackendReady] = useState(false);
   const [backendStatus, setBackendStatus] = useState("Checking backend...");
+
+  const [dres, setDres] = useState({
+    loading: false,
+    sessionId: "",
+    user: null,
+  });
+
+  const [toasts, setToasts] = useState([]);
 
   const {
     results,
@@ -81,12 +99,14 @@ export default function App() {
 
   function handleSearch(payload) {
     const query = typeof payload === "string" ? payload : payload?.query;
+
     const searchMode =
       typeof payload === "object" && payload?.searchMode
         ? payload.searchMode
         : mode === "temporal"
           ? "temporal"
           : "semantic";
+
     const nextDurationLimit =
       typeof payload === "object" && payload?.durationLimit !== undefined
         ? Number(payload.durationLimit)
@@ -107,6 +127,129 @@ export default function App() {
     });
   }
 
+  function pushToast(type, title, message = "") {
+    const id = crypto.randomUUID();
+
+    setToasts((prev) => [
+      ...prev,
+      {
+        id,
+        type,
+        title,
+        message,
+      },
+    ]);
+
+    playNotifySound(type);
+
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3200);
+  }
+
+  async function handleDresLogin() {
+    setDres((prev) => ({ ...prev, loading: true }));
+
+    try {
+      const data = await loginDresViaBackend({
+        dresUrl: settings.submitUrl,
+        username: settings.username,
+        password: settings.password,
+      });
+
+      setDres({
+        loading: false,
+        sessionId: data.session_id,
+        user: data.user ?? null,
+      });
+
+      if (data.evaluation_id) {
+        setSettings((prev) => ({
+          ...prev,
+          evaluationId: data.evaluation_id,
+        }));
+      }
+
+      pushToast(
+        "correct",
+        "DRES logged in",
+        data.evaluation_id
+          ? `Session + evaluation: ${data.evaluation_id}`
+          : "Session ID received."
+      );
+    } catch (err) {
+      setDres((prev) => ({ ...prev, loading: false }));
+      pushToast("warning", "DRES login failed", err.message);
+    }
+  }
+
+  function handleDresLogout() {
+    setDres({
+      loading: false,
+      sessionId: "",
+      user: null,
+    });
+
+    pushToast("pending", "DRES session cleared");
+  }
+
+  async function handleSubmitResult(result) {
+    if (!result) {
+      pushToast("warning", "Cannot submit", "No selected frame.");
+      return;
+    }
+
+    try {
+      let sessionId = dres.sessionId;
+      let evaluationId = settings.evaluationId;
+
+      if (!sessionId) {
+        const loginData = await loginDresViaBackend({
+          dresUrl: settings.submitUrl,
+          username: settings.username,
+          password: settings.password,
+        });
+
+        sessionId = loginData.session_id;
+        evaluationId = loginData.evaluation_id || evaluationId;
+
+        setDres({
+          loading: false,
+          sessionId,
+          user: loginData.user ?? null,
+        });
+
+        if (loginData.evaluation_id) {
+          setSettings((prev) => ({
+            ...prev,
+            evaluationId: loginData.evaluation_id,
+          }));
+        }
+      }
+
+      const response = await submitDresViaBackend({
+        dresUrl: settings.submitUrl,
+        sessionId,
+        evaluationId,
+        result,
+      });
+
+      const label = `${result.video_id}/${String(result.frame_id).padStart(6, "0")}`;
+
+      if (response.status === "correct") {
+        pushToast("correct", "Correct", label);
+      } else if (response.status === "wrong") {
+        pushToast("wrong", "Wrong", response.message || label);
+      } else if (response.status === "pending") {
+        pushToast("pending", "Submitted", response.message || label);
+      } else {
+        pushToast("warning", "Cannot submit", response.message || label);
+      }
+    } catch (err) {
+      pushToast("warning", "Cannot submit", err.message);
+    }
+  }
+
   return (
     <div className={theme === "dark" ? "theme-dark" : "theme-light"}>
       <div className={`ambient-bg ${loading ? "ambient-searching" : ""}`} />
@@ -119,7 +262,8 @@ export default function App() {
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
-        <main className={hasResults ? "main-layout has-results" : "main-layout is-home"}
+        <main
+          className={hasResults ? "main-layout has-results" : "main-layout is-home"}
         >
           {!hasResults && (
             <section className="home-panel">
@@ -132,9 +276,7 @@ export default function App() {
                 {backendStatus}
               </div>
 
-              <h1 className="main-title">
-                Bạn muốn retrieval sự kiện nào?
-              </h1>
+              <h1 className="main-title">Bạn muốn retrieval sự kiện nào?</h1>
 
               <SearchBar
                 model={model}
@@ -177,6 +319,7 @@ export default function App() {
                         columns={columns}
                         selectedId={selected?.id}
                         onSelect={setSelected}
+                        onSubmit={handleSubmitResult}
                       />
                     ) : (
                       <ResultGrid
@@ -184,6 +327,7 @@ export default function App() {
                         columns={columns}
                         selectedId={selected?.id}
                         onSelect={setSelected}
+                        onSubmit={handleSubmitResult}
                       />
                     )}
                   </div>
@@ -192,6 +336,7 @@ export default function App() {
                     <DetailPanel
                       result={selected}
                       onClose={() => setSelected(null)}
+                      onSubmit={handleSubmitResult}
                     />
                   )}
                 </div>
@@ -223,9 +368,14 @@ export default function App() {
         <SettingsPanel
           open={settingsOpen}
           settings={settings}
+          dres={dres}
           onChange={setSettings}
           onClose={() => setSettingsOpen(false)}
+          onDresLogin={handleDresLogin}
+          onDresLogout={handleDresLogout}
         />
+
+        <ToastHost toasts={toasts} />
       </div>
     </div>
   );

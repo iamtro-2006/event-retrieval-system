@@ -775,6 +775,58 @@ button:disabled {
   @apply absolute bottom-0 right-0 rounded-tl bg-black/70 px-1 font-mono text-[9px] text-white;
 }
 
+.timeline-frame {
+  @apply relative cursor-pointer border-0 p-0;
+}
+
+.timeline-frame.center {
+  @apply border-yellow-400 ring-2 ring-yellow-400/60;
+}
+
+.timeline-center-star {
+  @apply absolute right-1 top-1 z-10 rounded-full bg-black/70 p-0.5 text-yellow-300 shadow;
+}
+
+.timeline-offset {
+  @apply absolute bottom-0 right-0 rounded-tl bg-black/70 px-1 font-mono text-[9px] text-white;
+}
+
+.detail-actions-4 {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.detail-actions-4 button,
+.detail-actions-4 a {
+  @apply min-h-10 w-full;
+}
+
+.detail-submit-inline {
+  @apply border border-emerald-500 bg-emerald-600 text-white shadow-lg shadow-emerald-600/25;
+}
+
+.detail-submit-inline:hover {
+  @apply bg-emerald-500 border-emerald-400 text-white;
+}
+
+.detail-submit-inline:active {
+  transform: scale(0.98);
+}
+
+.detail-submit-inline svg {
+  color: white;
+}
+
+.detail-actions-4 .detail-submit-inline {
+  @apply border-emerald-400 bg-emerald-600 text-white shadow-lg shadow-emerald-600/30;
+}
+
+.detail-actions-4 .detail-submit-inline:hover {
+  @apply border-emerald-300 bg-emerald-500 text-white;
+}
+
+.detail-actions-4 .detail-submit-inline svg {
+  @apply text-white;
+}
 /* =========================
    Video Modal
 ========================= */
@@ -1133,4 +1185,98 @@ button:disabled {
 
 .theme-light .video-strip-temporal-info {
   @apply border-blue-200 bg-blue-50 text-blue-700;
+}
+
+
+/* =========================
+   DRES Proxy + Toast
+========================= */
+
+.settings-actions {
+  @apply mt-3 grid grid-cols-2 gap-2;
+}
+
+.settings-actions button {
+  @apply flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 transition hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.theme-light .settings-actions button {
+  @apply border-slate-200 bg-white text-slate-600 hover:text-blue-600;
+}
+
+.dres-status {
+  @apply mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300;
+}
+
+.dres-status span {
+  @apply h-2 w-2 rounded-full bg-red-400;
+}
+
+.dres-status.connected {
+  @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-300;
+}
+
+.dres-status.connected span {
+  @apply bg-emerald-400;
+}
+
+.toast-host {
+  @apply fixed right-5 top-5 z-[200] flex w-[320px] flex-col gap-3;
+}
+
+.toast-card {
+  @apply flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl;
+  animation: toast-slide-in 0.25s ease-out;
+}
+
+.toast-card strong {
+  @apply block text-sm font-semibold;
+}
+
+.toast-card p {
+  @apply mt-0.5 text-xs opacity-90;
+}
+
+.toast-card.correct {
+  @apply border-emerald-400/40 bg-emerald-500/15 text-emerald-200;
+}
+
+.toast-card.wrong {
+  @apply border-red-400/40 bg-red-500/15 text-red-200;
+}
+
+.toast-card.warning {
+  @apply border-amber-400/40 bg-amber-500/15 text-amber-200;
+}
+
+.toast-card.pending {
+  @apply border-blue-400/40 bg-blue-500/15 text-blue-200;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px) translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}
+
+
+/* ===============================
+    SUBMIT FRAME BUTTON
+===============================*/
+.result-submit-button {
+  @apply flex items-center justify-center gap-1 rounded-lg border border-emerald-400 bg-emerald-600 px-2 py-1 text-xs font-semibold text-white shadow-md shadow-emerald-600/25 transition hover:bg-emerald-500 hover:text-white active:scale-95;
+}
+
+.result-submit-button svg {
+  @apply text-white;
+}
+
+.card-footer .result-submit-button {
+  @apply border-emerald-400 bg-emerald-600 text-white;
 }
