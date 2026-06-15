@@ -5,6 +5,9 @@ const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
 
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
+let activeSearchController = null;
+let activeSearchRequestId = 0;
+
 function apiUrl(path) {
   return `${API_BASE_URL}/${String(path).replace(/^\/+/, "")}`;
 }
@@ -42,6 +45,15 @@ export async function searchRetrieval({
   searchMode = "semantic",
   durationLimit = -1,
 }) {
+  if (activeSearchController) {
+    activeSearchController.abort();
+  }
+
+  const controller = new AbortController();
+  activeSearchController = controller;
+
+  const requestId = ++activeSearchRequestId;
+
   const payload = {
     query,
     top_k: topK,
@@ -52,38 +64,104 @@ export async function searchRetrieval({
     duration_limit: durationLimit,
   };
 
-  const response = await fetch(apiUrl("/api/search"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...NGROK_HEADER,
-    },
-    body: JSON.stringify(payload),
-  });
+  const t0 = performance.now();
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Search request failed");
+  console.log(`[SEARCH ${requestId}] payload`, payload);
+
+  try {
+    const response = await fetch(apiUrl("/api/search"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...NGROK_HEADER,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    const t1 = performance.now();
+
+    if (requestId !== activeSearchRequestId) {
+      throw createStaleSearchError(requestId);
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Search request failed");
+    }
+
+    const data = await response.json();
+    const t2 = performance.now();
+
+    if (requestId !== activeSearchRequestId) {
+      throw createStaleSearchError(requestId);
+    }
+
+    const normalizedResults = normalizeResults(data.results ?? []);
+    const t3 = performance.now();
+
+    if (requestId !== activeSearchRequestId) {
+      throw createStaleSearchError(requestId);
+    }
+
+    const backendMs = Number(data.latency_ms ?? 0);
+
+    const timing = {
+      requestId,
+      backendMs,
+      fetchMs: Number((t1 - t0).toFixed(2)),
+      jsonMs: Number((t2 - t1).toFixed(2)),
+      normalizeMs: Number((t3 - t2).toFixed(2)),
+      apiTotalMs: Number((t3 - t0).toFixed(2)),
+      overheadMs: Number(((t3 - t0) - backendMs).toFixed(2)),
+      resultCount: normalizedResults.length,
+    };
+
+    console.log(`[SEARCH ${requestId}] done`);
+    console.table(timing);
+
+    return {
+      query: data.query,
+      originalQuery: data.original_query,
+      translatedQuery: data.translated_query,
+      useTranslate: data.use_translate,
+      useSplit: data.use_split,
+      subQueries: data.sub_queries ?? [],
+      events: data.events ?? [],
+      eventQueries: data.event_queries ?? [],
+      latencyMs: data.latency_ms ?? null,
+      timing,
+      count: data.count ?? 0,
+      searchMode: data.search_mode ?? searchMode,
+      durationLimit: data.duration_limit ?? durationLimit,
+      results: normalizedResults,
+    };
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.log(`[SEARCH ${requestId}] aborted`);
+    } else if (error.name === "StaleSearchError") {
+      console.log(`[SEARCH ${requestId}] stale ignored`);
+    }
+
+    throw error;
+  } finally {
+    if (activeSearchController === controller) {
+      activeSearchController = null;
+    }
   }
+}
 
-  const data = await response.json();
-
-  return {
-    query: data.query,
-    originalQuery: data.original_query,
-    translatedQuery: data.translated_query,
-    useTranslate: data.use_translate,
-    useSplit: data.use_split,
-    subQueries: data.sub_queries ?? [],
-    latencyMs: data.latency_ms ?? null,
-    count: data.count ?? 0,
-    searchMode: data.search_mode ?? searchMode,
-    durationLimit: data.duration_limit ?? durationLimit,
-    results: normalizeResults(data.results ?? []),
-  };
+function createStaleSearchError(requestId) {
+  const error = new Error(`Stale search ignored: ${requestId}`);
+  error.name = "StaleSearchError";
+  return error;
 }
 
 function normalizeResults(results) {
+  if (!Array.isArray(results)) {
+    return [];
+  }
+
   return results.map((item, index) => {
     const frameId = Number(item.frame_id ?? 0);
     const similarity = Number(item.similarity ?? 0);
@@ -93,8 +171,14 @@ function normalizeResults(results) {
       item.matched_sequence ?? raw.matched_sequence ?? []
     );
 
+    const baseId =
+      item.id ||
+      `${item.video_id || "unknown_video"}_${String(
+        Number.isFinite(frameId) ? frameId : index
+      ).padStart(6, "0")}`;
+
     return {
-      id: item.id || `result-${index}`,
+      id: `${baseId}-${index}`,
       video_id: item.video_id || "unknown_video",
       frame_id: Number.isFinite(frameId) ? frameId : 0,
       frame_name:
@@ -143,8 +227,13 @@ function normalizeMatchedSequence(sequence) {
     const timestamp = Number(item.timestamp_sec ?? item.timestamp ?? 0);
     const score = Number(item.score ?? item.candidate_score ?? 0);
 
+    const baseId = `${item.video_id || "unknown_video"}_${String(
+      Number.isFinite(frameId) ? frameId : index
+    ).padStart(6, "0")}`;
+
     return {
       ...item,
+      id: `${baseId}-${index}`,
       sub_query_idx: safeNumber(item.sub_query_idx, index),
       sub_query: item.sub_query || "",
       keyframe_id: Number.isFinite(frameId) ? frameId : 0,
@@ -196,6 +285,75 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
+export async function getSurroundingFrames(videoId, keyframeId, radius = 10) {
+  const params = new URLSearchParams({
+    video_id: videoId,
+    keyframe_id: String(keyframeId),
+    radius: String(radius),
+  });
+
+  const response = await fetch(apiUrl(`/api/surrounding-frames?${params}`), {
+    headers: NGROK_HEADER,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Cannot load surrounding frames");
+  }
+
+  const data = await response.json();
+
+  return normalizeResults(data.frames ?? []);
+}
+
+export async function similaritySearch({
+  videoId,
+  frameId,
+  topK = 20,
+}) {
+  const payload = {
+    video_id: videoId,
+    frame_id: Number(frameId),
+    top_k: topK,
+  };
+
+  const t0 = performance.now();
+
+  const response = await fetch(apiUrl("/api/similarity-search"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...NGROK_HEADER,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const t1 = performance.now();
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Similarity search failed");
+  }
+
+  const data = await response.json();
+  const normalizedResults = normalizeResults(data.results ?? []);
+
+  console.table({
+    mode: "similarity",
+    backendMs: data.latency_ms,
+    fetchMs: Number((t1 - t0).toFixed(2)),
+    resultCount: normalizedResults.length,
+  });
+
+  return {
+    query: data.query,
+    source: data.source,
+    latencyMs: data.latency_ms ?? null,
+    count: data.count ?? 0,
+    searchMode: "similarity",
+    results: normalizedResults,
+  };
+}
 
 export async function getFrameInfo(videoId, keyframeId) {
   const params = new URLSearchParams({
@@ -203,7 +361,7 @@ export async function getFrameInfo(videoId, keyframeId) {
     keyframe_id: String(keyframeId),
   });
 
-  const response = await fetch(`${API_BASE_URL}/api/frame-info?${params}`, {
+  const response = await fetch(apiUrl(`/api/frame-info?${params}`), {
     headers: NGROK_HEADER,
   });
 

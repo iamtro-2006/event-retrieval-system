@@ -107,6 +107,7 @@ button:disabled {
   @apply min-h-0 flex-1 overflow-y-auto pr-1;
 }
 
+
 .bottom-search-zone {
   @apply flex shrink-0 flex-col items-center gap-2 pt-2;
 }
@@ -165,7 +166,7 @@ button:disabled {
   @apply w-full max-w-[760px] rounded-full p-[2px] transition-all duration-300;
 }
 
-.searching-active {
+.search-wrapper.searching-active {
   background: linear-gradient(-45deg, #2563eb, #3b82f6, #8b5cf6, #d946ef, #10b981);
   background-size: 400% 400%;
   animation: search-glow 1.2s linear infinite;
@@ -188,6 +189,7 @@ button:disabled {
   }
 }
 
+/* Gọn 1 dòng lúc ban đầu */
 .search-inner {
   @apply flex w-full items-center gap-1 rounded-full border border-white/10 bg-[#1e1f20] px-2 py-1.5 shadow-2xl;
 }
@@ -196,8 +198,48 @@ button:disabled {
   @apply border-slate-200 bg-white;
 }
 
-.search-input {
-  @apply flex-1 bg-transparent px-2 py-2 text-[15px] outline-none placeholder:text-slate-500;
+.search-chat-textarea {
+  @apply flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-6 outline-none placeholder:text-slate-500;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  overflow-y: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.search-chat-footer {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.search-chat-controls {
+  @apply flex items-center gap-1;
+}
+
+/* Khi text dài hoặc Shift+Enter */
+.search-wrapper.expanded {
+  @apply rounded-[28px];
+}
+
+.search-wrapper.expanded .search-inner {
+  @apply flex-col items-stretch gap-2 rounded-[26px] px-3 py-2;
+}
+
+.search-wrapper.expanded .search-chat-textarea {
+  width: 100%;
+  height: auto;
+  min-height: 72px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.search-wrapper.expanded .search-chat-footer {
+  @apply flex w-full items-center justify-between gap-2;
+}
+
+.search-wrapper.expanded .search-chat-controls {
+  @apply ml-auto flex items-center gap-1;
 }
 
 .search-select {
@@ -1156,6 +1198,94 @@ button:disabled {
   max-width: none !important;
   flex: 0 0 auto;
 }
+
+.temporal-frame-card,
+.temporal-flat-frame-card {
+  overflow: hidden;
+}
+
+.temporal-frame-thumb,
+.temporal-flat-thumb {
+  position: relative;
+}
+
+.temporal-frame-footer,
+.temporal-flat-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #0b1220;
+  border-top: 1px solid rgba(96, 165, 250, 0.24);
+  font-size: 11px;
+  font-weight: 800;
+  color: #dbeafe;
+}
+
+.temporal-frame-footer strong,
+.temporal-flat-footer strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* canonical temporal frame actions — inline-flex, gap, submit green */
+.temporal-frame-actions-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 8px;
+  background: #0b1220;
+}
+
+.temporal-frame-actions-row button {
+  min-width: 0;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  background: rgba(37, 99, 235, 0.14);
+  color: #bfdbfe;
+  font-size: 10.5px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.temporal-frame-actions-row button:hover {
+  color: white;
+  background: rgba(37, 99, 235, 0.34);
+  border-color: rgba(147, 197, 253, 0.58);
+}
+
+.temporal-frame-actions-row button:last-child {
+  color: white;
+  background: linear-gradient(135deg, #059669, #10b981);
+  border-color: rgba(52, 211, 153, 0.55);
+}
+
+.temporal-frame-actions-row button:last-child:hover {
+  background: linear-gradient(135deg, #047857, #34d399);
+  border-color: rgba(52, 211, 153, 0.8);
+}
+
+.temporal-frame-query {
+  padding: 5px 8px 7px;
+  background: #0b1220;
+  color: #93c5fd;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* =========================
    Scrollbar
 ========================= */
@@ -1187,7 +1317,212 @@ button:disabled {
   @apply border-blue-200 bg-blue-50 text-blue-700;
 }
 
+/* =========================
+   Semantic ResultCard — footer matches temporal style
+========================= */
 
+.result-card {
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.result-card .thumbnail-box {
+  border-radius: 14px 14px 0 0;
+  overflow: hidden;
+}
+
+/* card-footer wrapper */
+.result-card .card-footer {
+  width: 100%;
+  padding: 0 !important;
+  margin: 0;
+  background: #0b1220;
+}
+
+/* result-footer column container */
+.result-card .result-footer {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 !important;
+  background: #0b1220;
+  border-top: 1px solid rgba(96, 165, 250, 0.24);
+}
+
+/* frame label row */
+.result-card .result-frame-label {
+  width: 100%;
+  padding: 6px 8px 5px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 900;
+  color: #eff6ff;
+  letter-spacing: 0.01em;
+  text-shadow: 0 0 10px rgba(96, 165, 250, 0.42);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3-button actions row — identical layout to temporal */
+.result-card .result-actions-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 8px;
+  background: #0b1220;
+}
+
+/* surround + similar buttons (= temporal non-submit) */
+.result-card .result-mini-btn {
+  min-width: 0;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  background: rgba(37, 99, 235, 0.14);
+  color: #bfdbfe;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-family: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.result-card .result-mini-btn:hover {
+  color: white;
+  background: rgba(37, 99, 235, 0.34);
+  border-color: rgba(147, 197, 253, 0.58);
+}
+
+/* submit button (= temporal last-child green) */
+.result-card .result-submit-btn {
+  min-width: 0;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(52, 211, 153, 0.55);
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-family: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.result-card .result-submit-btn:hover {
+  background: linear-gradient(135deg, #047857, #34d399);
+  border-color: rgba(52, 211, 153, 0.8);
+}
+
+/* shared svg + span helpers */
+.result-card .result-mini-btn svg,
+.result-card .result-submit-btn svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.4;
+  flex-shrink: 0;
+}
+
+.result-card .result-mini-btn span,
+.result-card .result-submit-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+
+/* =========================
+   Layout Overrides (results mode)
+========================= */
+.main-layout.has-results {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.display-area {
+  height: 100vh;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+.result-body {
+  padding-bottom: 0;
+}
+
+.result-list {
+  padding-bottom: 0;
+}
+
+.bottom-search-zone {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 60;
+  transform: translateX(-50%);
+  width: min(900px, calc(100vw - 120px));
+  pointer-events: none;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  opacity: 0.18;
+  filter: saturate(0.75);
+  transition:
+    opacity 0.28s ease,
+    filter 0.28s ease,
+    transform 0.28s ease;
+}
+
+.bottom-search-zone:hover,
+.bottom-search-zone:focus-within {
+  opacity: 1;
+  filter: saturate(1);
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.bottom-search-zone .search-wrapper {
+  pointer-events: auto;
+}
+
+.bottom-search-zone .footer-note {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.bottom-search-zone:hover .footer-note,
+.bottom-search-zone:focus-within .footer-note {
+  opacity: 0.85;
+  transform: translateY(0);
+}
+
+/* Khi đang search thì hiện rõ */
+.bottom-search-zone:has(.searching-active) {
+  opacity: 1;
+  filter: saturate(1);
+}
 /* =========================
    DRES Proxy + Toast
 ========================= */
@@ -1279,4 +1614,265 @@ button:disabled {
 
 .card-footer .result-submit-button {
   @apply border-emerald-400 bg-emerald-600 text-white;
+}
+
+
+/* ============================================================
+   SURROUND / SIMILAR MODAL - BACKDROP + WINDOW
+   ============================================================ */
+
+.surround-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 28px;
+
+  background: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(10px);
+
+  animation: modalFadeIn 0.2s ease;
+}
+
+.surround-modal {
+  width: min(1700px, 95vw);
+  height: min(92vh, 1200px);
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+
+  border-radius: 24px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.98),
+    rgba(10, 15, 30, 0.98)
+  );
+
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(96, 165, 250, 0.08),
+    0 0 40px rgba(59, 130, 246, 0.12);
+
+  animation: modalScaleIn 0.25s ease;
+}
+
+
+/* ============================================================
+   MODAL HEADER
+   ============================================================ */
+
+.surround-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 16px;
+  padding: 18px 22px;
+
+  border-bottom: 1px solid rgba(96, 165, 250, 0.14);
+
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.85),
+    rgba(15, 23, 42, 0.85)
+  );
+}
+
+.surround-modal-header h2 {
+  margin: 0;
+
+  font-size: 20px;
+  font-weight: 800;
+
+  color: #f8fafc;
+}
+
+.surround-modal-header p {
+  margin: 4px 0 0;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  color: #93c5fd;
+}
+
+
+/* ============================================================
+   MODAL CONTROLS
+   ============================================================ */
+
+.surround-modal-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.surround-modal-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 12px;
+  font-weight: 800;
+
+  color: #cbd5e1;
+}
+
+.surround-modal-controls input[type="range"] {
+  width: 130px;
+  accent-color: #3b82f6;
+}
+
+.surround-modal-controls span {
+  min-width: 18px;
+
+  font-size: 12px;
+  font-weight: 900;
+
+  color: #f8fafc;
+}
+
+.modal-close-btn {
+  width: 38px;
+  height: 38px;
+
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ffffff;
+
+  transform: rotate(90deg);
+}
+
+
+/* ============================================================
+   MODAL LOADING
+   ============================================================ */
+
+.surround-loading {
+  padding: 12px 22px;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  color: #93c5fd;
+
+  background: rgba(15, 23, 42, 0.72);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.12);
+}
+
+
+/* ============================================================
+   MODAL GRID
+   ============================================================ */
+
+.surround-grid {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 18px;
+
+  display: grid;
+  gap: 14px;
+}
+
+.surround-grid::-webkit-scrollbar {
+  width: 10px;
+}
+
+.surround-grid::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.surround-grid::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.35);
+  border-radius: 999px;
+}
+
+.surround-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.55);
+}
+
+.surround-item {
+  min-width: 0;
+
+  transition:
+    transform 0.22s ease,
+    filter 0.22s ease;
+}
+
+.surround-item:hover {
+  transform: translateY(-2px);
+}
+
+
+/* ============================================================
+   CENTER / SOURCE HIGHLIGHT
+   ============================================================ */
+
+.surround-item.is-center {
+  position: relative;
+  z-index: 2;
+
+  transform: scale(1.03);
+}
+
+.surround-item.is-center .result-card {
+  border: 2px solid #38bdf8;
+
+  box-shadow:
+    0 0 0 2px rgba(56, 189, 248, 0.25),
+    0 0 24px rgba(56, 189, 248, 0.35),
+    0 0 48px rgba(56, 189, 248, 0.16);
+}
+
+
+/* ============================================================
+   MODAL ANIMATION
+   ============================================================ */
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

@@ -1,24 +1,52 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Search,
+  Images,
+  Send,
+} from "lucide-react";
 import ResultCard from "./ResultCard";
 import { groupByVideoSorted } from "../utils/groupByVideo";
 
-function TemporalSequenceBlock({ result, sequenceIndex, selectedId, onSelect, onSubmit }) {
+function TemporalSequenceBlock({
+  result,
+  sequenceIndex,
+  selectedId,
+  onSelect,
+  onSubmit,
+  onSimilaritySearch,
+  onSurroundingImages,
+}) {
   const sequence = result.matched_sequence || [];
 
-  function handleSelectFrame(frame, idx) {
+  function makeFrameResult(frame, idx) {
+    const frameId = frame.frame_id ?? Number(frame.keyframe_id ?? 0) ?? idx;
     const frameResultId = `${result.id}_q${frame.sub_query_idx ?? idx}`;
 
-    onSelect({
+    return {
       ...result,
       ...frame,
       id: frameResultId,
-      frame_id: frame.frame_id,
-      frame_name: frame.frame_name,
+      video_id: frame.video_id || result.video_id,
+      video_url: frame.video_url || result.video_url,
+      frame_id: frameId,
+      frame_name: frame.frame_name || `${String(frameId).padStart(6, "0")}.jpg`,
       image_url: frame.image_url,
       timestamp: frame.timestamp_sec,
       similarity: frame.score,
-    });
+      temporal: {
+        ...result.temporal,
+        start_time: frame.timestamp_sec,
+        end_time: frame.timestamp_sec,
+      },
+      matched_sequence: [],
+    };
+  }
+
+  function handleSelectFrame(frame, idx) {
+    onSelect?.(makeFrameResult(frame, idx));
   }
 
   function handlePlaySequence(e) {
@@ -29,6 +57,26 @@ function TemporalSequenceBlock({ result, sequenceIndex, selectedId, onSelect, on
     if (result.video_url && result.video_url !== "#") {
       window.open(`${result.video_url}#t=${Number(startTime).toFixed(2)}`, "_blank");
     }
+  }
+
+  function handleSubmitSequence(e) {
+    e.stopPropagation();
+    onSubmit?.(result);
+  }
+
+  function handleSimilaritySearch(e, frame, idx) {
+    e.stopPropagation();
+    onSimilaritySearch?.(makeFrameResult(frame, idx));
+  }
+
+  function handleSurroundingImages(e, frame, idx) {
+    e.stopPropagation();
+    onSurroundingImages?.(makeFrameResult(frame, idx));
+  }
+
+  function handleSubmitFrame(e, frame, idx) {
+    e.stopPropagation();
+    onSubmit?.(makeFrameResult(frame, idx));
   }
 
   return (
@@ -47,25 +95,30 @@ function TemporalSequenceBlock({ result, sequenceIndex, selectedId, onSelect, on
           Play
         </button>
 
-        <button type="button" onClick={() => onSubmit?.(result)}>
+        <button type="button" onClick={handleSubmitSequence}>
+          <Send size={13} />
           Submit
         </button>
       </div>
 
       <div className="temporal-frame-row">
         {sequence.map((frame, idx) => {
-          const frameId = frame.frame_id ?? Number(frame.keyframe_id ?? 0) ?? idx;
-          const frameResultId = `${result.id}_q${frame.sub_query_idx ?? idx}`;
-          const isSelected = frameResultId === selectedId;
+          const frameResult = makeFrameResult(frame, idx);
+          const isSelected = frameResult.id === selectedId;
 
           return (
             <article
-              key={frameResultId}
+              key={frameResult.id}
               className={`temporal-frame-card ${isSelected ? "selected" : ""}`}
               onClick={() => handleSelectFrame(frame, idx)}
             >
               <div className="temporal-frame-thumb">
-                <img src={frame.image_url} alt={`Q${idx + 1}`} />
+                <img
+                  src={frameResult.image_url}
+                  alt={`Q${idx + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                />
 
                 <span className="temporal-query-badge">Q{idx + 1}</span>
 
@@ -75,10 +128,40 @@ function TemporalSequenceBlock({ result, sequenceIndex, selectedId, onSelect, on
               </div>
 
               <div className="temporal-frame-footer">
-                <span>
-                  {result.video_id}/{String(frameId).padStart(6, "0")}
-                </span>
+                <strong>
+                  {frameResult.video_id}/
+                  {String(frameResult.frame_id ?? 0).padStart(6, "0")}
+                </strong>
                 <span>{Number(frame.timestamp_sec ?? 0).toFixed(2)}s</span>
+              </div>
+
+              <div className="temporal-frame-actions-row">
+                <button
+                  type="button"
+                  title="Similarity search"
+                  onClick={(e) => handleSimilaritySearch(e, frame, idx)}
+                >
+                  <Search size={12} />
+                  <span>Similar</span>
+                </button>
+
+                <button
+                  type="button"
+                  title="Surrounding images"
+                  onClick={(e) => handleSurroundingImages(e, frame, idx)}
+                >
+                  <Images size={12} />
+                  <span>Surround</span>
+                </button>
+
+                <button
+                  type="button"
+                  title="Submit frame"
+                  onClick={(e) => handleSubmitFrame(e, frame, idx)}
+                >
+                  <Send size={12} />
+                  <span>Submit</span>
+                </button>
               </div>
 
               {frame.sub_query && (
@@ -100,6 +183,8 @@ export default function GroupedResults({
   selectedId,
   onSelect,
   onSubmit,
+  onSimilaritySearch,
+  onSurroundingImages,
 }) {
   const groups = groupByVideoSorted(results);
   const [pageByVideo, setPageByVideo] = useState({});
@@ -154,6 +239,8 @@ export default function GroupedResults({
                           selectedId={selectedId}
                           onSelect={onSelect}
                           onSubmit={onSubmit}
+                          onSimilaritySearch={onSimilaritySearch}
+                          onSurroundingImages={onSurroundingImages}
                         />
                       ))}
                     </div>
@@ -220,6 +307,8 @@ export default function GroupedResults({
                             selected={result.id === selectedId}
                             onSelect={onSelect}
                             onSubmit={onSubmit}
+                            onSimilaritySearch={onSimilaritySearch}
+                            onSurroundingImages={onSurroundingImages}
                           />
                         ))}
                       </div>

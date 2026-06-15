@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { searchRetrieval } from "../api/retrievalAPI";
+import { useRef, useState } from "react";
+import { searchRetrieval, similaritySearch } from "../api/retrievalAPI";
 
 export function useRetrievalSearch() {
+  const requestIdRef = useRef(0);
+
   const [results, setResults] = useState([]);
   const [latency, setLatency] = useState(null);
   const [subQueries, setSubQueries] = useState([]);
@@ -27,6 +29,8 @@ export function useRetrievalSearch() {
       return;
     }
 
+    const requestId = ++requestIdRef.current;
+
     setLoading(true);
     setError("");
 
@@ -41,6 +45,10 @@ export function useRetrievalSearch() {
         durationLimit: requestedDurationLimit,
       });
 
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       setResults(data.results ?? []);
       setLatency(data.latencyMs ?? null);
       setSubQueries(data.subQueries ?? []);
@@ -49,17 +57,74 @@ export function useRetrievalSearch() {
       setSearchMode(data.searchMode ?? requestedSearchMode);
       setDurationLimit(data.durationLimit ?? requestedDurationLimit);
     } catch (err) {
+      if (err.name === "AbortError" || err.name === "StaleSearchError") {
+        return;
+      }
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       setResults([]);
       setLatency(null);
       setSubQueries([]);
       setCount(0);
       setError(err.message || "Search failed");
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
+    }
+  }
+
+  async function searchSimilar({
+    videoId,
+    frameId,
+    topK = 20,
+  }) {
+    const requestId = ++requestIdRef.current;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await similaritySearch({
+        videoId,
+        frameId,
+        topK,
+      });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setResults(data.results ?? []);
+      setLatency(data.latencyMs ?? null);
+      setSubQueries([]);
+      setCount(data.count ?? 0);
+      setLastQuery(data.query ?? `similarity:${videoId}/${frameId}`);
+      setSearchMode("similarity");
+      setDurationLimit(-1);
+    } catch (err) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setResults([]);
+      setLatency(null);
+      setSubQueries([]);
+      setCount(0);
+      setError(err.message || "Similarity search failed");
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
   function reset() {
+    requestIdRef.current += 1;
+
     setResults([]);
     setLatency(null);
     setSubQueries([]);
@@ -68,6 +133,7 @@ export function useRetrievalSearch() {
     setError("");
     setSearchMode("semantic");
     setDurationLimit(-1);
+    setLoading(false);
   }
 
   return {
@@ -81,6 +147,7 @@ export function useRetrievalSearch() {
     searchMode,
     durationLimit,
     search,
+    searchSimilar,
     reset,
   };
 }

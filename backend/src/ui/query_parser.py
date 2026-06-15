@@ -10,7 +10,7 @@ def split_query(query: str) -> list[str]:
         return []
 
     parts = re.split(
-        r"\b(?:and then|then|after that|before that|after|before|and)\b|[,;]",
+        r"\b(?:and then|then|after that|before that|after|before|and)\b|[,]",
         query,
         flags=re.IGNORECASE,
     )

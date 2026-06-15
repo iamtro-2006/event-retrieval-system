@@ -1,15 +1,15 @@
 input_keyframes_root: data/processed/keyframes
-output_embeddings_root: data/processed/embeddings_clip_vitb16_quickgelu
+output_embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256
 
 image:
   extensions: [".jpg", ".jpeg", ".png", ".webp"]
 
 model:
-  name: ViT-B-16-quickgelu
-  pretrained: metaclip_fullcc
+  name: ViT-L-16-SigLIP-256 
+  pretrained: webli
   device: auto
   precision: fp32
-  batch_size: 16
+  batch_size: 32
   normalize: true
 
 save:

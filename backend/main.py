@@ -15,13 +15,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-
-from src.index.retrieval_system import FaissRetrievalSystem
-from src.ui import (
-    split_query,
-    rerank_multi_query,
-    get_timestamp_from_row,
-)
+from typing import Any 
+from src.index.retrieval_system import FaissRetrievalSystem, SearchMode
+from src.ui import get_timestamp_from_row
 
 
 # ============================================================
@@ -128,7 +124,7 @@ class SearchRequest(BaseModel):
     candidate_multiplier: int | None = None
     use_split: bool | None = None
     use_translate: bool | None = None
-    search_mode: str | None = "semantic"
+    search_mode: SearchMode | None = "semantic"
     duration_limit: float | None = -1
 
 
@@ -146,7 +142,10 @@ class DresSubmitRequest(BaseModel):
     frame_id: int
     timestamp: float | None = None
 
-
+class SimilaritySearchRequest(BaseModel):
+    video_id: str
+    frame_id: int
+    top_k: int | None = None
 
 # ============================================================
 # 5. Helper Functions
@@ -441,67 +440,34 @@ def row_to_result(row: pd.Series) -> dict[str, Any]:
     }
 
 
-def normalize_search_mode(search_mode: str | None) -> str:
-    mode = (search_mode or "semantic").strip().lower()
 
-    aliases = {
-        "text": "semantic",
-        "normal": "semantic",
-        "semantic": "semantic",
-        "temporal": "temporal",
-    }
+#
+# Helpers
+#
 
-    if mode not in aliases:
+def find_metadata_row(video_id: str, keyframe_id: int) -> pd.Series:
+    metadata_df = retrieval_system.metadata
+
+    if "keyframe_id_int" in metadata_df.columns:
+        mask = (
+            (metadata_df["video_id"].astype(str) == str(video_id))
+            & (metadata_df["keyframe_id_int"].astype(int) == int(keyframe_id))
+        )
+    else:
+        mask = (
+            (metadata_df["video_id"].astype(str) == str(video_id))
+            & (metadata_df["keyframe_id"].astype(int) == int(keyframe_id))
+        )
+
+    matched = metadata_df[mask]
+
+    if matched.empty:
         raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported search_mode: {search_mode}",
+            status_code=404,
+            detail=f"Frame not found: {video_id}/{keyframe_id}",
         )
 
-    return aliases[mode]
-
-
-def run_search(
-    sub_queries: list[str],
-    top_k: int,
-    candidate_multiplier: int,
-    search_mode: str = "semantic",
-    duration_limit: float = -1,
-) -> pd.DataFrame:
-    if not sub_queries:
-        return pd.DataFrame()
-
-    candidate_k = max(top_k * candidate_multiplier, top_k)
-
-    if search_mode == "temporal":
-        return retrieval_system.temporal_search(
-            sub_queries=sub_queries[1:],
-            top_k=top_k,
-            candidate_k=candidate_k,
-            duration_limit=duration_limit,
-        )
-
-    all_results = []
-
-    for sub_query in sub_queries:
-        df = retrieval_system.search(sub_query, top_k=candidate_k)
-
-        if not df.empty:
-            all_results.append(df)
-
-    results = rerank_multi_query(all_results)
-
-    if results.empty:
-        return results
-
-    if "alignment_score" in results.columns and "retrieval_score" not in results.columns:
-        results["retrieval_score"] = results["alignment_score"]
-
-    results = results.head(top_k).copy()
-    results["display_rank"] = range(1, len(results) + 1)
-
-    return results
-
-
+    return matched.iloc[0]
 
 # ============================================================
 # 6. DRES Proxy Helpers
@@ -623,8 +589,8 @@ def get_public_config():
         "search": {
             "default_top_k": int(CFG["search"].get("default_top_k", 20)),
             "max_top_k": int(CFG["search"].get("max_top_k", 200)),
-            "candidate_multiplier": int(CFG["search"].get("candidate_multiplier", 5)),
-            "available_modes": ["semantic", "temporal"],
+            "candidate_multiplier": int(CFG["search"].get("candidate_multiplier", 1)),
+            "available_modes": ["semantic", "temporal", "ocr", "asr", "auto"],
             "default_search_mode": "semantic",
             "default_duration_limit": -1,
         },
@@ -647,7 +613,6 @@ def get_public_config():
             "normalize": bool(CFG["model"].get("normalize", True)),
         },
     }
-
 
 
 @app.post("/api/dres/login")
@@ -771,28 +736,8 @@ def dres_submit(payload: DresSubmitRequest):
 
 @app.get("/api/frame-info")
 def get_frame_info(video_id: str, keyframe_id: int):
-    metadata_df = retrieval_system.metadata
-
-    if "keyframe_id_int" in metadata_df.columns:
-        mask = (
-            (metadata_df["video_id"].astype(str) == str(video_id))
-            & (metadata_df["keyframe_id_int"].astype(int) == int(keyframe_id))
-        )
-    else:
-        mask = (
-            (metadata_df["video_id"].astype(str) == str(video_id))
-            & (metadata_df["keyframe_id"].astype(int) == int(keyframe_id))
-        )
-
-    matched = metadata_df[mask]
-
-    if matched.empty:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Frame not found: {video_id}/{keyframe_id}",
-        )
-
-    return row_to_result(matched.iloc[0])
+    row = find_metadata_row(video_id, keyframe_id)
+    return row_to_result(row)
 
 @app.post("/api/search")
 def search_api(payload: SearchRequest):
@@ -805,22 +750,22 @@ def search_api(payload: SearchRequest):
     default_top_k = int(CFG["search"].get("default_top_k", 20))
 
     top_k = payload.top_k or default_top_k
-    top_k = max(1, min(top_k, max_top_k))
+    top_k = max(1, min(int(top_k), max_top_k))
 
     candidate_multiplier = payload.candidate_multiplier or int(
         CFG["search"].get("candidate_multiplier", 5)
     )
     candidate_multiplier = max(1, int(candidate_multiplier))
 
-    use_split = True if payload.use_split is None else payload.use_split
+    use_split = True if payload.use_split is None else bool(payload.use_split)
 
     use_translate = (
         bool(CFG.get("translate", {}).get("enabled_default", False))
         if payload.use_translate is None
-        else payload.use_translate
+        else bool(payload.use_translate)
     )
 
-    search_mode = normalize_search_mode(payload.search_mode)
+    mode = payload.search_mode
 
     duration_limit = -1.0 if payload.duration_limit is None else float(payload.duration_limit)
     if duration_limit == 0:
@@ -839,20 +784,17 @@ def search_api(payload: SearchRequest):
             detail=f"Translate failed: {type(exc).__name__}: {exc}",
         )
 
-    sub_queries = split_query(search_query) if use_split else [search_query]
-    sub_queries = [q.strip() for q in sub_queries if q.strip()]
-
-    if not sub_queries:
-        raise HTTPException(status_code=400, detail="No valid sub queries")
-
     try:
-        results_df = run_search(
-            sub_queries=sub_queries,
+        results_df, query_plan = retrieval_system.run_search(
+            query=search_query,
+            mode=mode,
+            use_split=use_split,
             top_k=top_k,
             candidate_multiplier=candidate_multiplier,
-            search_mode=search_mode,
             duration_limit=duration_limit,
         )
+    except NotImplementedError as exc:
+        raise HTTPException(status_code=501, detail=str(exc))
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -860,7 +802,6 @@ def search_api(payload: SearchRequest):
         )
 
     latency_ms = round((time.perf_counter() - start) * 1000)
-
     candidate_k = max(top_k * candidate_multiplier, top_k)
 
     response_base = {
@@ -869,13 +810,16 @@ def search_api(payload: SearchRequest):
         "translated_query": search_query if use_translate else None,
         "use_translate": use_translate,
         "use_split": use_split,
-        "sub_queries": sub_queries,
-        "search_mode": search_mode,
+        "mode": mode,
+        "search_mode": mode,
         "duration_limit": duration_limit,
         "top_k": top_k,
         "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k,
         "latency_ms": latency_ms,
+        "events": query_plan.events,
+        "event_queries": query_plan.event_queries,
+        "sub_queries": query_plan.flat_queries,
     }
 
     if results_df.empty:
@@ -896,5 +840,143 @@ def search_api(payload: SearchRequest):
     return {
         **response_base,
         "count": len(results),
+        "results": results,
+    }
+
+@app.get("/api/surrounding-frames")
+def get_surrounding_frames(
+    video_id: str,
+    keyframe_id: int,
+    radius: int = 10,
+):
+    metadata_df = retrieval_system.metadata.copy()
+
+    radius = max(1, min(int(radius), 50))
+    target_keyframe_id = int(keyframe_id)
+
+    if "video_id" not in metadata_df.columns:
+        raise HTTPException(status_code=500, detail="metadata missing video_id column")
+
+    video_df = metadata_df[
+        metadata_df["video_id"].astype(str) == str(video_id)
+    ].copy()
+
+    if video_df.empty:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Video not found: {video_id}",
+        )
+
+    if "keyframe_id_int" in video_df.columns:
+        video_df["_keyframe_sort"] = video_df["keyframe_id_int"].apply(
+            lambda x: safe_int(x, 0)
+        )
+    elif "keyframe_id" in video_df.columns:
+        video_df["_keyframe_sort"] = video_df["keyframe_id"].apply(
+            lambda x: safe_int(x, 0)
+        )
+    else:
+        video_df["_keyframe_sort"] = video_df["frame_idx"].apply(
+            lambda x: safe_int(x, 0)
+        )
+
+    video_df = video_df.sort_values("_keyframe_sort").reset_index(drop=True)
+
+    center_matches = video_df[
+        video_df["_keyframe_sort"].astype(int) == target_keyframe_id
+    ]
+
+    if center_matches.empty:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Frame not found: {video_id}/{keyframe_id}",
+        )
+
+    center_pos = int(center_matches.index[0])
+
+    start_pos = max(0, center_pos - radius)
+    end_pos = min(len(video_df), center_pos + radius + 1)
+
+    surrounding_df = video_df.iloc[start_pos:end_pos].copy()
+
+    frames = []
+
+    for _, row in surrounding_df.iterrows():
+        item = row_to_result(row)
+        item["is_surround_center"] = (
+            safe_int(item.get("frame_id"), -1) == target_keyframe_id
+        )
+        item["surround_offset"] = (
+            safe_int(item.get("frame_id"), 0) - target_keyframe_id
+        )
+        frames.append(item)
+
+    return {
+        "video_id": video_id,
+        "center_frame_id": target_keyframe_id,
+        "radius": radius,
+        "count": len(frames),
+        "frames": frames,
+    }
+
+@app.post("/api/similarity-search")
+def similarity_search_api(payload: SimilaritySearchRequest):
+    max_top_k = int(CFG["search"].get("max_top_k", 200))
+    default_top_k = int(CFG["search"].get("default_top_k", 20))
+
+    top_k = payload.top_k or default_top_k
+    top_k = max(1, min(int(top_k), max_top_k))
+
+    row = find_metadata_row(payload.video_id, payload.frame_id)
+
+    keyframe_path = str(row.get("keyframe_path", "") or "")
+    if not keyframe_path:
+        raise HTTPException(
+            status_code=404,
+            detail="Selected frame has no keyframe_path",
+        )
+
+    image_path = Path(keyframe_path)
+    if not image_path.is_absolute():
+        image_path = BACKEND_DIR / image_path
+
+    if not image_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Image file not found: {image_path}",
+        )
+
+    start = time.perf_counter()
+
+    try:
+        results_df = retrieval_system.similarity_search_by_image(
+            image_path=image_path,
+            top_k=top_k,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Similarity search failed: {type(exc).__name__}: {exc}",
+        )
+
+    latency_ms = round((time.perf_counter() - start) * 1000)
+
+    if results_df.empty:
+        return {
+            "query": f"similarity:{payload.video_id}/{payload.frame_id:06d}",
+            "search_mode": "similarity",
+            "latency_ms": latency_ms,
+            "count": 0,
+            "results": [],
+        }
+
+    results = [row_to_result(row) for _, row in results_df.iterrows()]
+
+    return {
+        "query": f"similarity:{payload.video_id}/{payload.frame_id:06d}",
+        "search_mode": "similarity",
+        "latency_ms": latency_ms,
+        "count": len(results),
+        "source": row_to_result(row),
         "results": results,
     }

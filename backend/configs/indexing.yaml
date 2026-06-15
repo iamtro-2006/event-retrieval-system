@@ -1,17 +1,17 @@
 keyframes_root: data/processed/keyframes
-embeddings_root: data/processed/embeddings_clip_vitb16_quickgelu
+embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256
 map_keyframes_root: data/processed/map_keyframes
 
 
 index:
-  output_dir: data/database/faiss_clip_vitb16_quickgelu
+  output_dir: data/database/faiss_clip_vitl16_siglip_256
   index_name: keyframes.faiss
   metadata_name: metadata.csv
   metric: cosine
 
 model:
-  name: ViT-B-16-quickgelu
-  pretrained: metaclip_fullcc
+  name: ViT-L-16-SigLIP-256
+  pretrained: webli
   device: auto
   precision: fp32
   normalize: true

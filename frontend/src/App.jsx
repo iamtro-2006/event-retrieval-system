@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import SearchBar from "./components/SearchBar";
 import ResultToolbar from "./components/ResultToolbar";
@@ -7,8 +7,15 @@ import GroupedResults from "./components/GroupedResults";
 import DetailPanel from "./components/DetailPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import ToastHost from "./components/ToastHost";
+import SurroundingFramesModal from "./components/SurroundingFramesModal";
+import SimilarityFramesModal from "./components/SimilarityFramesModal";
 import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
-import { getBackendConfig, checkBackendHealth } from "./api/retrievalAPI";
+import {
+  getBackendConfig,
+  checkBackendHealth,
+  getSurroundingFrames,
+  similaritySearch,
+} from "./api/retrievalAPI";
 import {
   getDefaultSubmissionSettings,
   loginDresViaBackend,
@@ -18,6 +25,7 @@ import { playNotifySound } from "./utils/notifySound";
 
 export default function App() {
   const defaultSubmission = getDefaultSubmissionSettings();
+  const searchIdRef = useRef(0);
 
   const [theme, setTheme] = useState("dark");
   const [model, setModel] = useState("ViT-B-16-quickgelu");
@@ -26,6 +34,22 @@ export default function App() {
   const [columns, setColumns] = useState(4);
   const [grouped, setGrouped] = useState(false);
   const [selected, setSelected] = useState(null);
+
+  const [surroundModal, setSurroundModal] = useState({
+    open: false,
+    center: null,
+    frames: [],
+    loading: false,
+  });
+  const [surroundColumns, setSurroundColumns] = useState(5);
+
+  const [similarModal, setSimilarModal] = useState({
+    open: false,
+    source: null,
+    frames: [],
+    loading: false,
+  });
+  const [similarColumns, setSimilarColumns] = useState(5);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
@@ -92,20 +116,43 @@ export default function App() {
   }, []);
 
   function handleReset() {
+    searchIdRef.current += 1;
     reset();
     setSelected(null);
     setGrouped(false);
+
+    setSurroundModal({
+      open: false,
+      center: null,
+      frames: [],
+      loading: false,
+    });
+
+    setSimilarModal({
+      open: false,
+      source: null,
+      frames: [],
+      loading: false,
+    });
   }
 
-  function handleSearch(payload) {
+  async function handleSearch(payload) {
     const query = typeof payload === "string" ? payload : payload?.query;
+
+    if (!query || !String(query).trim()) {
+      return;
+    }
+
+    const searchId = ++searchIdRef.current;
 
     const searchMode =
       typeof payload === "object" && payload?.searchMode
         ? payload.searchMode
         : mode === "temporal"
           ? "temporal"
-          : "semantic";
+          : mode === "auto"
+            ? "auto"
+            : "semantic";
 
     const nextDurationLimit =
       typeof payload === "object" && payload?.durationLimit !== undefined
@@ -116,15 +163,105 @@ export default function App() {
 
     setSelected(null);
 
-    search({
-      query,
-      topK: settings.topK,
-      candidateMultiplier: settings.candidateMultiplier,
-      useSplit: settings.useSplit,
-      useTranslate: settings.useTranslate,
-      searchMode,
-      durationLimit: nextDurationLimit,
+    try {
+      await search({
+        query: String(query).trim(),
+        topK: settings.topK,
+        candidateMultiplier: settings.candidateMultiplier,
+        useSplit: settings.useSplit,
+        useTranslate: settings.useTranslate,
+        searchMode,
+        durationLimit: nextDurationLimit,
+      });
+    } catch (err) {
+      if (err?.name === "AbortError" || err?.name === "StaleSearchError") {
+        return;
+      }
+
+      if (searchId !== searchIdRef.current) {
+        return;
+      }
+
+      console.error(err);
+    }
+  }
+
+  async function handleOpenSurroundingImages(result) {
+    console.log("[SURROUND OPEN]", result);
+
+    if (!result) return;
+
+    setSurroundModal({
+      open: true,
+      center: result,
+      frames: [result],
+      loading: true,
     });
+
+    try {
+      const frames = await getSurroundingFrames(
+        result.video_id,
+        result.frame_id,
+        12
+      );
+
+      setSurroundModal({
+        open: true,
+        center: result,
+        frames,
+        loading: false,
+      });
+    } catch (err) {
+      console.error(err);
+
+      setSurroundModal({
+        open: true,
+        center: result,
+        frames: [result],
+        loading: false,
+      });
+
+      pushToast("warning", "Surrounding frames failed", err.message);
+    }
+  }
+
+  async function handleSimilaritySearch(result) {
+    console.log("[SIMILAR OPEN]", result);
+
+    if (!result) return;
+
+    setSimilarModal({
+      open: true,
+      source: result,
+      frames: [],
+      loading: true,
+    });
+
+    try {
+      const data = await similaritySearch({
+        videoId: result.video_id,
+        frameId: result.frame_id,
+        topK: settings.topK,
+      });
+
+      setSimilarModal({
+        open: true,
+        source: result,
+        frames: data.results ?? [],
+        loading: false,
+      });
+    } catch (err) {
+      console.error(err);
+
+      setSimilarModal({
+        open: true,
+        source: result,
+        frames: [],
+        loading: false,
+      });
+
+      pushToast("warning", "Similarity search failed", err.message);
+    }
   }
 
   function pushToast(type, title, message = "") {
@@ -320,6 +457,8 @@ export default function App() {
                         selectedId={selected?.id}
                         onSelect={setSelected}
                         onSubmit={handleSubmitResult}
+                        onSimilaritySearch={handleSimilaritySearch}
+                        onSurroundingImages={handleOpenSurroundingImages}
                       />
                     ) : (
                       <ResultGrid
@@ -328,6 +467,8 @@ export default function App() {
                         selectedId={selected?.id}
                         onSelect={setSelected}
                         onSubmit={handleSubmitResult}
+                        onSimilaritySearch={handleSimilaritySearch}
+                        onSurroundingImages={handleOpenSurroundingImages}
                       />
                     )}
                   </div>
@@ -342,7 +483,7 @@ export default function App() {
                 </div>
               </section>
 
-              <div className="bottom-search-zone">
+              <div className={`bottom-search-zone ${loading ? "is-searching" : ""}`}>
                 <SearchBar
                   model={model}
                   mode={mode}
@@ -373,6 +514,48 @@ export default function App() {
           onClose={() => setSettingsOpen(false)}
           onDresLogin={handleDresLogin}
           onDresLogout={handleDresLogout}
+        />
+
+        <SurroundingFramesModal
+          open={surroundModal.open}
+          centerResult={surroundModal.center}
+          frames={surroundModal.frames}
+          loading={surroundModal.loading}
+          columns={surroundColumns}
+          onColumnsChange={setSurroundColumns}
+          onClose={() =>
+            setSurroundModal({
+              open: false,
+              center: null,
+              frames: [],
+              loading: false,
+            })
+          }
+          onSelect={setSelected}
+          onSubmit={handleSubmitResult}
+          onSimilaritySearch={handleSimilaritySearch}
+          onSurroundingImages={handleOpenSurroundingImages}
+        />
+
+        <SimilarityFramesModal
+          open={similarModal.open}
+          sourceResult={similarModal.source}
+          frames={similarModal.frames}
+          loading={similarModal.loading}
+          columns={similarColumns}
+          onColumnsChange={setSimilarColumns}
+          onClose={() =>
+            setSimilarModal({
+              open: false,
+              source: null,
+              frames: [],
+              loading: false,
+            })
+          }
+          onSelect={setSelected}
+          onSubmit={handleSubmitResult}
+          onSimilaritySearch={handleSimilaritySearch}
+          onSurroundingImages={handleOpenSurroundingImages}
         />
 
         <ToastHost toasts={toasts} />

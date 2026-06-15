@@ -1,10 +1,10 @@
 faiss:
-  index_path: data/database/faiss_clip_vitb16_quickgelu/keyframes.faiss
-  metadata_path: data/database/faiss_clip_vitb16_quickgelu/metadata.csv
+  index_path: data/database/faiss_clip_vitl16_siglip_256/keyframes.faiss
+  metadata_path: data/database/faiss_clip_vitl16_siglip_256/metadata.csv
 
 model:
-  name: ViT-B-16-quickgelu
-  pretrained: metaclip_fullcc
+  name: ViT-L-16-SigLIP-256
+  pretrained: webli
   device: auto
   precision: fp32
   normalize: true
@@ -15,7 +15,7 @@ paths:
   map_keyframe_path: data/processed/map_keyframes
 
 search:
-  candidate_multiplier: 5
+  candidate_multiplier: 3
   default_top_k: 20
   max_top_k: 200
 
