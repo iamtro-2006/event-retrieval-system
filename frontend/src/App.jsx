@@ -23,70 +23,58 @@ import {
 } from "./api/submissionAPI";
 import { playNotifySound } from "./utils/notifySound";
 
+const DEFAULT_SURROUND_MODAL = { open: false, center: null, frames: [], loading: false };
+const DEFAULT_SIMILAR_MODAL  = { open: false, source: null, frames: [], loading: false };
+
 export default function App() {
   const defaultSubmission = getDefaultSubmissionSettings();
   const searchIdRef = useRef(0);
 
-  const [theme, setTheme] = useState("dark");
-  const [model, setModel] = useState("ViT-B-16-quickgelu");
-  const [mode, setMode] = useState("text");
+  // ── UI state ──────────────────────────────────────────
+  const [theme, setTheme]           = useState("dark");
+  const [model, setModel]           = useState("ViT-B-16-quickgelu");
+  const [mode, setMode]             = useState("text");
   const [durationLimit, setDurationLimit] = useState(-1);
-  const [columns, setColumns] = useState(4);
-  const [grouped, setGrouped] = useState(false);
-  const [selected, setSelected] = useState(null);
+  const [columns, setColumns]       = useState(4);
+  const [grouped, setGrouped]       = useState(false);
+  const [selected, setSelected]     = useState(null);
 
-  const [surroundModal, setSurroundModal] = useState({
-    open: false,
-    center: null,
-    frames: [],
-    loading: false,
-  });
+  // ── Modal state ───────────────────────────────────────
+  const [surroundModal, setSurroundModal] = useState(DEFAULT_SURROUND_MODAL);
   const [surroundColumns, setSurroundColumns] = useState(5);
+  const [similarModal, setSimilarModal]   = useState(DEFAULT_SIMILAR_MODAL);
+  const [similarColumns, setSimilarColumns]   = useState(5);
 
-  const [similarModal, setSimilarModal] = useState({
-    open: false,
-    source: null,
-    frames: [],
-    loading: false,
-  });
-  const [similarColumns, setSimilarColumns] = useState(5);
-
+  // ── Settings ─────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
     useSplit: true,
     useTranslate: true,
     topK: 20,
     candidateMultiplier: 5,
-    submitUrl: defaultSubmission.dresUrl,
+    submitUrl:    defaultSubmission.dresUrl,
     evaluationId: defaultSubmission.evaluationId,
-    username: defaultSubmission.teamId,
-    password: defaultSubmission.teamPassword,
+    username:     defaultSubmission.teamId,
+    password:     defaultSubmission.teamPassword,
   });
 
-  const [backendReady, setBackendReady] = useState(false);
+  // ── Backend ──────────────────────────────────────────
+  const [backendReady, setBackendReady]   = useState(false);
   const [backendStatus, setBackendStatus] = useState("Checking backend...");
 
-  const [dres, setDres] = useState({
-    loading: false,
-    sessionId: "",
-    user: null,
-  });
+  // ── DRES session ─────────────────────────────────────
+  const [dres, setDres] = useState({ loading: false, sessionId: "", user: null });
 
+  // ── Toasts ───────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
 
-  const {
-    results,
-    latency,
-    count,
-    lastQuery,
-    loading,
-    error,
-    search,
-    reset,
-  } = useRetrievalSearch();
+  // ── Search hook ──────────────────────────────────────
+  const { results, latency, count, lastQuery, loading, error, search, reset } =
+    useRetrievalSearch();
 
   const hasResults = results.length > 0;
 
+  // ── Bootstrap ────────────────────────────────────────
   useEffect(() => {
     async function bootstrap() {
       try {
@@ -95,14 +83,12 @@ export default function App() {
 
         setSettings((prev) => ({
           ...prev,
-          topK: config.search?.default_top_k ?? 20,
+          topK:               config.search?.default_top_k       ?? 20,
           candidateMultiplier: config.search?.candidate_multiplier ?? 5,
-          useTranslate: config.translate?.enabled_default ?? true,
+          useTranslate:       config.translate?.enabled_default   ?? true,
         }));
 
-        if (config.model?.name) {
-          setModel(config.model.name);
-        }
+        if (config.model?.name) setModel(config.model.name);
 
         setBackendReady(true);
         setBackendStatus("Backend connected");
@@ -111,200 +97,112 @@ export default function App() {
         setBackendStatus(err.message || "Backend disconnected");
       }
     }
-
     bootstrap();
   }, []);
 
+  // ── Handlers ─────────────────────────────────────────
   function handleReset() {
     searchIdRef.current += 1;
     reset();
     setSelected(null);
     setGrouped(false);
-
-    setSurroundModal({
-      open: false,
-      center: null,
-      frames: [],
-      loading: false,
-    });
-
-    setSimilarModal({
-      open: false,
-      source: null,
-      frames: [],
-      loading: false,
-    });
+    setSurroundModal(DEFAULT_SURROUND_MODAL);
+    setSimilarModal(DEFAULT_SIMILAR_MODAL);
   }
 
   async function handleSearch(payload) {
     const query = typeof payload === "string" ? payload : payload?.query;
-
-    if (!query || !String(query).trim()) {
-      return;
-    }
+    if (!query || !String(query).trim()) return;
 
     const searchId = ++searchIdRef.current;
 
     const searchMode =
       typeof payload === "object" && payload?.searchMode
         ? payload.searchMode
-        : mode === "temporal"
-          ? "temporal"
-          : mode === "auto"
-            ? "auto"
-            : "semantic";
+        : mode === "temporal" ? "temporal"
+        : mode === "auto"     ? "auto"
+        : "semantic";
 
     const nextDurationLimit =
       typeof payload === "object" && payload?.durationLimit !== undefined
         ? Number(payload.durationLimit)
-        : searchMode === "temporal"
-          ? Number(durationLimit)
-          : -1;
+        : searchMode === "temporal" ? Number(durationLimit) : -1;
 
     setSelected(null);
 
     try {
       await search({
-        query: String(query).trim(),
-        topK: settings.topK,
+        query:               String(query).trim(),
+        topK:                settings.topK,
         candidateMultiplier: settings.candidateMultiplier,
-        useSplit: settings.useSplit,
-        useTranslate: settings.useTranslate,
+        useSplit:            settings.useSplit,
+        useTranslate:        settings.useTranslate,
         searchMode,
-        durationLimit: nextDurationLimit,
+        durationLimit:       nextDurationLimit,
       });
     } catch (err) {
-      if (err?.name === "AbortError" || err?.name === "StaleSearchError") {
-        return;
-      }
-
-      if (searchId !== searchIdRef.current) {
-        return;
-      }
-
+      if (err?.name === "AbortError" || err?.name === "StaleSearchError") return;
+      if (searchId !== searchIdRef.current) return;
       console.error(err);
     }
   }
 
   async function handleOpenSurroundingImages(result) {
-    console.log("[SURROUND OPEN]", result);
-
     if (!result) return;
 
-    setSurroundModal({
-      open: true,
-      center: result,
-      frames: [result],
-      loading: true,
-    });
+    setSurroundModal({ open: true, center: result, frames: [result], loading: true });
 
     try {
-      const frames = await getSurroundingFrames(
-        result.video_id,
-        result.frame_id,
-        12
-      );
-
-      setSurroundModal({
-        open: true,
-        center: result,
-        frames,
-        loading: false,
-      });
+      const frames = await getSurroundingFrames(result.video_id, result.frame_id, 12);
+      setSurroundModal({ open: true, center: result, frames, loading: false });
     } catch (err) {
       console.error(err);
-
-      setSurroundModal({
-        open: true,
-        center: result,
-        frames: [result],
-        loading: false,
-      });
-
+      setSurroundModal({ open: true, center: result, frames: [result], loading: false });
       pushToast("warning", "Surrounding frames failed", err.message);
     }
   }
 
   async function handleSimilaritySearch(result) {
-    console.log("[SIMILAR OPEN]", result);
-
     if (!result) return;
 
-    setSimilarModal({
-      open: true,
-      source: result,
-      frames: [],
-      loading: true,
-    });
+    setSimilarModal({ open: true, source: result, frames: [], loading: true });
 
     try {
       const data = await similaritySearch({
         videoId: result.video_id,
         frameId: result.frame_id,
-        topK: settings.topK,
+        topK:    settings.topK,
       });
-
-      setSimilarModal({
-        open: true,
-        source: result,
-        frames: data.results ?? [],
-        loading: false,
-      });
+      setSimilarModal({ open: true, source: result, frames: data.results ?? [], loading: false });
     } catch (err) {
       console.error(err);
-
-      setSimilarModal({
-        open: true,
-        source: result,
-        frames: [],
-        loading: false,
-      });
-
+      setSimilarModal({ open: true, source: result, frames: [], loading: false });
       pushToast("warning", "Similarity search failed", err.message);
     }
   }
 
   function pushToast(type, title, message = "") {
     const id = crypto.randomUUID();
-
-    setToasts((prev) => [
-      ...prev,
-      {
-        id,
-        type,
-        title,
-        message,
-      },
-    ]);
-
+    setToasts((prev) => [...prev, { id, type, title, message }]);
     playNotifySound(type);
-
     setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3200);
   }
 
   async function handleDresLogin() {
     setDres((prev) => ({ ...prev, loading: true }));
-
     try {
       const data = await loginDresViaBackend({
-        dresUrl: settings.submitUrl,
+        dresUrl:  settings.submitUrl,
         username: settings.username,
         password: settings.password,
       });
 
-      setDres({
-        loading: false,
-        sessionId: data.session_id,
-        user: data.user ?? null,
-      });
+      setDres({ loading: false, sessionId: data.session_id, user: data.user ?? null });
 
       if (data.evaluation_id) {
-        setSettings((prev) => ({
-          ...prev,
-          evaluationId: data.evaluation_id,
-        }));
+        setSettings((prev) => ({ ...prev, evaluationId: data.evaluation_id }));
       }
 
       pushToast(
@@ -321,12 +219,7 @@ export default function App() {
   }
 
   function handleDresLogout() {
-    setDres({
-      loading: false,
-      sessionId: "",
-      user: null,
-    });
-
+    setDres({ loading: false, sessionId: "", user: null });
     pushToast("pending", "DRES session cleared");
   }
 
@@ -337,35 +230,25 @@ export default function App() {
     }
 
     try {
-      let sessionId = dres.sessionId;
+      let sessionId    = dres.sessionId;
       let evaluationId = settings.evaluationId;
 
       if (!sessionId) {
         const loginData = await loginDresViaBackend({
-          dresUrl: settings.submitUrl,
+          dresUrl:  settings.submitUrl,
           username: settings.username,
           password: settings.password,
         });
-
-        sessionId = loginData.session_id;
+        sessionId    = loginData.session_id;
         evaluationId = loginData.evaluation_id || evaluationId;
-
-        setDres({
-          loading: false,
-          sessionId,
-          user: loginData.user ?? null,
-        });
-
+        setDres({ loading: false, sessionId, user: loginData.user ?? null });
         if (loginData.evaluation_id) {
-          setSettings((prev) => ({
-            ...prev,
-            evaluationId: loginData.evaluation_id,
-          }));
+          setSettings((prev) => ({ ...prev, evaluationId: loginData.evaluation_id }));
         }
       }
 
       const response = await submitDresViaBackend({
-        dresUrl: settings.submitUrl,
+        dresUrl:     settings.submitUrl,
         sessionId,
         evaluationId,
         result,
@@ -373,20 +256,16 @@ export default function App() {
 
       const label = `${result.video_id}/${String(result.frame_id).padStart(6, "0")}`;
 
-      if (response.status === "correct") {
-        pushToast("correct", "Correct", label);
-      } else if (response.status === "wrong") {
-        pushToast("wrong", "Wrong", response.message || label);
-      } else if (response.status === "pending") {
-        pushToast("pending", "Submitted", response.message || label);
-      } else {
-        pushToast("warning", "Cannot submit", response.message || label);
-      }
+      if      (response.status === "correct")  pushToast("correct", "Correct", label);
+      else if (response.status === "wrong")    pushToast("wrong",   "Wrong",   response.message || label);
+      else if (response.status === "pending")  pushToast("pending", "Submitted", response.message || label);
+      else                                     pushToast("warning", "Cannot submit", response.message || label);
     } catch (err) {
       pushToast("warning", "Cannot submit", err.message);
     }
   }
 
+  // ── Render ───────────────────────────────────────────
   return (
     <div className={theme === "dark" ? "theme-dark" : "theme-light"}>
       <div className={`ambient-bg ${loading ? "ambient-searching" : ""}`} />
@@ -399,17 +278,12 @@ export default function App() {
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
-        <main
-          className={hasResults ? "main-layout has-results" : "main-layout is-home"}
-        >
+        <main className={hasResults ? "main-layout has-results" : "main-layout is-home"}>
+          {/* ── HOME ── */}
           {!hasResults && (
             <section className="home-panel">
               <div className="backend-status">
-                <span
-                  className={
-                    backendReady ? "backend-dot connected" : "backend-dot"
-                  }
-                />
+                <span className={backendReady ? "backend-dot connected" : "backend-dot"} />
                 {backendStatus}
               </div>
 
@@ -429,6 +303,7 @@ export default function App() {
             </section>
           )}
 
+          {/* ── RESULTS ── */}
           {hasResults && (
             <>
               <section className="display-area">
@@ -442,9 +317,7 @@ export default function App() {
                 />
 
                 <div className="query-summary">
-                  <span>
-                    Query: <strong>{lastQuery}</strong>
-                  </span>
+                  <span>Query: <strong>{lastQuery}</strong></span>
                   <span>{count} results</span>
                 </div>
 
@@ -523,14 +396,7 @@ export default function App() {
           loading={surroundModal.loading}
           columns={surroundColumns}
           onColumnsChange={setSurroundColumns}
-          onClose={() =>
-            setSurroundModal({
-              open: false,
-              center: null,
-              frames: [],
-              loading: false,
-            })
-          }
+          onClose={() => setSurroundModal(DEFAULT_SURROUND_MODAL)}
           onSelect={setSelected}
           onSubmit={handleSubmitResult}
           onSimilaritySearch={handleSimilaritySearch}
@@ -544,14 +410,7 @@ export default function App() {
           loading={similarModal.loading}
           columns={similarColumns}
           onColumnsChange={setSimilarColumns}
-          onClose={() =>
-            setSimilarModal({
-              open: false,
-              source: null,
-              frames: [],
-              loading: false,
-            })
-          }
+          onClose={() => setSimilarModal(DEFAULT_SIMILAR_MODAL)}
           onSelect={setSelected}
           onSubmit={handleSubmitResult}
           onSimilaritySearch={handleSimilaritySearch}

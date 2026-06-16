@@ -1,5 +1,5 @@
 import { Plus, Search, Mic } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export default function SearchBar({
   model,
@@ -16,33 +16,34 @@ export default function SearchBar({
   const textareaRef = useRef(null);
 
   const isTemporal = mode === "temporal";
+  const isExpanded = query.includes("\n") || query.length > 80;
 
-  function resolveSearchMode() {
-    if (mode === "temporal") return "temporal";
-    if (mode === "auto") return "auto";
-    return "semantic";
-  }
-
-  function resizeTextarea() {
+  // Auto-resize textarea — uses requestAnimationFrame for perf
+  const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
-
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
-  }
+    requestAnimationFrame(() => {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+    });
+  }, []);
 
   useEffect(() => {
     resizeTextarea();
-  }, [query]);
+  }, [query, resizeTextarea]);
+
+  function resolveSearchMode() {
+    if (mode === "temporal") return "temporal";
+    if (mode === "auto")     return "auto";
+    return "semantic";
+  }
 
   function handleSubmit(e) {
-    e.preventDefault();
-
+    e?.preventDefault();
     const cleanQuery = query.trim();
     if (!cleanQuery || loading || disabled) return;
 
     const searchMode = resolveSearchMode();
-
     onSearch({
       query: cleanQuery,
       searchMode,
@@ -52,18 +53,19 @@ export default function SearchBar({
 
   function handleKeyDown(e) {
     if (e.key === "Enter" && e.shiftKey) return;
-
     if (e.key === "Enter") {
       e.preventDefault();
-      handleSubmit(e);
+      handleSubmit();
     }
   }
 
   return (
     <form
-      className={`search-wrapper ${loading ? "searching-active" : ""} ${
-        query.includes("\n") || query.length > 80 ? "expanded" : ""
-      }`}
+      className={[
+        "search-wrapper",
+        loading    ? "searching-active" : "",
+        isExpanded ? "expanded"         : "",
+      ].filter(Boolean).join(" ")}
       onSubmit={handleSubmit}
     >
       <div className="search-inner">
@@ -82,7 +84,7 @@ export default function SearchBar({
         />
 
         <div className="search-chat-footer">
-          <button type="button" className="search-icon-button">
+          <button type="button" className="search-icon-button" aria-label="Attach">
             <Plus size={20} />
           </button>
 
@@ -120,7 +122,7 @@ export default function SearchBar({
               />
             )}
 
-            <button type="button" className="search-icon-button">
+            <button type="button" className="search-icon-button" aria-label="Voice">
               <Mic size={18} />
             </button>
 
@@ -128,6 +130,7 @@ export default function SearchBar({
               type="submit"
               className="search-submit"
               disabled={loading || disabled}
+              aria-label="Search"
             >
               <Search size={18} />
             </button>

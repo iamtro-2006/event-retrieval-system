@@ -1,6 +1,7 @@
+import { memo, useCallback } from "react";
 import { Play, ThumbsDown, ThumbsUp, Send, Search, Images } from "lucide-react";
 
-export default function ResultCard({
+const ResultCard = memo(function ResultCard({
   result,
   selected,
   onSelect,
@@ -8,60 +9,67 @@ export default function ResultCard({
   onSimilaritySearch,
   onSurroundingImages,
 }) {
-  const score = (result.similarity * 100).toFixed(1);
-  const label = `${result.video_id}/${String(result.frame_id).padStart(6, "0")}`;
+  const score    = (result.similarity * 100).toFixed(1);
+  const label    = `${result.video_id}/${String(result.frame_id).padStart(6, "0")}`;
   const sequence = result.matched_sequence || [];
 
-  function openVideoAt(timestamp) {
+  // Memoize handlers to prevent child re-renders
+  const openVideoAt = useCallback((timestamp) => {
     if (result.video_url && result.video_url !== "#") {
       window.open(`${result.video_url}#t=${Number(timestamp).toFixed(2)}`, "_blank");
-    } else {
-      alert(`Play video tại timestamp ${Number(timestamp).toFixed(2)}s`);
     }
-  }
+  }, [result.video_url]);
 
-  function handlePlay(e) {
+  const handlePlay = useCallback((e) => {
     e.stopPropagation();
+    openVideoAt(result.temporal?.start_time ?? result.timestamp);
+  }, [openVideoAt, result.temporal?.start_time, result.timestamp]);
 
-    const startTime = result.temporal?.start_time ?? result.timestamp;
-    openVideoAt(startTime);
-  }
-
-  function handleSubmit(e) {
+  const handleSubmit = useCallback((e) => {
     e.stopPropagation();
     onSubmit?.(result);
-  }
+  }, [onSubmit, result]);
 
-  function handleSimilaritySearch(e) {
+  const handleSimilaritySearch = useCallback((e) => {
     e.stopPropagation();
     onSimilaritySearch?.(result);
-  }
+  }, [onSimilaritySearch, result]);
 
-  function handleSurroundingImages(e) {
+  const handleSurroundingImages = useCallback((e) => {
     e.stopPropagation();
-    console.log("CARD");
     onSurroundingImages?.(result);
+  }, [onSurroundingImages, result]);
+
+  // Image lazy-load fade
+  function onImgLoad(e) {
+    e.currentTarget.classList.add("loaded");
   }
 
   return (
     <article
-      className={`result-card ${selected ? "selected" : ""}`}
+      className={`result-card${selected ? " selected" : ""}`}
       onClick={() => onSelect?.(result)}
     >
       <div className="thumbnail-box">
-        <img src={result.image_url} alt={label} loading="lazy" decoding="async" />
+        <img
+          src={result.image_url}
+          alt={label}
+          loading="lazy"
+          decoding="async"
+          onLoad={onImgLoad}
+        />
 
         <span className="score-badge">{score}%</span>
 
-        <button className="vote-button like" type="button" onClick={(e) => e.stopPropagation()}>
+        <button className="vote-button like" type="button" onClick={(e) => e.stopPropagation()} aria-label="Like">
           <ThumbsUp size={12} />
         </button>
 
-        <button className="vote-button dislike" type="button" onClick={(e) => e.stopPropagation()}>
+        <button className="vote-button dislike" type="button" onClick={(e) => e.stopPropagation()} aria-label="Dislike">
           <ThumbsDown size={12} />
         </button>
 
-        <button className="play-button" type="button" onClick={handlePlay}>
+        <button className="play-button" type="button" onClick={handlePlay} aria-label="Play video">
           <Play size={16} fill="currentColor" />
         </button>
       </div>
@@ -73,10 +81,7 @@ export default function ResultCard({
               key={`${item.video_id || result.video_id}-${item.keyframe_id}-${idx}`}
               className="temporal-step"
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openVideoAt(item.timestamp_sec);
-              }}
+              onClick={(e) => { e.stopPropagation(); openVideoAt(item.timestamp_sec); }}
               title={item.sub_query}
             >
               <img
@@ -86,7 +91,6 @@ export default function ResultCard({
                 loading="lazy"
                 decoding="async"
               />
-
               <div className="temporal-step-info">
                 <span>Q{idx + 1}</span>
                 <span>{Number(item.timestamp_sec).toFixed(2)}s</span>
@@ -134,4 +138,6 @@ export default function ResultCard({
       </div>
     </article>
   );
-}
+});
+
+export default ResultCard;
