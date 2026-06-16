@@ -3,6 +3,18 @@ const RAW_API_BASE_URL =
 
 const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
 
+const KEYFRAMES_BASE_URL = (
+  import.meta.env.VITE_KEYFRAMES_BASE_URL || ""
+).replace(/\/+$/, "");
+
+const VIDEOS_BASE_URL = (
+  import.meta.env.VITE_VIDEOS_BASE_URL || ""
+).replace(/\/+$/, "");
+
+const MAP_KEYFRAMES_BASE_URL = (
+  import.meta.env.VITE_MAP_KEYFRAMES_BASE_URL || ""
+).replace(/\/+$/, "");
+
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
 let activeSearchController = null;
@@ -10,6 +22,18 @@ let activeSearchRequestId = 0;
 
 function apiUrl(path) {
   return `${API_BASE_URL}/${String(path).replace(/^\/+/, "")}`;
+}
+
+function joinBaseUrl(baseUrl, relPath) {
+  if (!baseUrl || !relPath) {
+    return "";
+  }
+
+  const cleanedRelPath = String(relPath)
+    .replaceAll("\\", "/")
+    .replace(/^\/+/, "");
+
+  return `${baseUrl}/${cleanedRelPath}`;
 }
 
 export async function checkBackendHealth() {
@@ -167,6 +191,19 @@ function normalizeResults(results) {
     const similarity = Number(item.similarity ?? 0);
     const raw = item.raw || {};
 
+    const imageUrl =
+      joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path) ||
+      toAbsoluteUrl(item.image_url || makeKeyframeUrl(item.keyframe_path));
+
+    const videoUrl =
+      joinBaseUrl(VIDEOS_BASE_URL, item.video_rel_path) ||
+      toAbsoluteUrl(item.video_url);
+
+    const mapUrl =
+      joinBaseUrl(MAP_KEYFRAMES_BASE_URL, item.map_rel_path) ||
+      toAbsoluteUrl(item.map_url ?? raw.map_url);
+
+      
     const matchedSequence = normalizeMatchedSequence(
       item.matched_sequence ?? raw.matched_sequence ?? []
     );
@@ -176,8 +213,15 @@ function normalizeResults(results) {
       `${item.video_id || "unknown_video"}_${String(
         Number.isFinite(frameId) ? frameId : index
       ).padStart(6, "0")}`;
-
-    return {
+    /*
+    console.log("KEYFRAMES_BASE_URL =", KEYFRAMES_BASE_URL);
+    console.log("image_rel_path =", item.image_rel_path);
+    console.log(
+      "resolved =",
+      joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path)
+    );
+    */
+      return {
       id: `${baseId}-${index}`,
       video_id: item.video_id || "unknown_video",
       frame_id: Number.isFinite(frameId) ? frameId : 0,
@@ -189,8 +233,12 @@ function normalizeResults(results) {
         )}.jpg`,
       path: item.path || "",
       keyframe_path: item.keyframe_path || "",
-      image_url: toAbsoluteUrl(item.image_url),
-      video_url: toAbsoluteUrl(item.video_url),
+      image_rel_path: item.image_rel_path || "",
+      video_rel_path: item.video_rel_path || "",
+      map_rel_path: item.map_rel_path || "",
+      image_url: imageUrl,
+      video_url: videoUrl,
+      map_url: mapUrl,
       timestamp: safeNumber(item.timestamp, 0),
       similarity: Number.isFinite(similarity) ? similarity : 0,
       caption: item.caption || "",
@@ -227,6 +275,10 @@ function normalizeMatchedSequence(sequence) {
     const timestamp = Number(item.timestamp_sec ?? item.timestamp ?? 0);
     const score = Number(item.score ?? item.candidate_score ?? 0);
 
+    const imageUrl =
+      joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path) ||
+      toAbsoluteUrl(item.image_url || makeKeyframeUrl(item.keyframe_path));
+
     const baseId = `${item.video_id || "unknown_video"}_${String(
       Number.isFinite(frameId) ? frameId : index
     ).padStart(6, "0")}`;
@@ -243,7 +295,8 @@ function normalizeMatchedSequence(sequence) {
         "0"
       )}.jpg`,
       keyframe_path: item.keyframe_path || "",
-      image_url: toAbsoluteUrl(item.image_url || makeKeyframeUrl(item.keyframe_path)),
+      image_rel_path: item.image_rel_path || "",
+      image_url: imageUrl,
       timestamp_sec: Number.isFinite(timestamp) ? timestamp : 0,
       score: Number.isFinite(score) ? score : 0,
     };
@@ -373,4 +426,24 @@ export async function getFrameInfo(videoId, keyframeId) {
   const data = await response.json();
 
   return normalizeResults([data])[0];
+}
+
+export async function transcribeSpeech(blob) {
+  const formData = new FormData();
+  formData.append("file", blob, "speech.webm");
+
+  const response = await fetch(apiUrl("/api/speech/transcribe"), {
+    method: "POST",
+    headers: {
+      ...NGROK_HEADER,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Speech transcription failed");
+  }
+
+  return response.json();
 }

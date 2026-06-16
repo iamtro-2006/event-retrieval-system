@@ -1,8 +1,39 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Play, Search, Images, Send } from "lucide-react";
 import ResultCard from "./ResultCard";
 
-// ─── Temporal flat sequence (Grid view) ───────────────────────────────────
+function makeFrameResultFromSequence(result, frame, idx) {
+  const frameId = Number(
+    frame.frame_id ??
+      frame.keyframe_id ??
+      frame.keyframe_id_int ??
+      idx
+  );
+
+  const timestamp = Number(frame.timestamp_sec ?? frame.timestamp ?? result.timestamp ?? 0);
+  const score = Number(frame.score ?? frame.similarity ?? frame.candidate_score ?? result.similarity ?? 0);
+  const frameResultId = `${result.id}_q${frame.sub_query_idx ?? idx}_${frameId}`;
+
+  return {
+    ...result,
+    ...frame,
+    id: frameResultId,
+    video_id: frame.video_id || result.video_id,
+    video_url: frame.video_url || result.video_url,
+    frame_id: frameId,
+    frame_name: frame.frame_name || `${String(frameId).padStart(6, "0")}.jpg`,
+    image_url: frame.image_url || result.image_url,
+    timestamp,
+    similarity: score,
+    temporal: {
+      ...result.temporal,
+      start_time: timestamp,
+      end_time: timestamp,
+    },
+    matched_sequence: [],
+  };
+}
+
 const TemporalFlatSequence = memo(function TemporalFlatSequence({
   result,
   sequenceIndex,
@@ -12,35 +43,17 @@ const TemporalFlatSequence = memo(function TemporalFlatSequence({
   onSimilaritySearch,
   onSurroundingImages,
 }) {
-  const sequence = result.matched_sequence || [];
+  const sequence = Array.isArray(result.matched_sequence) ? result.matched_sequence : [];
 
-  function makeFrameResult(frame, idx) {
-    const frameId      = frame.frame_id ?? Number(frame.keyframe_id ?? 0) ?? idx;
-    const frameResultId = `${result.id}_q${frame.sub_query_idx ?? idx}`;
-
-    return {
-      ...result,
-      ...frame,
-      id:         frameResultId,
-      video_id:   frame.video_id   || result.video_id,
-      video_url:  frame.video_url  || result.video_url,
-      frame_id:   frameId,
-      frame_name: frame.frame_name || `${String(frameId).padStart(6, "0")}.jpg`,
-      image_url:  frame.image_url,
-      timestamp:  frame.timestamp_sec,
-      similarity: frame.score,
-      temporal: {
-        ...result.temporal,
-        start_time: frame.timestamp_sec,
-        end_time:   frame.timestamp_sec,
-      },
-      matched_sequence: [],
-    };
-  }
+  const frameResults = useMemo(
+    () => sequence.map((frame, idx) => makeFrameResultFromSequence(result, frame, idx)),
+    [result, sequence]
+  );
 
   function handlePlay(e) {
     e.stopPropagation();
     const startTime = result.temporal?.start_time ?? result.timestamp ?? 0;
+
     if (result.video_url && result.video_url !== "#") {
       window.open(`${result.video_url}#t=${Number(startTime).toFixed(2)}`, "_blank");
     }
@@ -52,35 +65,51 @@ const TemporalFlatSequence = memo(function TemporalFlatSequence({
   }
 
   return (
-    <section className="temporal-flat-sequence" style={{ "--seq-count": sequence.length }}>
-      <div className="temporal-flat-header">
-        <span>Sequence #{sequenceIndex + 1}</span>
+    <section className="temporal-flat-sequence">
+      <div className="temporal-sequence-toolbar temporal-flat-header">
+        <div className="temporal-sequence-title">
+          Sequence #{sequenceIndex + 1}
+        </div>
 
-        <span>
-          {result.video_id} · {Number(result.temporal?.duration_sec ?? 0).toFixed(2)}s
-        </span>
+        <div className="temporal-sequence-center">
+          <span className="temporal-sequence-meta">
+            {result.video_id} · {Number(result.temporal?.duration_sec ?? 0).toFixed(2)}s
+          </span>
 
-        <button type="button" onClick={handlePlay} title="Play sequence">
-          <Play size={13} fill="currentColor" />
-          Play
-        </button>
+          <button
+            type="button"
+            className="temporal-pill-btn temporal-play-btn"
+            onClick={handlePlay}
+            title="Play sequence"
+          >
+            <Play size={13} fill="currentColor" />
+            <span>Play</span>
+          </button>
+        </div>
 
-        <button type="button" onClick={handleSubmitSequence} title="Submit sequence start frame">
-          <Send size={13} />
-          Submit
-        </button>
+        <div className="temporal-sequence-actions">
+          <button
+            type="button"
+            className="temporal-pill-btn temporal-submit-btn"
+            onClick={handleSubmitSequence}
+            title="Submit sequence start frame"
+          >
+            <Send size={13} />
+            <span>Submit</span>
+          </button>
+        </div>
       </div>
 
-      <div className="temporal-flat-frames" style={{ "--seq-count": sequence.length }}>
+      <div className="temporal-flat-frames">
         {sequence.map((frame, idx) => {
-          const frameResult = makeFrameResult(frame, idx);
-          const isSelected  = selectedId === frameResult.id;
+          const frameResult = frameResults[idx];
+          const isSelected = selectedId === frameResult.id;
 
           return (
             <article
               key={frameResult.id}
               className={`temporal-flat-frame-card${isSelected ? " selected" : ""}`}
-              onClick={() => onSelect?.(makeFrameResult(frame, idx))}
+              onClick={() => onSelect?.(frameResult)}
             >
               <div className="temporal-flat-thumb">
                 <img
@@ -88,10 +117,12 @@ const TemporalFlatSequence = memo(function TemporalFlatSequence({
                   alt={`Q${idx + 1}`}
                   loading="lazy"
                   decoding="async"
+                  draggable="false"
                 />
+
                 <span className="temporal-query-badge">Q{idx + 1}</span>
                 <span className="temporal-score-badge">
-                  {(Number(frame.score ?? 0) * 100).toFixed(1)}%
+                  {(Number(frame.score ?? frameResult.similarity ?? 0) * 100).toFixed(1)}%
                 </span>
               </div>
 
@@ -99,14 +130,17 @@ const TemporalFlatSequence = memo(function TemporalFlatSequence({
                 <strong>
                   {frameResult.video_id}/{String(frameResult.frame_id ?? 0).padStart(6, "0")}
                 </strong>
-                <span>{Number(frame.timestamp_sec ?? 0).toFixed(2)}s</span>
+                <span>{Number(frame.timestamp_sec ?? frameResult.timestamp ?? 0).toFixed(2)}s</span>
               </div>
 
               <div className="temporal-frame-actions-row">
                 <button
                   type="button"
                   title="Similarity search"
-                  onClick={(e) => { e.stopPropagation(); onSimilaritySearch?.(makeFrameResult(frame, idx)); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSimilaritySearch?.(frameResult);
+                  }}
                 >
                   <Search size={12} />
                   <span>Similar</span>
@@ -115,7 +149,10 @@ const TemporalFlatSequence = memo(function TemporalFlatSequence({
                 <button
                   type="button"
                   title="Surrounding images"
-                  onClick={(e) => { e.stopPropagation(); onSurroundingImages?.(makeFrameResult(frame, idx)); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSurroundingImages?.(frameResult);
+                  }}
                 >
                   <Images size={12} />
                   <span>Surround</span>
@@ -124,7 +161,10 @@ const TemporalFlatSequence = memo(function TemporalFlatSequence({
                 <button
                   type="button"
                   title="Submit frame"
-                  onClick={(e) => { e.stopPropagation(); onSubmit?.(makeFrameResult(frame, idx)); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSubmit?.(frameResult);
+                  }}
                 >
                   <Send size={12} />
                   <span>Submit</span>
@@ -144,7 +184,6 @@ const TemporalFlatSequence = memo(function TemporalFlatSequence({
   );
 });
 
-// ─── Result Grid ──────────────────────────────────────────────────────────
 const ResultGrid = memo(function ResultGrid({
   results,
   columns,
@@ -154,16 +193,37 @@ const ResultGrid = memo(function ResultGrid({
   onSimilaritySearch,
   onSurroundingImages,
 }) {
-  return (
-    <div
-      className="result-grid"
-      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-    >
-      {results.map((result, index) => {
-        const hasTemporal =
-          Array.isArray(result.matched_sequence) && result.matched_sequence.length > 0;
+  const hasTemporalResults = useMemo(
+    () => results.some(
+      (result) => Array.isArray(result.matched_sequence) && result.matched_sequence.length > 0
+    ),
+    [results]
+  );
 
-        if (hasTemporal) {
+  if (hasTemporalResults) {
+    return (
+      <div
+        className="temporal-sequences-grid"
+        style={{ "--sequence-cols": columns }}
+      >
+        {results.map((result, index) => {
+          const hasTemporal =
+            Array.isArray(result.matched_sequence) && result.matched_sequence.length > 0;
+
+          if (!hasTemporal) {
+            return (
+              <ResultCard
+                key={result.id}
+                result={result}
+                selected={result.id === selectedId}
+                onSelect={onSelect}
+                onSubmit={onSubmit}
+                onSimilaritySearch={onSimilaritySearch}
+                onSurroundingImages={onSurroundingImages}
+              />
+            );
+          }
+
           return (
             <TemporalFlatSequence
               key={result.id}
@@ -176,20 +236,27 @@ const ResultGrid = memo(function ResultGrid({
               onSurroundingImages={onSurroundingImages}
             />
           );
-        }
+        })}
+      </div>
+    );
+  }
 
-        return (
-          <ResultCard
-            key={result.id}
-            result={result}
-            selected={result.id === selectedId}
-            onSelect={onSelect}
-            onSubmit={onSubmit}
-            onSimilaritySearch={onSimilaritySearch}
-            onSurroundingImages={onSurroundingImages}
-          />
-        );
-      })}
+  return (
+    <div
+      className="result-grid"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {results.map((result) => (
+        <ResultCard
+          key={result.id}
+          result={result}
+          selected={result.id === selectedId}
+          onSelect={onSelect}
+          onSubmit={onSubmit}
+          onSimilaritySearch={onSimilaritySearch}
+          onSurroundingImages={onSurroundingImages}
+        />
+      ))}
     </div>
   );
 });

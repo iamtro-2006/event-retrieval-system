@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,7 +10,39 @@ import {
 import ResultCard from "./ResultCard";
 import { groupByVideoSorted } from "../utils/groupByVideo";
 
-function TemporalSequenceBlock({
+function makeFrameResultFromSequence(result, frame, idx) {
+  const frameId = Number(
+    frame.frame_id ??
+      frame.keyframe_id ??
+      frame.keyframe_id_int ??
+      idx
+  );
+
+  const timestamp = Number(frame.timestamp_sec ?? frame.timestamp ?? result.timestamp ?? 0);
+  const score = Number(frame.score ?? frame.similarity ?? frame.candidate_score ?? result.similarity ?? 0);
+  const frameResultId = `${result.id}_q${frame.sub_query_idx ?? idx}_${frameId}`;
+
+  return {
+    ...result,
+    ...frame,
+    id: frameResultId,
+    video_id: frame.video_id || result.video_id,
+    video_url: frame.video_url || result.video_url,
+    frame_id: frameId,
+    frame_name: frame.frame_name || `${String(frameId).padStart(6, "0")}.jpg`,
+    image_url: frame.image_url || result.image_url,
+    timestamp,
+    similarity: score,
+    temporal: {
+      ...result.temporal,
+      start_time: timestamp,
+      end_time: timestamp,
+    },
+    matched_sequence: [],
+  };
+}
+
+const TemporalSequenceBlock = memo(function TemporalSequenceBlock({
   result,
   sequenceIndex,
   selectedId,
@@ -19,39 +51,15 @@ function TemporalSequenceBlock({
   onSimilaritySearch,
   onSurroundingImages,
 }) {
-  const sequence = result.matched_sequence || [];
+  const sequence = Array.isArray(result.matched_sequence) ? result.matched_sequence : [];
 
-  function makeFrameResult(frame, idx) {
-    const frameId = frame.frame_id ?? Number(frame.keyframe_id ?? 0) ?? idx;
-    const frameResultId = `${result.id}_q${frame.sub_query_idx ?? idx}`;
-
-    return {
-      ...result,
-      ...frame,
-      id: frameResultId,
-      video_id: frame.video_id || result.video_id,
-      video_url: frame.video_url || result.video_url,
-      frame_id: frameId,
-      frame_name: frame.frame_name || `${String(frameId).padStart(6, "0")}.jpg`,
-      image_url: frame.image_url,
-      timestamp: frame.timestamp_sec,
-      similarity: frame.score,
-      temporal: {
-        ...result.temporal,
-        start_time: frame.timestamp_sec,
-        end_time: frame.timestamp_sec,
-      },
-      matched_sequence: [],
-    };
-  }
-
-  function handleSelectFrame(frame, idx) {
-    onSelect?.(makeFrameResult(frame, idx));
-  }
+  const frameResults = useMemo(
+    () => sequence.map((frame, idx) => makeFrameResultFromSequence(result, frame, idx)),
+    [result, sequence]
+  );
 
   function handlePlaySequence(e) {
     e.stopPropagation();
-
     const startTime = result.temporal?.start_time ?? result.timestamp ?? 0;
 
     if (result.video_url && result.video_url !== "#") {
@@ -64,53 +72,52 @@ function TemporalSequenceBlock({
     onSubmit?.(result);
   }
 
-  function handleSimilaritySearch(e, frame, idx) {
-    e.stopPropagation();
-    onSimilaritySearch?.(makeFrameResult(frame, idx));
-  }
-
-  function handleSurroundingImages(e, frame, idx) {
-    e.stopPropagation();
-    onSurroundingImages?.(makeFrameResult(frame, idx));
-  }
-
-  function handleSubmitFrame(e, frame, idx) {
-    e.stopPropagation();
-    onSubmit?.(makeFrameResult(frame, idx));
-  }
-
   return (
-    <div className="temporal-sequence-block">
-      <div className="temporal-sequence-header">
-        <div>
-          <strong>Sequence #{sequenceIndex + 1}</strong>
-          <span>
-            {Number(result.temporal?.start_time ?? 0).toFixed(2)}s →{" "}
-            {Number(result.temporal?.end_time ?? 0).toFixed(2)}s
-          </span>
+    <section className="temporal-sequence-block">
+      <div className="temporal-sequence-toolbar temporal-sequence-header">
+        <div className="temporal-sequence-title">
+          Sequence #{sequenceIndex + 1}
         </div>
 
-        <button type="button" onClick={handlePlaySequence}>
-          <Play size={14} fill="currentColor" />
-          Play
-        </button>
+        <div className="temporal-sequence-center">
+          <span className="temporal-sequence-meta">
+            {result.video_id} · {Number(result.temporal?.duration_sec ?? 0).toFixed(2)}s
+          </span>
 
-        <button type="button" onClick={handleSubmitSequence}>
-          <Send size={13} />
-          Submit
-        </button>
+          <button
+            type="button"
+            className="temporal-pill-btn temporal-play-btn"
+            onClick={handlePlaySequence}
+            title="Play sequence"
+          >
+            <Play size={13} fill="currentColor" />
+            <span>Play</span>
+          </button>
+        </div>
+
+        <div className="temporal-sequence-actions">
+          <button
+            type="button"
+            className="temporal-pill-btn temporal-submit-btn"
+            onClick={handleSubmitSequence}
+            title="Submit sequence start frame"
+          >
+            <Send size={13} />
+            <span>Submit</span>
+          </button>
+        </div>
       </div>
 
       <div className="temporal-frame-row">
         {sequence.map((frame, idx) => {
-          const frameResult = makeFrameResult(frame, idx);
+          const frameResult = frameResults[idx];
           const isSelected = frameResult.id === selectedId;
 
           return (
             <article
               key={frameResult.id}
               className={`temporal-frame-card ${isSelected ? "selected" : ""}`}
-              onClick={() => handleSelectFrame(frame, idx)}
+              onClick={() => onSelect?.(frameResult)}
             >
               <div className="temporal-frame-thumb">
                 <img
@@ -118,28 +125,30 @@ function TemporalSequenceBlock({
                   alt={`Q${idx + 1}`}
                   loading="lazy"
                   decoding="async"
+                  draggable="false"
                 />
 
                 <span className="temporal-query-badge">Q{idx + 1}</span>
-
                 <span className="temporal-score-badge">
-                  {(Number(frame.score ?? 0) * 100).toFixed(1)}%
+                  {(Number(frame.score ?? frameResult.similarity ?? 0) * 100).toFixed(1)}%
                 </span>
               </div>
 
               <div className="temporal-frame-footer">
                 <strong>
-                  {frameResult.video_id}/
-                  {String(frameResult.frame_id ?? 0).padStart(6, "0")}
+                  {frameResult.video_id}/{String(frameResult.frame_id ?? 0).padStart(6, "0")}
                 </strong>
-                <span>{Number(frame.timestamp_sec ?? 0).toFixed(2)}s</span>
+                <span>{Number(frame.timestamp_sec ?? frameResult.timestamp ?? 0).toFixed(2)}s</span>
               </div>
 
               <div className="temporal-frame-actions-row">
                 <button
                   type="button"
                   title="Similarity search"
-                  onClick={(e) => handleSimilaritySearch(e, frame, idx)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSimilaritySearch?.(frameResult);
+                  }}
                 >
                   <Search size={12} />
                   <span>Similar</span>
@@ -148,7 +157,10 @@ function TemporalSequenceBlock({
                 <button
                   type="button"
                   title="Surrounding images"
-                  onClick={(e) => handleSurroundingImages(e, frame, idx)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSurroundingImages?.(frameResult);
+                  }}
                 >
                   <Images size={12} />
                   <span>Surround</span>
@@ -157,7 +169,10 @@ function TemporalSequenceBlock({
                 <button
                   type="button"
                   title="Submit frame"
-                  onClick={(e) => handleSubmitFrame(e, frame, idx)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSubmit?.(frameResult);
+                  }}
                 >
                   <Send size={12} />
                   <span>Submit</span>
@@ -173,9 +188,9 @@ function TemporalSequenceBlock({
           );
         })}
       </div>
-    </div>
+    </section>
   );
-}
+});
 
 export default function GroupedResults({
   results,
@@ -186,7 +201,7 @@ export default function GroupedResults({
   onSimilaritySearch,
   onSurroundingImages,
 }) {
-  const groups = groupByVideoSorted(results);
+  const groups = useMemo(() => groupByVideoSorted(results), [results]);
   const [pageByVideo, setPageByVideo] = useState({});
 
   function getCurrentPage(videoId) {
@@ -195,11 +210,7 @@ export default function GroupedResults({
 
   function changePage(videoId, direction, totalPages) {
     const currentPage = getCurrentPage(videoId);
-
-    const nextPage = Math.min(
-      Math.max(currentPage + direction, 0),
-      totalPages - 1
-    );
+    const nextPage = Math.min(Math.max(currentPage + direction, 0), totalPages - 1);
 
     setPageByVideo((prev) => ({
       ...prev,
@@ -211,9 +222,7 @@ export default function GroupedResults({
     <div className="grouped-results">
       {groups.map(({ videoId, items }) => {
         const hasTemporal = items.some(
-          (item) =>
-            Array.isArray(item.matched_sequence) &&
-            item.matched_sequence.length > 0
+          (item) => Array.isArray(item.matched_sequence) && item.matched_sequence.length > 0
         );
 
         if (hasTemporal) {
@@ -228,30 +237,29 @@ export default function GroupedResults({
                   <span>{items.length} temporal sequences</span>
                 </div>
 
-                <div className="video-strip-content temporal-video-strip-content">
-                  <div className="video-group-viewport temporal-video-viewport">
-                    <div className="video-group-page temporal-page">
-                      {items.map((result, idx) => (
-                        <TemporalSequenceBlock
-                          key={result.id}
-                          result={result}
-                          sequenceIndex={idx}
-                          selectedId={selectedId}
-                          onSelect={onSelect}
-                          onSubmit={onSubmit}
-                          onSimilaritySearch={onSimilaritySearch}
-                          onSurroundingImages={onSurroundingImages}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                <div
+                  className="temporal-sequences-grid grouped-temporal-sequences-grid"
+                  style={{ "--sequence-cols": columns }}
+                >
+                  {items.map((result, idx) => (
+                    <TemporalSequenceBlock
+                      key={result.id}
+                      result={result}
+                      sequenceIndex={idx}
+                      selectedId={selectedId}
+                      onSelect={onSelect}
+                      onSubmit={onSubmit}
+                      onSimilaritySearch={onSimilaritySearch}
+                      onSurroundingImages={onSurroundingImages}
+                    />
+                  ))}
                 </div>
               </div>
             </section>
           );
         }
 
-        const pageSize = columns;
+        const pageSize = Math.max(1, columns);
         const totalPages = Math.max(Math.ceil(items.length / pageSize), 1);
         const currentPage = Math.min(getCurrentPage(videoId), totalPages - 1);
 
