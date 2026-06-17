@@ -211,6 +211,109 @@ def _select_non_overlapping_candidates(
     return [(score, path) for score, path, _, _ in selected]
 
 
+def _has_near_tied_suffix_choices(
+    S: np.ndarray,
+    *,
+    atol: float = 1e-6,
+) -> bool:
+    """
+    The suffix-DP path is much faster for unlimited-duration searches, but it
+    accumulates float32 scores from right to left. The legacy window-DP
+    accumulates left to right. In rare near-tie cases, that one-ULP difference
+    can alter which overlapping sequence survives NMS. Detect only near-ties
+    between distinct paths so repeated suffix candidates for the same path do
+    not unnecessarily trigger the exact legacy-compatible fallback.
+    """
+
+    m, n = S.shape
+    dp = np.full((m, n), -np.inf, dtype=np.float32)
+    dp[m - 1] = S[m - 1]
+
+    for qi in range(m - 2, -1, -1):
+        next_scores = dp[qi + 1]
+        suffix_scores = np.full(n, -np.inf, dtype=np.float32)
+        best_score = -np.inf
+
+        for fj in range(n - 1, -1, -1):
+            suffix_scores[fj] = best_score
+            candidate_score = float(next_scores[fj])
+
+            if (
+                np.isfinite(candidate_score)
+                and np.isfinite(best_score)
+                and np.isclose(candidate_score, best_score, rtol=0.0, atol=atol)
+            ):
+                return True
+
+            if candidate_score >= best_score:
+                best_score = candidate_score
+
+        valid = np.isfinite(suffix_scores)
+        dp[qi, valid] = S[qi, valid] + suffix_scores[valid]
+
+    best_score = -np.inf
+
+    for start in range(n - 1, -1, -1):
+        candidate_score = float(dp[0, start])
+
+        if (
+            np.isfinite(candidate_score)
+            and np.isfinite(best_score)
+            and np.isclose(candidate_score, best_score, rtol=0.0, atol=atol)
+        ):
+            return True
+
+        if candidate_score >= best_score:
+            best_score = candidate_score
+
+    return False
+
+
+def _window_temporal_candidates(
+    S: np.ndarray,
+    timestamps: np.ndarray,
+    duration_limit: float,
+) -> list[tuple[float, list[int], float, float]]:
+    m, n = S.shape
+    candidates: list[tuple[float, list[int], float, float]] = []
+
+    for start in range(n):
+        if duration_limit == -1:
+            end = n
+        else:
+            end = int(
+                np.searchsorted(
+                    timestamps,
+                    timestamps[start] + duration_limit,
+                    side="right",
+                )
+            )
+
+        if end - start < m:
+            continue
+
+        local_S = S[:, start:end]
+        local_score, local_path = _run_dp_on_window(local_S)
+
+        if not local_path or not np.isfinite(local_score):
+            continue
+
+        global_path = [start + idx for idx in local_path]
+        start_time = float(timestamps[global_path[0]])
+        end_time = float(timestamps[global_path[-1]])
+
+        candidates.append(
+            (
+                float(local_score),
+                global_path,
+                start_time,
+                end_time,
+            )
+        )
+
+    return candidates
+
+
 def _suffix_temporal_candidates(
     S: np.ndarray,
     timestamps: np.ndarray,
@@ -309,48 +412,26 @@ def _temporal_topk_dp(
         return []
 
     if duration_limit == -1:
-        candidates = _suffix_temporal_candidates(S=S, timestamps=timestamps)
+        if _has_near_tied_suffix_choices(S):
+            candidates = _window_temporal_candidates(
+                S=S,
+                timestamps=timestamps,
+                duration_limit=duration_limit,
+            )
+        else:
+            candidates = _suffix_temporal_candidates(S=S, timestamps=timestamps)
+
         return _select_non_overlapping_candidates(
             candidates=candidates,
             max_sequences=max_sequences,
             overlap_threshold=overlap_threshold,
         )
 
-    candidates: list[tuple[float, list[int], float, float]] = []
-
-    for start in range(n):
-        if duration_limit == -1:
-            end = n
-        else:
-            end = int(
-                np.searchsorted(
-                    timestamps,
-                    timestamps[start] + duration_limit,
-                    side="right",
-                )
-            )
-
-        if end - start < m:
-            continue
-
-        local_S = S[:, start:end]
-        local_score, local_path = _run_dp_on_window(local_S)
-
-        if not local_path or not np.isfinite(local_score):
-            continue
-
-        global_path = [start + idx for idx in local_path]
-        start_time = float(timestamps[global_path[0]])
-        end_time = float(timestamps[global_path[-1]])
-
-        candidates.append(
-            (
-                float(local_score),
-                global_path,
-                start_time,
-                end_time,
-            )
-        )
+    candidates = _window_temporal_candidates(
+        S=S,
+        timestamps=timestamps,
+        duration_limit=duration_limit,
+    )
 
     return _select_non_overlapping_candidates(
         candidates=candidates,
