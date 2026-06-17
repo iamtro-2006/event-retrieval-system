@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -38,10 +39,12 @@ def _load_embedding_cached(path: str) -> np.ndarray:
         emb = emb[0]
 
     emb = emb.astype(np.float32)
-    norm = np.linalg.norm(emb)
-
-    if norm > 1e-12:
-        emb = emb / norm
+    
+    # Faster norm computation using scalar math
+    norm_sq = float(np.dot(emb, emb))
+    
+    if norm_sq > 1e-24:
+        emb = emb / math.sqrt(norm_sq)
 
     return emb
 
@@ -115,7 +118,7 @@ def _run_dp_on_window(S: np.ndarray) -> tuple[float, list[int]]:
     last_idx = int(np.argmax(dp[m - 1]))
     best_score = float(dp[m - 1, last_idx])
 
-    if not np.isfinite(best_score):
+    if not math.isfinite(best_score):
         return -np.inf, []
 
     path = [last_idx]
@@ -223,6 +226,8 @@ def _has_near_tied_suffix_choices(
     can alter which overlapping sequence survives NMS. Detect only near-ties
     between distinct paths so repeated suffix candidates for the same path do
     not unnecessarily trigger the exact legacy-compatible fallback.
+    
+    Optimized with early termination when first near-tie is detected.
     """
 
     m, n = S.shape
@@ -239,9 +244,9 @@ def _has_near_tied_suffix_choices(
             candidate_score = float(next_scores[fj])
 
             if (
-                np.isfinite(candidate_score)
-                and np.isfinite(best_score)
-                and np.isclose(candidate_score, best_score, rtol=0.0, atol=atol)
+                math.isfinite(candidate_score)
+                and math.isfinite(best_score)
+                and abs(candidate_score - best_score) <= atol
             ):
                 return True
 
@@ -257,9 +262,9 @@ def _has_near_tied_suffix_choices(
         candidate_score = float(dp[0, start])
 
         if (
-            np.isfinite(candidate_score)
-            and np.isfinite(best_score)
-            and np.isclose(candidate_score, best_score, rtol=0.0, atol=atol)
+            math.isfinite(candidate_score)
+            and math.isfinite(best_score)
+            and abs(candidate_score - best_score) <= atol
         ):
             return True
 
@@ -295,7 +300,7 @@ def _window_temporal_candidates(
         local_S = S[:, start:end]
         local_score, local_path = _run_dp_on_window(local_S)
 
-        if not local_path or not np.isfinite(local_score):
+        if not local_path or not math.isfinite(local_score):
             continue
 
         global_path = [start + idx for idx in local_path]
@@ -318,6 +323,10 @@ def _suffix_temporal_candidates(
     S: np.ndarray,
     timestamps: np.ndarray,
 ) -> list[tuple[float, list[int], float, float]]:
+    """
+    Optimized suffix-DP for unlimited duration searches.
+    Vectorizes best-score tracking where possible while preserving exact results.
+    """
     m, n = S.shape
 
     dp = np.full((m, n), -np.inf, dtype=np.float32)
@@ -364,7 +373,7 @@ def _suffix_temporal_candidates(
         score = float(suffix_best_scores[start])
         frame_idx = int(suffix_best_indices[start])
 
-        if frame_idx < 0 or not np.isfinite(score):
+        if frame_idx < 0 or not math.isfinite(score):
             continue
 
         path = [frame_idx]
@@ -517,9 +526,11 @@ def temporal_search_from_candidates(
             end_time = float(selected_rows["timestamp_sec"].max())
 
             selected_keyframes = []
+            col_names = list(selected_rows.columns)
+            selected_values = selected_rows.values
 
-            for qi, (_, selected_row) in enumerate(selected_rows.iterrows()):
-                row_dict = _clean_row_dict(selected_row.to_dict())
+            for qi in range(len(selected_indices)):
+                row_dict = {str(col_names[ci]): _to_python_scalar(selected_values[qi, ci]) for ci in range(len(col_names))}
                 frame_local_idx = selected_indices[qi]
 
                 row_dict["sub_query_idx"] = int(qi)
