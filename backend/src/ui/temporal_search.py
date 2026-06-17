@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -19,13 +20,18 @@ class TemporalMatch:
     end_time: float
 
 
-def _load_embedding(path: str | Path) -> np.ndarray:
+def _resolve_embedding_path(path: str | Path) -> Path:
     path = Path(path)
 
     if not path.is_absolute():
         backend_dir = Path(__file__).resolve().parents[2]
         path = backend_dir / path
 
+    return path
+
+
+@lru_cache(maxsize=8192)
+def _load_embedding_cached(path: str) -> np.ndarray:
     emb = np.load(path)
 
     if emb.ndim == 2:
@@ -38,6 +44,10 @@ def _load_embedding(path: str | Path) -> np.ndarray:
         emb = emb / norm
 
     return emb
+
+
+def _load_embedding(path: str | Path) -> np.ndarray:
+    return _load_embedding_cached(str(_resolve_embedding_path(path)))
 
 
 def _to_python_scalar(value):
@@ -81,16 +91,25 @@ def _run_dp_on_window(S: np.ndarray) -> tuple[float, list[int]]:
     dp[0] = S[0]
 
     for qi in range(1, m):
+        prev = dp[qi - 1]
+        prefix_scores = np.empty(n, dtype=np.float32)
+        prefix_scores[0] = -np.inf
+
+        if n > 1:
+            np.maximum.accumulate(prev[:-1], out=prefix_scores[1:])
+
+        valid = np.isfinite(prefix_scores)
+        dp[qi, valid] = prefix_scores[valid] + S[qi, valid]
+
         best_prev_score = -np.inf
         best_prev_idx = -1
 
         for fj in range(n):
-            if fj > 0 and dp[qi - 1, fj - 1] > best_prev_score:
-                best_prev_score = dp[qi - 1, fj - 1]
+            if fj > 0 and prev[fj - 1] > best_prev_score:
+                best_prev_score = prev[fj - 1]
                 best_prev_idx = fj - 1
 
-            if best_prev_idx != -1:
-                dp[qi, fj] = best_prev_score + S[qi, fj]
+            if best_prev_idx != -1 and valid[fj]:
                 parent[qi, fj] = best_prev_idx
 
     last_idx = int(np.argmax(dp[m - 1]))
@@ -150,65 +169,11 @@ def _time_iou(
     return inter / union
 
 
-def _temporal_topk_dp(
-    S: np.ndarray,
-    timestamps: np.ndarray,
-    duration_limit: float = -1,
-    max_sequences: int = 3,
-    overlap_threshold: float = 0.6,
+def _select_non_overlapping_candidates(
+    candidates: list[tuple[float, list[int], float, float]],
+    max_sequences: int,
+    overlap_threshold: float,
 ) -> list[tuple[float, list[int]]]:
-    """
-    Sinh nhiều sequence candidate trong cùng một video.
-
-    Cách làm:
-    - Mỗi start timestamp tạo một window hợp lệ.
-    - Chạy DP trong window đó để lấy best sequence của window.
-    - Gom tất cả sequence.
-    - Sort theo score giảm dần.
-    - Temporal NMS để loại sequence overlap cao.
-    """
-
-    m, n = S.shape
-
-    if n < m:
-        return []
-
-    candidates: list[tuple[float, list[int], float, float]] = []
-
-    for start in range(n):
-        if duration_limit == -1:
-            end = n
-        else:
-            end = int(
-                np.searchsorted(
-                    timestamps,
-                    timestamps[start] + duration_limit,
-                    side="right",
-                )
-            )
-
-        if end - start < m:
-            continue
-
-        local_S = S[:, start:end]
-        local_score, local_path = _run_dp_on_window(local_S)
-
-        if not local_path or not np.isfinite(local_score):
-            continue
-
-        global_path = [start + idx for idx in local_path]
-        start_time = float(timestamps[global_path[0]])
-        end_time = float(timestamps[global_path[-1]])
-
-        candidates.append(
-            (
-                float(local_score),
-                global_path,
-                start_time,
-                end_time,
-            )
-        )
-
     if not candidates:
         return []
 
@@ -246,6 +211,154 @@ def _temporal_topk_dp(
     return [(score, path) for score, path, _, _ in selected]
 
 
+def _suffix_temporal_candidates(
+    S: np.ndarray,
+    timestamps: np.ndarray,
+) -> list[tuple[float, list[int], float, float]]:
+    m, n = S.shape
+
+    dp = np.full((m, n), -np.inf, dtype=np.float32)
+    parent = np.full((m, n), -1, dtype=np.int32)
+    dp[m - 1] = S[m - 1]
+
+    for qi in range(m - 2, -1, -1):
+        next_scores = dp[qi + 1]
+        suffix_scores = np.full(n, -np.inf, dtype=np.float32)
+        suffix_indices = np.full(n, -1, dtype=np.int32)
+
+        best_score = -np.inf
+        best_idx = -1
+
+        for fj in range(n - 1, -1, -1):
+            suffix_scores[fj] = best_score
+            suffix_indices[fj] = best_idx
+
+            if next_scores[fj] >= best_score:
+                best_score = float(next_scores[fj])
+                best_idx = fj
+
+        valid = np.isfinite(suffix_scores)
+        dp[qi, valid] = S[qi, valid] + suffix_scores[valid]
+        parent[qi, valid] = suffix_indices[valid]
+
+    suffix_best_scores = np.full(n, -np.inf, dtype=np.float32)
+    suffix_best_indices = np.full(n, -1, dtype=np.int32)
+
+    best_score = -np.inf
+    best_idx = -1
+
+    for start in range(n - 1, -1, -1):
+        if dp[0, start] >= best_score:
+            best_score = float(dp[0, start])
+            best_idx = start
+
+        suffix_best_scores[start] = best_score
+        suffix_best_indices[start] = best_idx
+
+    candidates: list[tuple[float, list[int], float, float]] = []
+
+    for start in range(n):
+        score = float(suffix_best_scores[start])
+        frame_idx = int(suffix_best_indices[start])
+
+        if frame_idx < 0 or not np.isfinite(score):
+            continue
+
+        path = [frame_idx]
+
+        for qi in range(m - 1):
+            frame_idx = int(parent[qi, frame_idx])
+
+            if frame_idx < 0:
+                path = []
+                break
+
+            path.append(frame_idx)
+
+        if not path:
+            continue
+
+        start_time = float(timestamps[path[0]])
+        end_time = float(timestamps[path[-1]])
+        candidates.append((score, path, start_time, end_time))
+
+    return candidates
+
+
+def _temporal_topk_dp(
+    S: np.ndarray,
+    timestamps: np.ndarray,
+    duration_limit: float = -1,
+    max_sequences: int = 3,
+    overlap_threshold: float = 0.6,
+) -> list[tuple[float, list[int]]]:
+    """
+    Sinh nhiều sequence candidate trong cùng một video.
+
+    Cách làm:
+    - Mỗi start timestamp tạo một window hợp lệ.
+    - Chạy DP trong window đó để lấy best sequence của window.
+    - Gom tất cả sequence.
+    - Sort theo score giảm dần.
+    - Temporal NMS để loại sequence overlap cao.
+    """
+
+    m, n = S.shape
+
+    if m == 0 or n < m:
+        return []
+
+    if duration_limit == -1:
+        candidates = _suffix_temporal_candidates(S=S, timestamps=timestamps)
+        return _select_non_overlapping_candidates(
+            candidates=candidates,
+            max_sequences=max_sequences,
+            overlap_threshold=overlap_threshold,
+        )
+
+    candidates: list[tuple[float, list[int], float, float]] = []
+
+    for start in range(n):
+        if duration_limit == -1:
+            end = n
+        else:
+            end = int(
+                np.searchsorted(
+                    timestamps,
+                    timestamps[start] + duration_limit,
+                    side="right",
+                )
+            )
+
+        if end - start < m:
+            continue
+
+        local_S = S[:, start:end]
+        local_score, local_path = _run_dp_on_window(local_S)
+
+        if not local_path or not np.isfinite(local_score):
+            continue
+
+        global_path = [start + idx for idx in local_path]
+        start_time = float(timestamps[global_path[0]])
+        end_time = float(timestamps[global_path[-1]])
+
+        candidates.append(
+            (
+                float(local_score),
+                global_path,
+                start_time,
+                end_time,
+            )
+        )
+
+    return _select_non_overlapping_candidates(
+        candidates=candidates,
+        max_sequences=max_sequences,
+        overlap_threshold=overlap_threshold,
+    )
+
+
 def temporal_search_from_candidates(
     query_embeddings: np.ndarray,
     sub_queries: list[str],
@@ -279,6 +392,8 @@ def temporal_search_from_candidates(
         )
 
     query_embeddings = query_embeddings.astype(np.float32)
+    embedding_paths = candidate_df["embedding_path"].dropna().astype(str).unique()
+    embedding_cache = {path: _load_embedding(path) for path in embedding_paths}
 
     results: list[TemporalMatch] = []
 
@@ -295,8 +410,8 @@ def temporal_search_from_candidates(
 
         frame_embeddings = np.stack(
             [
-                _load_embedding(path)
-                for path in video_df["embedding_path"].tolist()
+                embedding_cache[path]
+                for path in video_df["embedding_path"].astype(str).tolist()
             ]
         )
 
