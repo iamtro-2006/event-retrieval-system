@@ -142,13 +142,24 @@ retrieval_system = FaissRetrievalSystem(
     device=CFG["model"].get("device", "auto"),
     precision=CFG["model"].get("precision", "fp32"),
     normalize=bool(CFG["model"].get("normalize", True)),
+    ef_search=int(CFG.get("faiss", {}).get("ef_search", 64)),
+    faiss_threads=CFG.get("faiss", {}).get("threads"),
+    cache_index_vectors=bool(CFG.get("faiss", {}).get("cache_index_vectors", True)),
+    compile_model=bool(CFG.get("model", {}).get("compile", False)),
 )
 
-speech_model = WhisperModel(
-    "base",
-    device="cpu",
-    compute_type="int8",
-)
+speech_model = None
+
+def get_speech_model():
+    global speech_model
+    if speech_model is None:
+        speech_cfg = CFG.get("speech", {})
+        speech_model = WhisperModel(
+            speech_cfg.get("model_size", "base"),
+            device=speech_cfg.get("device", "cpu"),
+            compute_type=speech_cfg.get("compute_type", "int8"),
+        )
+    return speech_model
 
 class SearchRequest(BaseModel):
     query: str
@@ -555,37 +566,13 @@ def row_to_result(row: pd.Series) -> dict[str, Any]:
 
 
 def find_metadata_row(video_id: str, keyframe_id: int) -> pd.Series:
-    metadata_df = retrieval_system.metadata
-
-    if "video_id" not in metadata_df.columns:
-        raise HTTPException(status_code=500, detail="metadata missing video_id column")
-
-    if "keyframe_id_int" in metadata_df.columns:
-        frame_values = metadata_df["keyframe_id_int"].apply(lambda x: safe_int(x, -1))
-    elif "keyframe_id" in metadata_df.columns:
-        frame_values = metadata_df["keyframe_id"].apply(lambda x: safe_int(x, -1))
-    elif "frame_idx" in metadata_df.columns:
-        frame_values = metadata_df["frame_idx"].apply(lambda x: safe_int(x, -1))
-    else:
-        raise HTTPException(
-            status_code=500,
-            detail="metadata missing keyframe_id/keyframe_id_int/frame_idx column",
-        )
-
-    mask = (
-        (metadata_df["video_id"].astype(str) == str(video_id))
-        & (frame_values.astype(int) == int(keyframe_id))
-    )
-
-    matched = metadata_df[mask]
-
-    if matched.empty:
+    row_idx = retrieval_system._row_by_video_frame.get((str(video_id), int(keyframe_id)))
+    if row_idx is None:
         raise HTTPException(
             status_code=404,
             detail=f"Frame not found: {video_id}/{keyframe_id}",
         )
-
-    return matched.iloc[0]
+    return retrieval_system.metadata.iloc[int(row_idx)]
 
 
 DRES_HEADERS = {"ngrok-skip-browser-warning": "true"}
@@ -923,15 +910,15 @@ def search_api(payload: SearchRequest):
 
 @app.get("/api/surrounding-frames")
 def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 10):
-    metadata_df = retrieval_system.metadata.copy()
+    metadata_df = retrieval_system.metadata
 
     radius = max(1, min(int(radius), 50))
     target_keyframe_id = int(keyframe_id)
 
-    if "video_id" not in metadata_df.columns:
-        raise HTTPException(status_code=500, detail="metadata missing video_id column")
-
-    video_df = metadata_df[metadata_df["video_id"].astype(str) == str(video_id)].copy()
+    row_ids = retrieval_system._rows_by_video.get(str(video_id))
+    if row_ids is None or len(row_ids) == 0:
+        raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
+    video_df = metadata_df.iloc[row_ids].copy()
 
     if video_df.empty:
         raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
@@ -1043,7 +1030,7 @@ async def transcribe_speech(file: UploadFile = File(...)):
         tmp_path = tmp.name
 
     try:
-        segments, info = speech_model.transcribe(
+        segments, info = get_speech_model().transcribe(
             tmp_path,
             beam_size=1,
             language="vi",
