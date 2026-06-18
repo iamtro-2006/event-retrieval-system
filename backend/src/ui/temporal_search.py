@@ -487,10 +487,11 @@ def temporal_search_from_candidates(
 
     results: list[TemporalMatch] = []
 
-    for video_id, video_df in candidate_df.groupby("video_id"):
+    candidate_df = candidate_df.sort_values("timestamp_sec")
+
+    for video_id, video_df in candidate_df.groupby("video_id", sort=False):
         video_df = (
             video_df
-            .sort_values("timestamp_sec")
             .drop_duplicates(subset=["keyframe_id"], keep="first")
             .reset_index(drop=True)
         )

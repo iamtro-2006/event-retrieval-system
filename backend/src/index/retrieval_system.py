@@ -197,25 +197,32 @@ class FaissRetrievalSystem:
 
         scores, indices = self.index.search(query_embeddings, int(top_k))
 
+        meta_cols = self.metadata.columns.tolist()
+        meta_values = self.metadata.values
         result_dfs: list[pd.DataFrame] = []
 
         for query_idx, query in enumerate(queries):
+            idx_row = indices[query_idx]
+            valid_mask = idx_row >= 0
+            if not valid_mask.any():
+                continue
+
+            valid_positions = np.where(valid_mask)[0]
+            valid_indices = idx_row[valid_mask].astype(int)
+            valid_scores = scores[query_idx][valid_mask]
+
+            batch = meta_values[valid_indices]
             rows = []
-
-            for rank, idx in enumerate(indices[query_idx]):
-                if idx < 0:
-                    continue
-
-                item = self.metadata.iloc[int(idx)].to_dict()
-                item["rank"] = rank + 1
-                item["score"] = float(scores[query_idx][rank])
+            for i in range(len(valid_indices)):
+                item = {meta_cols[c]: batch[i, c] for c in range(len(meta_cols))}
+                item["rank"] = int(valid_positions[i]) + 1
+                item["score"] = float(valid_scores[i])
                 item["query"] = query
                 item["sub_query"] = query
                 item["sub_query_idx"] = query_idx
                 rows.append(item)
 
-            if rows:
-                result_dfs.append(pd.DataFrame(rows))
+            result_dfs.append(pd.DataFrame(rows))
 
         return result_dfs
 
