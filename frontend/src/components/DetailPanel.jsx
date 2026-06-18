@@ -266,6 +266,7 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
         open={videoOpen}
         result={activeResult}
         onClose={() => setVideoOpen(false)}
+        onSubmit={onSubmit}
       />
     </>
   );
