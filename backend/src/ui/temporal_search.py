@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from functools import lru_cache
@@ -7,6 +8,28 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from src.ui.embedding_memmap import EmbeddingMemmapStore
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Numba JIT – optional, falls back to pure-Python implementations
+# ---------------------------------------------------------------------------
+try:
+    from src.ui.temporal_dp_numba import (
+        has_near_tied_suffix_choices as _numba_has_near_tied,
+        run_dp_on_window as _numba_run_dp,
+        select_non_overlapping as _numba_select_nms,
+        suffix_temporal_candidates as _numba_suffix_candidates,
+        window_temporal_candidates as _numba_window_candidates,
+    )
+
+    _HAS_NUMBA = True
+    logger.info("Numba JIT kernels loaded for temporal search")
+except ImportError:
+    _HAS_NUMBA = False
+    logger.info("Numba not available – using pure-Python temporal DP")
 
 
 @dataclass
@@ -397,6 +420,19 @@ def _suffix_temporal_candidates(
     return candidates
 
 
+def _numba_candidates_to_list(
+    scores, paths_flat, path_offsets, start_times, end_times, path_len,
+) -> list[tuple[float, list[int], float, float]]:
+    """Unpack flat Numba output arrays into the Python list-of-tuples format."""
+    out: list[tuple[float, list[int], float, float]] = []
+    pl = int(path_len)
+    for i in range(len(scores)):
+        off = int(path_offsets[i])
+        path = [int(paths_flat[off + j]) for j in range(pl)]
+        out.append((float(scores[i]), path, float(start_times[i]), float(end_times[i])))
+    return out
+
+
 def _temporal_topk_dp(
     S: np.ndarray,
     timestamps: np.ndarray,
@@ -413,6 +449,8 @@ def _temporal_topk_dp(
     - Gom tất cả sequence.
     - Sort theo score giảm dần.
     - Temporal NMS để loại sequence overlap cao.
+
+    When Numba is available, delegates to JIT-compiled kernels for ~5-20× speedup.
     """
 
     m, n = S.shape
@@ -420,6 +458,38 @@ def _temporal_topk_dp(
     if m == 0 or n < m:
         return []
 
+    S_f32 = S.astype(np.float32, copy=False)
+    ts_f32 = timestamps.astype(np.float32, copy=False)
+
+    # ---- Numba fast path ----
+    if _HAS_NUMBA:
+        if duration_limit == -1:
+            if _numba_has_near_tied(S_f32):
+                raw = _numba_window_candidates(S_f32, ts_f32, -1.0)
+            else:
+                raw = _numba_suffix_candidates(S_f32, ts_f32)
+        else:
+            raw = _numba_window_candidates(S_f32, ts_f32, float(duration_limit))
+
+        scores, paths_flat, path_offsets, start_times, end_times, path_len = raw
+
+        if len(scores) == 0:
+            return []
+
+        sel_indices = _numba_select_nms(
+            scores, paths_flat, path_offsets, start_times, end_times,
+            int(path_len), max_sequences, overlap_threshold,
+        )
+
+        results: list[tuple[float, list[int]]] = []
+        pl = int(path_len)
+        for idx in sel_indices:
+            off = int(path_offsets[idx])
+            path = [int(paths_flat[off + j]) for j in range(pl)]
+            results.append((float(scores[idx]), path))
+        return results
+
+    # ---- Pure-Python fallback (original logic) ----
     if duration_limit == -1:
         if _has_near_tied_suffix_choices(S):
             candidates = _window_temporal_candidates(
@@ -449,6 +519,30 @@ def _temporal_topk_dp(
     )
 
 
+# ---------------------------------------------------------------------------
+# Module-level memmap store (set once at startup via set_memmap_store)
+# ---------------------------------------------------------------------------
+_memmap_store: EmbeddingMemmapStore | None = None
+
+
+def set_memmap_store(store: EmbeddingMemmapStore) -> None:
+    """Register a pre-built memmap store for O(1) embedding lookups."""
+    global _memmap_store
+    _memmap_store = store
+    logger.info("Memmap embedding store registered (%d embeddings)", len(store))
+
+
+def get_memmap_store() -> EmbeddingMemmapStore | None:
+    return _memmap_store
+
+
+def _load_embedding_fast(path: str) -> np.ndarray:
+    """Load from memmap if available, else fall back to file + LRU cache."""
+    if _memmap_store is not None and path in _memmap_store:
+        return _memmap_store[path]
+    return _load_embedding(path)
+
+
 def temporal_search_from_candidates(
     query_embeddings: np.ndarray,
     sub_queries: list[str],
@@ -457,6 +551,7 @@ def temporal_search_from_candidates(
     top_k_videos: int = 10,
     max_sequences_per_video: int = 3,
     overlap_threshold: float = 0.6,
+    memmap_store: EmbeddingMemmapStore | None = None,
 ) -> pd.DataFrame:
     """
     query_embeddings: [m_queries, d]
@@ -467,6 +562,8 @@ def temporal_search_from_candidates(
     Lưu ý:
     - top_k_videos hiện được hiểu là top_k sequence toàn cục.
     - Một video có thể xuất hiện nhiều lần nếu có nhiều sequence tốt.
+    - memmap_store: optional EmbeddingMemmapStore for O(1) lookups.
+      Falls back to module-level store or per-file loading.
     """
 
     required = {"video_id", "timestamp_sec", "embedding_path"}
@@ -482,8 +579,25 @@ def temporal_search_from_candidates(
         )
 
     query_embeddings = query_embeddings.astype(np.float32)
+
+    # Choose embedding loader: explicit arg > module store > file-based
+    store = memmap_store or _memmap_store
     embedding_paths = candidate_df["embedding_path"].dropna().astype(str).unique()
-    embedding_cache = {path: _load_embedding(path) for path in embedding_paths}
+
+    if store is not None:
+        # Batch load from memmap – single indexed read, no per-file I/O
+        paths_in_store = [p for p in embedding_paths if p in store]
+        paths_fallback = [p for p in embedding_paths if p not in store]
+
+        embedding_cache: dict[str, np.ndarray] = {}
+        if paths_in_store:
+            batch = store.get_batch(paths_in_store)
+            for i, p in enumerate(paths_in_store):
+                embedding_cache[p] = batch[i]
+        for p in paths_fallback:
+            embedding_cache[p] = _load_embedding(p)
+    else:
+        embedding_cache = {path: _load_embedding(path) for path in embedding_paths}
 
     results: list[TemporalMatch] = []
 
