@@ -9,6 +9,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import ToastHost from "./components/ToastHost";
 import SurroundingFramesModal from "./components/SurroundingFramesModal";
 import SimilarityFramesModal from "./components/SimilarityFramesModal";
+import VideoModal from "./components/VideoModal";
 import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
 import {
   checkBackendHealth,
@@ -65,6 +66,8 @@ export default function App() {
   const [surroundColumns, setSurroundColumns] = useState(5);
   const [similarModal, setSimilarModal] = useState(DEFAULT_SIMILAR_MODAL);
   const [similarColumns, setSimilarColumns] = useState(5);
+  const [modalOrder, setModalOrder] = useState([]);
+  const [videoResult, setVideoResult] = useState(null);
 
   // ── Settings ─────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -181,6 +184,8 @@ export default function App() {
     setGrouped(false);
     setSurroundModal(DEFAULT_SURROUND_MODAL);
     setSimilarModal(DEFAULT_SIMILAR_MODAL);
+    setModalOrder([]);
+    setVideoResult(null);
   }, [reset]);
 
   const handleSearch = useCallback(
@@ -229,6 +234,7 @@ export default function App() {
     async (result) => {
       if (!result) return;
 
+      setModalOrder((prev) => [...prev.filter((x) => x !== "surround"), "surround"]);
       setSurroundModal({ open: true, center: result, frames: [result], loading: true });
 
       try {
@@ -247,6 +253,7 @@ export default function App() {
     async (result) => {
       if (!result) return;
 
+      setModalOrder((prev) => [...prev.filter((x) => x !== "similar"), "similar"]);
       setSimilarModal({ open: true, source: result, frames: [], loading: true });
 
       try {
@@ -358,6 +365,24 @@ export default function App() {
     [dres.sessionId, pushToast, settings]
   );
 
+  const closeAllModals = useCallback(() => {
+    setSurroundModal(DEFAULT_SURROUND_MODAL);
+    setSimilarModal(DEFAULT_SIMILAR_MODAL);
+    setVideoResult(null);
+    setModalOrder([]);
+  }, []);
+
+  const handlePlayResult = useCallback((result) => {
+    if (!result) return;
+    setVideoResult(result);
+    setModalOrder((prev) => [...prev.filter((x) => x !== "video"), "video"]);
+  }, []);
+
+  function modalLayer(name) {
+    const index = modalOrder.indexOf(name);
+    return index < 0 ? 0 : index + 1;
+  }
+
   // ── Render ───────────────────────────────────────────
   return (
     <div className={theme === "dark" ? "theme-dark" : "theme-light"}>
@@ -413,6 +438,7 @@ export default function App() {
                         selectedId={selected?.id}
                         onSelect={setSelected}
                         onSubmit={handleSubmitResult}
+                        onPlay={handlePlayResult}
                         onSimilaritySearch={handleSimilaritySearch}
                         onSurroundingImages={handleOpenSurroundingImages}
                       />
@@ -423,6 +449,7 @@ export default function App() {
                         selectedId={selected?.id}
                         onSelect={setSelected}
                         onSubmit={handleSubmitResult}
+                        onPlay={handlePlayResult}
                         onSimilaritySearch={handleSimilaritySearch}
                         onSurroundingImages={handleOpenSurroundingImages}
                       />
@@ -452,6 +479,14 @@ export default function App() {
           {error && <p className="error-text">{error}</p>}
         </main>
 
+        <VideoModal
+          open={Boolean(videoResult)}
+          result={videoResult}
+          layer={modalLayer("video")}
+          onClose={closeAllModals}
+          onSubmit={handleSubmitResult}
+        />
+
         <SettingsPanel
           open={settingsOpen}
           settings={settings}
@@ -469,7 +504,8 @@ export default function App() {
           loading={surroundModal.loading}
           columns={surroundColumns}
           onColumnsChange={setSurroundColumns}
-          onClose={() => setSurroundModal(DEFAULT_SURROUND_MODAL)}
+          layer={modalLayer("surround")}
+          onClose={closeAllModals}
           onSelect={setSelected}
           onSubmit={handleSubmitResult}
           onSimilaritySearch={handleSimilaritySearch}
@@ -483,7 +519,8 @@ export default function App() {
           loading={similarModal.loading}
           columns={similarColumns}
           onColumnsChange={setSimilarColumns}
-          onClose={() => setSimilarModal(DEFAULT_SIMILAR_MODAL)}
+          layer={modalLayer("similar")}
+          onClose={closeAllModals}
           onSelect={setSelected}
           onSubmit={handleSubmitResult}
           onSimilaritySearch={handleSimilaritySearch}

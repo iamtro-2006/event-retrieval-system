@@ -3072,3 +3072,533 @@ img {
 }
 
 
+
+/* ===== Adaptive temporal sequence + modal stack ===== */
+.temporal-sequences-list { display: grid; gap: 18px; }
+.temporal-sequence-block { width: 100%; min-width: 0; }
+.temporal-sequence-header { display: grid; grid-template-columns: minmax(140px, auto) 1fr auto; align-items: center; gap: 12px; }
+.temporal-sequence-header > div:first-child { display: flex; align-items: center; gap: 9px; }
+.temporal-sequence-count { opacity: .62; font-size: .76rem; }
+.temporal-carousel-shell { position: relative; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 8px; min-width: 0; }
+.temporal-carousel-shell.is-fluid { grid-template-columns: minmax(0,1fr); }
+.temporal-frame-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - (var(--event-count) - 1) * 12px) / var(--event-count)); grid-template-columns: none !important; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; min-width: 0; padding: 4px 2px 10px; }
+.temporal-carousel-shell.is-fluid .temporal-frame-row { grid-auto-columns: minmax(0, 1fr); grid-template-columns: repeat(var(--event-count), minmax(0, 1fr)) !important; overflow: visible; }
+.temporal-frame-card { min-width: 0 !important; width: auto !important; scroll-snap-align: start; }
+.temporal-carousel-nav { width: 36px; height: 58px; border-radius: 14px; display: grid; place-items: center; z-index: 2; }
+.temporal-carousel-nav:disabled { opacity: .25; cursor: default; }
+.temporal-carousel-status { text-align: center; font-size: .75rem; opacity: .62; padding-top: 2px; }
+
+.surround-modal-backdrop, .video-modal-backdrop { isolation: isolate; }
+.video-modal { width: min(1050px, calc(100vw - 34px)); }
+.video-submit-controls { display: grid; gap: 12px; padding: 14px 18px 18px; border-top: 1px solid rgba(255,255,255,.1); }
+.video-seek-row { display: grid; grid-template-columns: auto minmax(160px,1fr) auto; align-items: center; gap: 10px; }
+.video-seek-row button, .video-submit-row button, .video-submit-row select, .video-submit-row input { min-height: 38px; border-radius: 10px; }
+.video-seek-row button { display: inline-flex; align-items: center; gap: 4px; padding: 0 12px; }
+.video-seek-row input[type="range"] { width: 100%; }
+.video-submit-row { display: grid; grid-template-columns: minmax(130px, .55fr) minmax(160px, .7fr) minmax(220px, 1fr); gap: 12px; align-items: end; }
+.video-submit-row label { display: grid; gap: 6px; font-size: .78rem; opacity: .9; }
+.video-submit-row select, .video-submit-row input { width: 100%; padding: 0 10px; }
+.video-submit-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; font-weight: 700; }
+
+@media (max-width: 760px) {
+  .temporal-sequence-header { grid-template-columns: 1fr auto; }
+  .temporal-sequence-meta { grid-column: 1 / -1; }
+  .temporal-carousel-shell.is-fluid .temporal-frame-row { grid-template-columns: none !important; grid-auto-columns: minmax(260px, 85vw); overflow-x: auto; }
+  .video-seek-row { grid-template-columns: 1fr 1fr; }
+  .video-seek-row input { grid-column: 1 / -1; grid-row: 1; }
+  .video-submit-row { grid-template-columns: 1fr; }
+}
+
+
+/* =========================================================
+   TEMPORAL TYPOGRAPHY — adaptive to sequence tile width
+   ========================================================= */
+.temporal-sequence-block {
+  container-type: inline-size;
+  container-name: temporal-sequence;
+}
+
+.temporal-sequence-header {
+  min-width: 0;
+}
+
+.temporal-sequence-header > div:first-child,
+.temporal-sequence-actions,
+.temporal-frame-footer {
+  min-width: 0;
+}
+
+.temporal-sequence-header strong {
+  font-size: clamp(10px, 0.85vw, 12px);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.temporal-sequence-count,
+.temporal-sequence-meta {
+  font-size: clamp(8px, 0.72vw, 10.5px) !important;
+  line-height: 1.15;
+}
+
+.temporal-frame-footer {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.temporal-frame-footer strong,
+.temporal-frame-footer span {
+  font-size: clamp(8px, 0.68vw, 10.5px) !important;
+}
+
+.temporal-frame-query {
+  display: -webkit-box !important;
+  min-height: 30px;
+  max-height: 3.1em;
+  padding: 6px 8px !important;
+  overflow: hidden;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: clamp(8.5px, 0.72vw, 10.5px) !important;
+  line-height: 1.3 !important;
+}
+
+.temporal-frame-actions-row button {
+  gap: 3px !important;
+  font-size: clamp(8px, 0.66vw, 10.5px) !important;
+}
+
+.temporal-query-badge,
+.temporal-score-badge {
+  font-size: clamp(8px, 0.62vw, 10px) !important;
+}
+
+@container temporal-sequence (max-width: 520px) {
+  .temporal-sequence-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 6px !important;
+    padding-inline: 8px !important;
+  }
+
+  .temporal-sequence-meta {
+    display: none !important;
+  }
+
+  .temporal-sequence-actions {
+    gap: 4px !important;
+  }
+
+  .temporal-pill-btn {
+    width: 27px !important;
+    height: 25px !important;
+    padding: 0 !important;
+  }
+
+  .temporal-pill-btn span {
+    display: none !important;
+  }
+
+  .temporal-frame-actions-row {
+    gap: 4px !important;
+    padding: 5px !important;
+  }
+
+  .temporal-frame-actions-row button {
+    height: 24px !important;
+    padding-inline: 4px !important;
+  }
+}
+
+@container temporal-sequence (max-width: 390px) {
+  .temporal-sequence-count {
+    display: none !important;
+  }
+
+  .temporal-frame-actions-row button span {
+    display: none !important;
+  }
+
+  .temporal-frame-actions-row button {
+    padding: 0 !important;
+  }
+
+  .temporal-frame-footer {
+    grid-template-columns: 1fr;
+    gap: 2px !important;
+  }
+
+  .temporal-frame-footer span {
+    justify-self: start;
+  }
+
+  .temporal-frame-query {
+    min-height: 28px;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@container temporal-sequence (max-width: 310px) {
+  .temporal-sequence-header strong {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .temporal-frame-row {
+    gap: 5px !important;
+    padding: 6px !important;
+  }
+
+  .temporal-frame-query {
+    font-size: 8px !important;
+    padding: 5px 6px !important;
+  }
+}
+
+
+/* =========================================================
+   TEMPORAL CAROUSEL FIX
+   Earlier temporal rules use !important, so carousel rules
+   must explicitly override them at a higher specificity.
+   ========================================================= */
+.temporal-carousel-shell.is-carousel {
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) 36px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.temporal-carousel-shell.is-carousel .temporal-frame-row {
+  display: grid !important;
+  grid-template-columns: none !important;
+  grid-auto-flow: column !important;
+  grid-auto-columns: calc((100% - ((var(--event-count) - 1) * 12px)) / var(--event-count)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-behavior: smooth !important;
+  scroll-snap-type: x mandatory !important;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: 8px 2px 10px !important;
+  touch-action: pan-x;
+}
+
+.temporal-carousel-shell.is-carousel .temporal-frame-row::-webkit-scrollbar {
+  display: none;
+}
+
+.temporal-carousel-shell.is-carousel .temporal-frame-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  scroll-snap-align: start !important;
+  scroll-snap-stop: always;
+}
+
+.temporal-carousel-shell.is-carousel .temporal-carousel-nav {
+  position: relative !important;
+  z-index: 5 !important;
+  width: 36px !important;
+  height: 58px !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 14px !important;
+  pointer-events: auto !important;
+}
+
+@container temporal-sequence (max-width: 390px) {
+  .temporal-carousel-shell.is-carousel {
+    grid-template-columns: 28px minmax(0, 1fr) 28px !important;
+    gap: 4px !important;
+  }
+
+  .temporal-carousel-shell.is-carousel .temporal-frame-row {
+    grid-auto-columns: calc((100% - 6px) / 2) !important;
+    gap: 6px !important;
+  }
+
+  .temporal-carousel-shell.is-carousel .temporal-carousel-nav {
+    width: 28px !important;
+    height: 52px !important;
+  }
+}
+
+/* =========================================================
+   GROUP VIEW — VERTICAL VIDEO RAIL (merged with carousel fix)
+   Keeps the video id aligned along the full frame strip.
+   ========================================================= */
+.video-strip-group {
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: rgba(15, 23, 42, 0.4) !important;
+  animation: fade-up var(--t-slow) var(--ease-out) both;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.theme-light .video-strip-group {
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+.video-strip-label {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: stretch !important;
+  min-width: 52px !important;
+  min-height: 100% !important;
+  padding: 10px 6px !important;
+  border-right: 1px solid rgba(139, 92, 246, 0.34) !important;
+  border-bottom: 0 !important;
+  color: #f5f3ff !important;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(216, 180, 254, 0.28), transparent 40%),
+    linear-gradient(180deg, #6d28d9 0%, #4c1d95 46%, #1e1b4b 100%) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,0.07),
+    inset 0 0 30px rgba(76, 29, 149, 0.36),
+    4px 0 18px rgba(76, 29, 149, 0.18);
+  overflow: hidden;
+}
+
+.video-strip-label::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.09), transparent 32%, rgba(0,0,0,0.12));
+  pointer-events: none;
+}
+
+.video-strip-label::after {
+  content: "";
+  position: absolute;
+  inset: 8px 7px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.008));
+  pointer-events: none;
+}
+
+.video-strip-label span {
+  position: relative !important;
+  z-index: 1;
+  writing-mode: vertical-rl !important;
+  text-orientation: mixed !important;
+  transform: rotate(180deg) !important;
+  max-height: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.11em !important;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 0.72vw, 11px) !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  color: #faf5ff !important;
+  text-shadow: 0 1px 10px rgba(15, 23, 42, 0.55);
+}
+
+.video-strip-main {
+  min-width: 0 !important;
+  padding: 10px !important;
+}
+
+.theme-light .video-strip-label {
+  border-right-color: rgba(124, 58, 237, 0.22) !important;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255,255,255,0.9), transparent 42%),
+    linear-gradient(180deg, #ede9fe 0%, #ddd6fe 48%, #c7d2fe 100%) !important;
+  box-shadow: inset -1px 0 0 rgba(76,29,149,0.08), 4px 0 14px rgba(76,29,149,0.08);
+}
+
+.theme-light .video-strip-label span {
+  color: #5b21b6 !important;
+  text-shadow: none;
+}
+
+@media (max-width: 900px) {
+  .video-strip-group {
+    grid-template-columns: 1fr !important;
+  }
+
+  .video-strip-label {
+    min-width: 0 !important;
+    min-height: 38px !important;
+    padding: 9px 14px !important;
+    justify-content: flex-start !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.28) !important;
+    background: linear-gradient(90deg, #6d28d9 0%, #4c1d95 48%, #1e1b4b 100%) !important;
+  }
+
+  .video-strip-label::after {
+    inset: 6px 8px;
+  }
+
+  .video-strip-label span {
+    writing-mode: horizontal-tb !important;
+    transform: none !important;
+    max-height: none;
+    letter-spacing: 0.07em !important;
+  }
+}
+
+/* =========================================================
+   VIDEO MODAL CONTROL POLISH
+   - Green primary submit action
+   - Clear bordered sections for seek, step and exact time
+   ========================================================= */
+.video-modal {
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.025) inset !important;
+}
+
+.video-player {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: #050607;
+}
+
+.video-submit-controls {
+  gap: 12px !important;
+  padding: 14px 16px 16px !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.34), rgba(2, 6, 23, 0.16));
+}
+
+.video-seek-row {
+  padding: 10px !important;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.video-seek-row button {
+  min-height: 38px !important;
+  border: 1px solid rgba(96, 165, 250, 0.34) !important;
+  background: rgba(30, 64, 175, 0.12) !important;
+  color: #dbeafe !important;
+  font-weight: 750;
+  transition:
+    transform 160ms var(--spring),
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.video-seek-row button:hover {
+  border-color: rgba(96, 165, 250, 0.7) !important;
+  background: rgba(37, 99, 235, 0.24) !important;
+  transform: translateY(-1px);
+}
+
+.video-seek-row button:active {
+  transform: scale(0.96);
+}
+
+.video-seek-row input[type="range"] {
+  accent-color: #3b82f6;
+}
+
+.video-submit-row {
+  align-items: stretch !important;
+}
+
+.video-submit-row label {
+  min-width: 0;
+  padding: 9px 10px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.38);
+  color: var(--text-secondary);
+  font-weight: 700;
+  opacity: 1 !important;
+}
+
+.video-submit-row select,
+.video-submit-row input[type="number"] {
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  border-radius: 9px !important;
+  background: rgba(2, 6, 23, 0.58) !important;
+  color: var(--text-primary) !important;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.video-submit-row select:hover,
+.video-submit-row input[type="number"]:hover {
+  border-color: rgba(96, 165, 250, 0.46) !important;
+}
+
+.video-submit-row select:focus,
+.video-submit-row input[type="number"]:focus {
+  border-color: rgba(59, 130, 246, 0.9) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+}
+
+.video-submit-button {
+  min-height: 58px !important;
+  align-self: stretch;
+  border: 1px solid rgba(52, 211, 153, 0.72) !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #059669 0%, #10b981 52%, #34d399 100%) !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.01em;
+  box-shadow:
+    0 10px 24px rgba(5, 150, 105, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  transition:
+    transform 180ms var(--spring),
+    filter 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.video-submit-button:hover {
+  filter: brightness(1.08) saturate(1.08);
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 30px rgba(16, 185, 129, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+.video-submit-button:active {
+  transform: scale(0.985);
+}
+
+.theme-light .video-submit-controls,
+.theme-light .video-seek-row,
+.theme-light .video-submit-row label {
+  background: rgba(248, 250, 252, 0.88);
+}
+
+.theme-light .video-submit-row select,
+.theme-light .video-submit-row input[type="number"] {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+@media (max-width: 760px) {
+  .video-submit-button {
+    min-height: 48px !important;
+  }
+}

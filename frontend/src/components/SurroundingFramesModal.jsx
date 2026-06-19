@@ -14,6 +14,7 @@ export default function SurroundingFramesModal({
   onSubmit,
   onSimilaritySearch,
   onSurroundingImages,
+  layer = 1,
 }) {
   const centerRef = useRef(null);
 
@@ -32,7 +33,7 @@ export default function SurroundingFramesModal({
   if (!open || !centerResult) return null;
 
   return (
-    <div className="surround-modal-backdrop" onClick={onClose}>
+    <div className="surround-modal-backdrop" style={{ zIndex: 3000 + layer }} onClick={onClose}>
       <div className="surround-modal" onClick={(e) => e.stopPropagation()}>
         <div className="surround-modal-header">
           <div>
