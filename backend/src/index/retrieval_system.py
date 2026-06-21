@@ -66,7 +66,14 @@ class QueryPlan:
 
 
 class FaissRetrievalSystem:
-    """Thread-safe, low-allocation retrieval engine preserving the existing API contract."""
+    """Thread-safe retrieval engine preserving the existing API contract.
+
+    Vector access modes:
+    - ram + float32/float16: reconstruct FAISS vectors once at startup.
+    - memmap + float32/float16: map one contiguous .npy file and read only touched pages.
+    - none: no temporal vector cache; temporal search will fail unless allow_npy_fallback
+      is explicitly enabled in temporal_search_from_candidates.
+    """
 
     def __init__(
         self,
@@ -79,12 +86,21 @@ class FaissRetrievalSystem:
         normalize: bool = True,
         ef_search: int = 64,
         faiss_threads: int | None = None,
-        cache_index_vectors: bool = True,
+        cache_index_vectors: bool | None = None,
+        vector_cache_mode: str | None = None,
+        vector_cache_dtype: str = "float32",
+        vector_cache_path: str | Path | None = None,
+        allow_npy_fallback: bool = False,
         compile_model: bool = False,
     ) -> None:
         if faiss_threads is None:
             faiss_threads = max(1, min(os.cpu_count() or 1, 12))
         faiss.omp_set_num_threads(int(faiss_threads))
+
+        self.index_path = Path(index_path)
+        self.metadata_path = Path(metadata_path)
+        self.vector_cache_path = Path(vector_cache_path) if vector_cache_path else None
+        self.allow_npy_fallback = bool(allow_npy_fallback)
 
         self.index = faiss.read_index(str(index_path))
         self._set_ef_search(int(ef_search))
@@ -124,10 +140,38 @@ class FaissRetrievalSystem:
         if compile_model and hasattr(torch, "compile"):
             try:
                 self.model = torch.compile(self.model, mode="reduce-overhead", fullgraph=False)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[MODEL] torch.compile skipped: {type(exc).__name__}: {exc}")
 
-        self._vector_cache = self._reconstruct_index_vectors() if cache_index_vectors else None
+        # Backward compatibility with old config.
+        if vector_cache_mode is None:
+            vector_cache_mode = "ram" if bool(cache_index_vectors) else "none"
+
+        self.vector_cache_mode = str(vector_cache_mode or "none").strip().lower()
+        self.vector_cache_dtype = self._normalize_cache_dtype(vector_cache_dtype)
+        self._vector_cache: np.ndarray | np.memmap | None = self._init_vector_cache()
+
+    @staticmethod
+    def _normalize_cache_dtype(dtype_name: str) -> str:
+        dtype_name = str(dtype_name or "float32").strip().lower()
+        if dtype_name in {"fp32", "float32", "f32"}:
+            return "float32"
+        if dtype_name in {"fp16", "float16", "f16", "half"}:
+            return "float16"
+        raise ValueError(f"Unsupported vector_cache_dtype: {dtype_name}")
+
+    @property
+    def cache_info(self) -> dict:
+        cache = self._vector_cache
+        return {
+            "mode": self.vector_cache_mode,
+            "dtype": self.vector_cache_dtype,
+            "path": str(self.vector_cache_path) if self.vector_cache_path else "",
+            "available": cache is not None,
+            "shape": tuple(cache.shape) if cache is not None else None,
+            "memory_mb": round(float(cache.nbytes) / (1024 ** 2), 2) if cache is not None else 0.0,
+            "allow_npy_fallback": self.allow_npy_fallback,
+        }
 
     def _set_ef_search(self, ef_search: int) -> None:
         target = self.index
@@ -152,18 +196,83 @@ class FaissRetrievalSystem:
         groups = self.metadata.groupby(self.metadata["video_id"].astype(str), sort=False).indices
         self._rows_by_video = {str(video): np.asarray(rows, dtype=np.int64) for video, rows in groups.items()}
 
-    def _reconstruct_index_vectors(self) -> np.ndarray | None:
+    def _init_vector_cache(self) -> np.ndarray | np.memmap | None:
+        mode = self.vector_cache_mode
+        if mode in {"none", "false", "off", "disable", "disabled"}:
+            print("[VECTOR CACHE] mode=none | temporal search will require fallback or fail fast")
+            return None
+
+        if mode in {"ram", "memory", "reconstruct", "ram_fp32", "ram_fp16"}:
+            if mode.endswith("fp16"):
+                self.vector_cache_dtype = "float16"
+            elif mode.endswith("fp32"):
+                self.vector_cache_dtype = "float32"
+            cache = self._reconstruct_index_vectors(dtype_name=self.vector_cache_dtype)
+            if cache is not None:
+                print(
+                    "[VECTOR CACHE] mode=ram | "
+                    f"dtype={cache.dtype} | shape={cache.shape} | "
+                    f"memory={cache.nbytes / (1024 ** 2):.2f} MB"
+                )
+            return cache
+
+        if mode in {"memmap", "mmap", "memmap_fp32", "memmap_fp16"}:
+            if mode.endswith("fp16"):
+                self.vector_cache_dtype = "float16"
+            elif mode.endswith("fp32"):
+                self.vector_cache_dtype = "float32"
+            return self._load_vector_memmap()
+
+        raise ValueError(f"Unsupported vector_cache_mode: {self.vector_cache_mode}")
+
+    def _reconstruct_index_vectors(self, dtype_name: str = "float32") -> np.ndarray | None:
         try:
             vectors = np.empty((self.index.ntotal, self.index.d), dtype=np.float32)
             self.index.reconstruct_n(0, self.index.ntotal, vectors)
             if self.normalize:
                 faiss.normalize_L2(vectors)
+            if dtype_name == "float16":
+                vectors = vectors.astype(np.float16, copy=False)
             return np.ascontiguousarray(vectors)
-        except Exception:
+        except Exception as exc:
+            print(f"[VECTOR CACHE] FAISS reconstruct failed: {type(exc).__name__}: {exc}")
             return None
 
+    def _load_vector_memmap(self) -> np.memmap | None:
+        if self.vector_cache_path is None:
+            print("[VECTOR CACHE] memmap requested but vector_cache_path is empty")
+            return None
+        if not self.vector_cache_path.exists():
+            print(
+                "[VECTOR CACHE] memmap file not found: "
+                f"{self.vector_cache_path}. Run src/pipelines/build_vector_cache.py first."
+            )
+            return None
+
+        cache = np.load(str(self.vector_cache_path), mmap_mode="r")
+        expected_shape = (self.index.ntotal, self.index.d)
+        if tuple(cache.shape) != expected_shape:
+            raise ValueError(
+                f"Vector memmap shape mismatch: path={self.vector_cache_path}, "
+                f"shape={cache.shape}, expected={expected_shape}"
+            )
+
+        expected_dtype = np.float16 if self.vector_cache_dtype == "float16" else np.float32
+        if cache.dtype != expected_dtype:
+            print(
+                "[VECTOR CACHE] warning: config dtype does not match file dtype | "
+                f"config={expected_dtype}, file={cache.dtype}"
+            )
+
+        print(
+            "[VECTOR CACHE] mode=memmap | "
+            f"dtype={cache.dtype} | shape={cache.shape} | "
+            f"path={self.vector_cache_path} | file_size={cache.nbytes / (1024 ** 2):.2f} MB"
+        )
+        return cache
+
     @property
-    def index_vectors(self) -> np.ndarray | None:
+    def index_vectors(self) -> np.ndarray | np.memmap | None:
         return self._vector_cache
 
     def build_query_plan(self, query: str, mode: SearchMode = "semantic", use_split: bool = True) -> QueryPlan:
@@ -353,6 +462,7 @@ class FaissRetrievalSystem:
         )
         if candidate_df.empty:
             return pd.DataFrame()
+
         return temporal_search_from_candidates(
             query_embeddings=event_embeddings,
             sub_queries=event_queries,
@@ -362,6 +472,7 @@ class FaissRetrievalSystem:
             max_sequences_per_video=3,
             overlap_threshold=0.6,
             embedding_matrix=self._vector_cache,
+            allow_npy_fallback=self.allow_npy_fallback,
         )
 
     def run_search(

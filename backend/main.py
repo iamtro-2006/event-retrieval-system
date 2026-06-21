@@ -23,6 +23,14 @@ from fastapi import UploadFile, File
 from tempfile import NamedTemporaryFile
 from faster_whisper import WhisperModel
 
+import os 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+if HF_TOKEN:
+    print("[ENV] HF_TOKEN loaded")
 
 BACKEND_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BACKEND_DIR / "configs" / "app.yaml"
@@ -53,6 +61,12 @@ CFG = load_yaml(CONFIG_PATH)
 
 FAISS_INDEX_PATH = resolve_backend_path(CFG["faiss"]["index_path"])
 METADATA_PATH = resolve_backend_path(CFG["faiss"]["metadata_path"])
+VECTOR_CACHE_PATH = resolve_backend_path(
+    CFG.get("faiss", {}).get(
+        "vector_cache_path",
+        "data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp16.npy",
+    )
+)
 
 KEYFRAMES_ROOT = resolve_backend_path(CFG["paths"]["keyframes_root"])
 VIDEOS_ROOT = resolve_backend_path(CFG["paths"]["videos_root"])
@@ -144,7 +158,11 @@ retrieval_system = FaissRetrievalSystem(
     normalize=bool(CFG["model"].get("normalize", True)),
     ef_search=int(CFG.get("faiss", {}).get("ef_search", 64)),
     faiss_threads=CFG.get("faiss", {}).get("threads"),
-    cache_index_vectors=bool(CFG.get("faiss", {}).get("cache_index_vectors", True)),
+    cache_index_vectors=CFG.get("faiss", {}).get("cache_index_vectors", None),
+    vector_cache_mode=CFG.get("faiss", {}).get("vector_cache_mode", None),
+    vector_cache_dtype=CFG.get("faiss", {}).get("vector_cache_dtype", "float32"),
+    vector_cache_path=str(VECTOR_CACHE_PATH),
+    allow_npy_fallback=bool(CFG.get("faiss", {}).get("allow_npy_fallback", False)),
     compile_model=bool(CFG.get("model", {}).get("compile", False)),
 )
 
@@ -660,6 +678,9 @@ def health():
         "config_path": str(CONFIG_PATH),
         "faiss_index_path": str(FAISS_INDEX_PATH),
         "metadata_path": str(METADATA_PATH),
+        "vector_cache_path": str(VECTOR_CACHE_PATH),
+        "vector_cache_exists": VECTOR_CACHE_PATH.exists(),
+        "vector_cache": retrieval_system.cache_info,
         "keyframes_root": str(KEYFRAMES_ROOT),
         "videos_root": str(VIDEOS_ROOT),
         "map_keyframe_path": str(MAP_KEYFRAME_ROOT),
@@ -698,6 +719,15 @@ def get_public_config():
             "device": CFG["model"].get("device", "auto"),
             "precision": CFG["model"].get("precision", "fp32"),
             "normalize": bool(CFG["model"].get("normalize", True)),
+        },
+        "faiss": {
+            "ef_search": int(CFG.get("faiss", {}).get("ef_search", 64)),
+            "threads": CFG.get("faiss", {}).get("threads"),
+            "vector_cache_mode": CFG.get("faiss", {}).get("vector_cache_mode", None),
+            "vector_cache_dtype": CFG.get("faiss", {}).get("vector_cache_dtype", "float32"),
+            "vector_cache_path": str(VECTOR_CACHE_PATH),
+            "vector_cache_available": retrieval_system.cache_info.get("available", False),
+            "allow_npy_fallback": bool(CFG.get("faiss", {}).get("allow_npy_fallback", False)),
         },
     }
 

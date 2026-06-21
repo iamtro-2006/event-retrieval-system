@@ -48,30 +48,39 @@ def _run_dp_on_window(S: np.ndarray) -> tuple[float, list[int]]:
     m, n = S.shape
     if m == 0 or n < m:
         return -np.inf, []
+
     dp_prev = S[0].astype(np.float32, copy=True)
     parents = np.full((m, n), -1, dtype=np.int32)
+
     for qi in range(1, m):
+        prefix_values = np.maximum.accumulate(dp_prev)
         prefix_idx = np.maximum.accumulate(
-            np.where(dp_prev == np.maximum.accumulate(dp_prev), np.arange(n), -1)
+            np.where(dp_prev == prefix_values, np.arange(n), -1)
         )
+
         prev_idx = np.empty(n, dtype=np.int32)
         prev_idx[0] = -1
         prev_idx[1:] = prefix_idx[:-1]
+
         valid = prev_idx >= 0
         dp_cur = np.full(n, -np.inf, dtype=np.float32)
         dp_cur[valid] = dp_prev[prev_idx[valid]] + S[qi, valid]
+
         parents[qi] = prev_idx
         dp_prev = dp_cur
+
     last = int(np.argmax(dp_prev))
     score = float(dp_prev[last])
     if not np.isfinite(score):
         return -np.inf, []
+
     path = [last]
     for qi in range(m - 1, 0, -1):
         last = int(parents[qi, last])
         if last < 0:
             return -np.inf, []
         path.append(last)
+
     return score, path[::-1]
 
 
@@ -95,42 +104,71 @@ def _temporal_topk_dp(
     m, n = S.shape
     if n < m:
         return []
+
     # Unlimited duration only needs one global DP. Additional sequences are generated
     # by masking selected frames, avoiding n repeated full-window DP calls.
     if duration_limit < 0:
         work = S.copy()
         candidates = []
+
         for _ in range(max_sequences * 4):
             score, path = _run_dp_on_window(work)
             if not path:
                 break
-            candidates.append((score, path, float(timestamps[path[0]]), float(timestamps[path[-1]])))
+
+            candidates.append(
+                (
+                    score,
+                    path,
+                    float(timestamps[path[0]]),
+                    float(timestamps[path[-1]]),
+                )
+            )
+
             for qi, frame_idx in enumerate(path):
                 work[qi, frame_idx] = -np.inf
+
     else:
         candidates = []
         ends = np.searchsorted(timestamps, timestamps + duration_limit, side="right")
+
         # Run only windows capable of changing the feasible right boundary.
         last_end = -1
         for start, end in enumerate(ends):
             end = int(end)
             if end - start < m or end == last_end:
                 continue
+
             last_end = end
             score, local = _run_dp_on_window(S[:, start:end])
             if local:
                 path = [start + i for i in local]
-                candidates.append((score, path, float(timestamps[path[0]]), float(timestamps[path[-1]])))
+                candidates.append(
+                    (
+                        score,
+                        path,
+                        float(timestamps[path[0]]),
+                        float(timestamps[path[-1]]),
+                    )
+                )
+
     candidates.sort(key=lambda x: x[0], reverse=True)
+
     selected = []
     for candidate in candidates:
         score, path, start, end = candidate
-        if any(_overlap(path, p) >= overlap_threshold or _time_iou(start, end, s, e) >= overlap_threshold
-               for _, p, s, e in selected):
+
+        if any(
+            _overlap(path, p) >= overlap_threshold
+            or _time_iou(start, end, s, e) >= overlap_threshold
+            for _, p, s, e in selected
+        ):
             continue
+
         selected.append(candidate)
         if len(selected) >= max_sequences:
             break
+
     return [(score, path) for score, path, _, _ in selected]
 
 
@@ -142,58 +180,118 @@ def temporal_search_from_candidates(
     top_k_videos: int = 10,
     max_sequences_per_video: int = 3,
     overlap_threshold: float = 0.6,
-    embedding_matrix: np.ndarray | None = None,
+    embedding_matrix: np.ndarray | np.memmap | None = None,
+    allow_npy_fallback: bool = False,
 ) -> pd.DataFrame:
     required = {"video_id", "timestamp_sec"}
     missing = required - set(candidate_df.columns)
     if missing:
         raise ValueError(f"Missing columns for temporal search: {missing}")
+
     if len(sub_queries) != len(query_embeddings):
         raise ValueError("sub_queries/query_embeddings length mismatch")
 
     query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
     results: list[TemporalMatch] = []
+
     # groupby(sort=False) avoids sorting group keys; stable mergesort preserves chronology.
     for video_id, raw in candidate_df.groupby("video_id", sort=False):
-        sort_cols = ["timestamp_sec"]
-        video_df = raw.sort_values(sort_cols, kind="mergesort")
+        video_df = raw.sort_values(["timestamp_sec"], kind="mergesort")
+
         dedupe_col = "_faiss_id" if "_faiss_id" in video_df else "keyframe_id"
         video_df = video_df.drop_duplicates(dedupe_col, keep="first").reset_index(drop=True)
+
         if len(video_df) < len(query_embeddings):
             continue
 
         if embedding_matrix is not None and "_faiss_id" in video_df:
             ids = video_df["_faiss_id"].to_numpy(dtype=np.int64, copy=False)
-            frame_embeddings = embedding_matrix[ids]
-        elif "embedding_path" in video_df:
-            frame_embeddings = np.stack([_load_embedding(p) for p in video_df["embedding_path"]])
+
+            if np.any(ids < 0) or np.any(ids >= len(embedding_matrix)):
+                raise IndexError(
+                    f"Invalid FAISS ID in temporal candidates for video_id={video_id}"
+                )
+
+            # For ram_fp16/memmap_fp16 this copies only the candidate batch to float32.
+            frame_embeddings = np.asarray(embedding_matrix[ids], dtype=np.float32)
+
+        elif allow_npy_fallback and "embedding_path" in video_df:
+            frame_embeddings = np.stack(
+                [_load_embedding(p) for p in video_df["embedding_path"]]
+            )
+
         else:
-            raise ValueError("No cached vectors and no embedding_path available")
+            raise RuntimeError(
+                "Temporal search needs vector cache by _faiss_id. "
+                "Set faiss.vector_cache_mode to 'memmap' or 'ram', build vectors_fp16.npy, "
+                "or explicitly set faiss.allow_npy_fallback=true for slow debug mode."
+            )
 
         S = (query_embeddings @ frame_embeddings.T).astype(np.float32, copy=False)
-        timestamps = pd.to_numeric(video_df["timestamp_sec"], errors="coerce").fillna(0).to_numpy(np.float32)
-        matches = _temporal_topk_dp(S, timestamps, duration_limit, max_sequences_per_video, overlap_threshold)
+
+        timestamps = (
+            pd.to_numeric(video_df["timestamp_sec"], errors="coerce")
+            .fillna(0)
+            .to_numpy(np.float32)
+        )
+
+        matches = _temporal_topk_dp(
+            S,
+            timestamps,
+            duration_limit,
+            max_sequences_per_video,
+            overlap_threshold,
+        )
         if not matches:
             continue
+
         records = video_df.to_dict(orient="records")
+
         for score, path in matches:
             selected = []
             for qi, frame_local_idx in enumerate(path):
                 row = _clean_row(dict(records[frame_local_idx]))
-                row.update(sub_query_idx=qi, sub_query=str(sub_queries[qi]), score=float(S[qi, frame_local_idx]))
+                row.update(
+                    sub_query_idx=qi,
+                    sub_query=str(sub_queries[qi]),
+                    score=float(S[qi, frame_local_idx]),
+                )
                 selected.append(row)
-            start, end = float(timestamps[path[0]]), float(timestamps[path[-1]])
-            results.append(TemporalMatch(str(video_id), float(score), float(score / len(query_embeddings)),
-                                         [int(x) for x in path], selected, end - start, start, end))
+
+            start = float(timestamps[path[0]])
+            end = float(timestamps[path[-1]])
+
+            results.append(
+                TemporalMatch(
+                    video_id=str(video_id),
+                    score=float(score),
+                    avg_score=float(score / len(query_embeddings)),
+                    selected_indices=[int(x) for x in path],
+                    selected_keyframes=selected,
+                    duration_sec=end - start,
+                    start_time=start,
+                    end_time=end,
+                )
+            )
 
     results.sort(key=lambda item: item.avg_score, reverse=True)
+
     rows = []
     for rank, item in enumerate(results[:top_k_videos], 1):
         row = dict(item.selected_keyframes[len(item.selected_keyframes) // 2])
-        row.update(rank=rank, display_rank=rank, video_score=item.score, avg_score=item.avg_score,
-                   retrieval_score=item.avg_score, alignment_score=item.avg_score,
-                   temporal_start_time=item.start_time, temporal_end_time=item.end_time,
-                   temporal_duration_sec=item.duration_sec, matched_sequence=item.selected_keyframes,
-                   selected_indices=item.selected_indices)
+        row.update(
+            rank=rank,
+            display_rank=rank,
+            video_score=item.score,
+            avg_score=item.avg_score,
+            retrieval_score=item.avg_score,
+            alignment_score=item.avg_score,
+            temporal_start_time=item.start_time,
+            temporal_end_time=item.end_time,
+            temporal_duration_sec=item.duration_sec,
+            matched_sequence=item.selected_keyframes,
+            selected_indices=item.selected_indices,
+        )
         rows.append(row)
+
     return pd.DataFrame.from_records(rows)
