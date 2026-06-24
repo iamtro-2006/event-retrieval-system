@@ -332,6 +332,7 @@ class FaissRetrievalSystem:
             return np.empty((0, 0), np.float32), np.empty((0, 0), np.int64)
         return self._faiss_search(embeddings, candidate_k)
 
+    # TỐI ƯU HÓA: Cắt giảm Overhead của RAM, sử dụng numpy và shallow copy thay cho dict loop khổng lồ
     def _aggregate_multi_query(
         self,
         scores: np.ndarray,
@@ -341,9 +342,10 @@ class FaissRetrievalSystem:
     ) -> pd.DataFrame:
         if indices.size == 0:
             return pd.DataFrame()
+            
         n_queries = len(queries)
         valid = indices >= 0
-        flat_ids = indices[valid].astype(np.int64, copy=False)
+        flat_ids = indices[valid].astype(np.int32, copy=False)
         flat_scores = scores[valid].astype(np.float32, copy=False)
         query_ids = np.repeat(np.arange(n_queries, dtype=np.int32), indices.shape[1])[valid.ravel()]
 
@@ -357,26 +359,31 @@ class FaissRetrievalSystem:
         matched = np.empty(len(unique_ids), dtype=np.int32)
         for i, (start, count) in enumerate(zip(starts, counts)):
             matched[i] = np.unique(q_sorted[start:start + count]).size
+            
         avg_score = score_sum / counts
         coverage = matched.astype(np.float32) / max(1, n_queries)
         alignment = 0.90 * avg_score + 0.10 * coverage
 
+        # Lọc danh sách xếp hạng ra trước
         rank_order = np.argsort(-alignment, kind="stable")[:top_k]
+        
         rows: list[dict] = []
         for display_rank, pos in enumerate(rank_order, 1):
             idx = int(unique_ids[pos])
-            item = dict(self._metadata_records[idx])
-            item.update(
-                avg_score=float(avg_score[pos]),
-                max_score=float(max_score[pos]),
-                matched_queries=int(matched[pos]),
-                coverage_score=float(coverage[pos]),
-                alignment_score=float(alignment[pos]),
-                retrieval_score=float(alignment[pos]),
-                display_rank=display_rank,
-                rank=display_rank,
-            )
+            
+            # Cấp phát Shallow Copy của Metadata để tốc độ nhanh hơn
+            item = self._metadata_records[idx].copy()
+            item["avg_score"] = float(avg_score[pos])
+            item["max_score"] = float(max_score[pos])
+            item["matched_queries"] = int(matched[pos])
+            item["coverage_score"] = float(coverage[pos])
+            item["alignment_score"] = float(alignment[pos])
+            item["retrieval_score"] = float(alignment[pos])
+            item["display_rank"] = display_rank
+            item["rank"] = display_rank
+            
             rows.append(item)
+            
         return pd.DataFrame.from_records(rows)
 
     def multi_query_search(

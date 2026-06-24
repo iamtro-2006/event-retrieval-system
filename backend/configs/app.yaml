@@ -17,7 +17,7 @@ model:
 paths:
   keyframes_root: data/processed/keyframes
   videos_root: data/raw/videos
-  map_keyframe_path: data/processed/map_keyframes
+  map_keyframe_path: data/processed/map_keyfram es
 search:
   candidate_multiplier: 3
   default_top_k: 20
@@ -34,3 +34,5 @@ speech:
   device: cpu
   compute_type: int8
   lazy_load: true
+debug: 
+  profile: True

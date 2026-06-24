@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from numba import njit
 
 
 @dataclass(slots=True)
@@ -43,45 +44,67 @@ def _clean_row(row: dict) -> dict:
     return {str(k): _python(v) for k, v in row.items()}
 
 
-def _run_dp_on_window(S: np.ndarray) -> tuple[float, list[int]]:
-    """O(m*n) strict-order DP using vectorized prefix maxima."""
+# =====================================================================
+# TỐI ƯU C-LEVEL 1: Thuật toán DP Dịch bằng Numba JIT (Siêu Tốc Độ)
+# Bỏ qua GIL, không cấp phát mảng trung gian gây tốn RAM.
+# =====================================================================
+@njit(fastmath=True, nogil=True, cache=True)
+def _run_dp_on_window_numba(S: np.ndarray) -> tuple[float, np.ndarray]:
+    """O(m*n) strict-order DP using compiled C-loop for maximum speed."""
     m, n = S.shape
     if m == 0 or n < m:
-        return -np.inf, []
+        return -np.inf, np.empty(0, dtype=np.int32)
 
-    dp_prev = S[0].astype(np.float32, copy=True)
+    dp_prev = S[0].copy()
     parents = np.full((m, n), -1, dtype=np.int32)
 
     for qi in range(1, m):
-        prefix_values = np.maximum.accumulate(dp_prev)
-        prefix_idx = np.maximum.accumulate(
-            np.where(dp_prev == prefix_values, np.arange(n), -1)
-        )
-
-        prev_idx = np.empty(n, dtype=np.int32)
-        prev_idx[0] = -1
-        prev_idx[1:] = prefix_idx[:-1]
-
-        valid = prev_idx >= 0
         dp_cur = np.full(n, -np.inf, dtype=np.float32)
-        dp_cur[valid] = dp_prev[prev_idx[valid]] + S[qi, valid]
-
-        parents[qi] = prev_idx
+        current_max_val = -np.inf
+        current_max_idx = -1
+        
+        for j in range(n):
+            # Tính max cộng dồn từ các frame trước đó
+            if j > 0:
+                prev_j = j - 1
+                if dp_prev[prev_j] > current_max_val:
+                    current_max_val = dp_prev[prev_j]
+                    current_max_idx = prev_j
+            
+            # Nếu có chuỗi hợp lệ thì cộng điểm
+            if current_max_idx != -1:
+                dp_cur[j] = current_max_val + S[qi, j]
+                parents[qi, j] = current_max_idx
+                
         dp_prev = dp_cur
 
-    last = int(np.argmax(dp_prev))
-    score = float(dp_prev[last])
-    if not np.isfinite(score):
-        return -np.inf, []
+    # Tìm điểm kết thúc chuỗi có score cao nhất
+    best_score = -np.inf
+    last = -1
+    for j in range(n):
+        if dp_prev[j] > best_score:
+            best_score = dp_prev[j]
+            last = j
 
-    path = [last]
+    if last == -1 or not np.isfinite(best_score):
+        return -np.inf, np.empty(0, dtype=np.int32)
+
+    # Backtrack tìm đường đi ngược
+    path = np.empty(m, dtype=np.int32)
+    path[m - 1] = last
     for qi in range(m - 1, 0, -1):
-        last = int(parents[qi, last])
+        last = parents[qi, last]
         if last < 0:
-            return -np.inf, []
-        path.append(last)
+            return -np.inf, np.empty(0, dtype=np.int32)
+        path[qi - 1] = last
 
-    return score, path[::-1]
+    return float(best_score), path
+
+
+# Wrapper kết nối Numba Core với code Python
+def _run_dp_on_window(S: np.ndarray) -> tuple[float, list[int]]:
+    score, path_array = _run_dp_on_window_numba(S)
+    return score, path_array.tolist() if path_array.size > 0 else []
 
 
 def _time_iou(a0: float, a1: float, b0: float, b1: float) -> float:
@@ -105,8 +128,6 @@ def _temporal_topk_dp(
     if n < m:
         return []
 
-    # Unlimited duration only needs one global DP. Additional sequences are generated
-    # by masking selected frames, avoiding n repeated full-window DP calls.
     if duration_limit < 0:
         work = S.copy()
         candidates = []
@@ -116,14 +137,7 @@ def _temporal_topk_dp(
             if not path:
                 break
 
-            candidates.append(
-                (
-                    score,
-                    path,
-                    float(timestamps[path[0]]),
-                    float(timestamps[path[-1]]),
-                )
-            )
+            candidates.append((score, path, float(timestamps[path[0]]), float(timestamps[path[-1]])))
 
             for qi, frame_idx in enumerate(path):
                 work[qi, frame_idx] = -np.inf
@@ -132,7 +146,6 @@ def _temporal_topk_dp(
         candidates = []
         ends = np.searchsorted(timestamps, timestamps + duration_limit, side="right")
 
-        # Run only windows capable of changing the feasible right boundary.
         last_end = -1
         for start, end in enumerate(ends):
             end = int(end)
@@ -143,21 +156,13 @@ def _temporal_topk_dp(
             score, local = _run_dp_on_window(S[:, start:end])
             if local:
                 path = [start + i for i in local]
-                candidates.append(
-                    (
-                        score,
-                        path,
-                        float(timestamps[path[0]]),
-                        float(timestamps[path[-1]]),
-                    )
-                )
+                candidates.append((score, path, float(timestamps[path[0]]), float(timestamps[path[-1]])))
 
     candidates.sort(key=lambda x: x[0], reverse=True)
 
     selected = []
     for candidate in candidates:
         score, path, start, end = candidate
-
         if any(
             _overlap(path, p) >= overlap_threshold
             or _time_iou(start, end, s, e) >= overlap_threshold
@@ -184,9 +189,8 @@ def temporal_search_from_candidates(
     allow_npy_fallback: bool = False,
 ) -> pd.DataFrame:
     required = {"video_id", "timestamp_sec"}
-    missing = required - set(candidate_df.columns)
-    if missing:
-        raise ValueError(f"Missing columns for temporal search: {missing}")
+    if not required.issubset(candidate_df.columns):
+        raise ValueError(f"Missing columns for temporal search: {required - set(candidate_df.columns)}")
 
     if len(sub_queries) != len(query_embeddings):
         raise ValueError("sub_queries/query_embeddings length mismatch")
@@ -194,72 +198,75 @@ def temporal_search_from_candidates(
     query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
     results: list[TemporalMatch] = []
 
-    # groupby(sort=False) avoids sorting group keys; stable mergesort preserves chronology.
-    for video_id, raw in candidate_df.groupby("video_id", sort=False):
-        video_df = raw.sort_values(["timestamp_sec"], kind="mergesort")
+    # =====================================================================
+    # TỐI ƯU C-LEVEL 2: Tiêu diệt Overhead của Pandas
+    # 1. Map Dict CHỈ 1 LẦN.
+    # 2. Xử lý cắt mảng hoàn toàn bằng NumPy Con trỏ (Numpy Slicing)
+    # =====================================================================
+    all_records = candidate_df.to_dict(orient="records")
+    
+    v_ids = candidate_df["video_id"].to_numpy()
+    unique_vids = np.unique(v_ids)
 
-        dedupe_col = "_faiss_id" if "_faiss_id" in video_df else "keyframe_id"
-        video_df = video_df.drop_duplicates(dedupe_col, keep="first").reset_index(drop=True)
+    faiss_id_col = "_faiss_id" if "_faiss_id" in candidate_df.columns else "keyframe_id"
+    faiss_ids = candidate_df[faiss_id_col].to_numpy(dtype=np.int64)
+    timestamps_all = pd.to_numeric(candidate_df["timestamp_sec"], errors="coerce").fillna(0).to_numpy(np.float32)
+    
+    emb_paths_all = candidate_df["embedding_path"].to_numpy() if (allow_npy_fallback and "embedding_path" in candidate_df.columns) else None
 
-        if len(video_df) < len(query_embeddings):
+    for video_id in unique_vids:
+        # Lấy Index của video này bằng Array Mask (O(1) Memory)
+        idx_for_vid = np.where(v_ids == video_id)[0]
+
+        # 1. Sort theo timestamp bằng argsort
+        sub_times = timestamps_all[idx_for_vid]
+        sort_order = np.argsort(sub_times, kind="mergesort")
+        idx_for_vid = idx_for_vid[sort_order]
+
+        # 2. Drop duplicates bằng faiss_id (Thay thế DataFrame.drop_duplicates)
+        sub_faiss = faiss_ids[idx_for_vid]
+        _, unique_local_idx = np.unique(sub_faiss, return_index=True)
+        idx_for_vid = idx_for_vid[np.sort(unique_local_idx)]
+
+        if len(idx_for_vid) < len(query_embeddings):
             continue
 
-        if embedding_matrix is not None and "_faiss_id" in video_df:
-            ids = video_df["_faiss_id"].to_numpy(dtype=np.int64, copy=False)
+        sub_faiss_final = faiss_ids[idx_for_vid]
+        sub_times_final = timestamps_all[idx_for_vid]
 
-            if np.any(ids < 0) or np.any(ids >= len(embedding_matrix)):
-                raise IndexError(
-                    f"Invalid FAISS ID in temporal candidates for video_id={video_id}"
-                )
-
-            # For ram_fp16/memmap_fp16 this copies only the candidate batch to float32.
-            frame_embeddings = np.asarray(embedding_matrix[ids], dtype=np.float32)
-
-        elif allow_npy_fallback and "embedding_path" in video_df:
-            frame_embeddings = np.stack(
-                [_load_embedding(p) for p in video_df["embedding_path"]]
-            )
-
+        # 3. Tra cứu Vector
+        if embedding_matrix is not None:
+            if np.any(sub_faiss_final < 0) or np.any(sub_faiss_final >= len(embedding_matrix)):
+                raise IndexError(f"Invalid FAISS ID in temporal candidates for video_id={video_id}")
+            frame_embeddings = np.asarray(embedding_matrix[sub_faiss_final], dtype=np.float32)
+        elif emb_paths_all is not None:
+            frame_embeddings = np.stack([_load_embedding(emb_paths_all[i]) for i in idx_for_vid])
         else:
-            raise RuntimeError(
-                "Temporal search needs vector cache by _faiss_id. "
-                "Set faiss.vector_cache_mode to 'memmap' or 'ram', build vectors_fp16.npy, "
-                "or explicitly set faiss.allow_npy_fallback=true for slow debug mode."
-            )
+            raise RuntimeError("Temporal search needs vector cache by _faiss_id.")
 
+        # 4. Nhân Ma trận
         S = (query_embeddings @ frame_embeddings.T).astype(np.float32, copy=False)
 
-        timestamps = (
-            pd.to_numeric(video_df["timestamp_sec"], errors="coerce")
-            .fillna(0)
-            .to_numpy(np.float32)
-        )
-
-        matches = _temporal_topk_dp(
-            S,
-            timestamps,
-            duration_limit,
-            max_sequences_per_video,
-            overlap_threshold,
-        )
+        # 5. Gọi Numba DP Tìm đường tốt nhất
+        matches = _temporal_topk_dp(S, sub_times_final, duration_limit, max_sequences_per_video, overlap_threshold)
         if not matches:
             continue
 
-        records = video_df.to_dict(orient="records")
-
+        # 6. Rút trích kết quả trả về
         for score, path in matches:
             selected = []
-            for qi, frame_local_idx in enumerate(path):
-                row = _clean_row(dict(records[frame_local_idx]))
+            for qi, local_frame_idx in enumerate(path):
+                global_idx = idx_for_vid[local_frame_idx]
+                row = _clean_row(all_records[global_idx])
                 row.update(
                     sub_query_idx=qi,
                     sub_query=str(sub_queries[qi]),
-                    score=float(S[qi, frame_local_idx]),
+                    score=float(S[qi, local_frame_idx]),
                 )
                 selected.append(row)
 
-            start = float(timestamps[path[0]])
-            end = float(timestamps[path[-1]])
+            start = float(sub_times_final[path[0]])
+            end = float(sub_times_final[path[-1]])
 
             results.append(
                 TemporalMatch(
