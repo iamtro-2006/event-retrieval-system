@@ -1,0 +1,1892 @@
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1102.24ms
+-----------------------------------------------------------------------------------------------------------
+         210003 function calls (191460 primitive calls) in 1.102 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1004 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    34/33    0.001    0.000    2.528    0.077 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    53/23    0.000    0.000    1.105    0.048 {method 'run' of '_contextvars.Context' objects}
+        1    0.000    0.000    1.000    1.000 D:\event-retrieval-system\backend\main.py:718(search_api)
+        1    0.000    0.000    0.976    0.976 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.942    0.942 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.942    0.942 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.940    0.940 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.000    0.000    0.813    0.813 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.003    0.000    0.813    0.813 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.002    0.000    0.813    0.813 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.813    0.813 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.556    0.556 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.015    0.001    0.555    0.023 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       33    0.000    0.000    0.477    0.014 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       33    0.004    0.000    0.470    0.014 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       37    0.455    0.012    0.455    0.012 {built-in method _overlapped.GetQueuedCompletionStatus}
+       24    0.001    0.000    0.441    0.018 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       97    0.170    0.002    0.170    0.002 {built-in method torch._C._nn.linear}
+       24    0.001    0.000    0.127    0.005 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+       24    0.003    0.000    0.125    0.005 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:6276(multi_head_attention_forward)
+    51/50    0.000    0.000    0.105    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+      7/6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.100    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 375.89ms
+-----------------------------------------------------------------------------------------------------------
+         205555 function calls (187030 primitive calls) in 0.376 seconds
+
+   Ordered by: cumulative time
+   List reduced from 894 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.286    0.286 D:\event-retrieval-system\backend\main.py:718(search_api)
+        1    0.000    0.000    0.263    0.263 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.263    0.263 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+    16/13    0.002    0.000    0.199    0.015 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       17    0.000    0.000    0.186    0.011 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       17    0.000    0.000    0.186    0.011 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       20    0.144    0.007    0.144    0.007 {built-in method _overlapped.GetQueuedCompletionStatus}
+       32    0.000    0.000    0.093    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.087    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.087    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.081    0.081 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  17839/1    0.045    0.000    0.081    0.081 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.058    0.058 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.058    0.058 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.058    0.058 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.058    0.058    0.058    0.058 {method 'cpu' of 'torch._C.TensorBase' objects}
+        1    0.000    0.000    0.039    0.039 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.039    0.039 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.039    0.039 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.039    0.039 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.037    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 302.76ms
+-----------------------------------------------------------------------------------------------------------
+         205437 function calls (186917 primitive calls) in 0.303 seconds
+
+   Ordered by: cumulative time
+   List reduced from 876 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.232    0.232 D:\event-retrieval-system\backend\main.py:718(search_api)
+        1    0.000    0.000    0.221    0.221 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.221    0.221 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+    14/11    0.000    0.000    0.211    0.019 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       15    0.000    0.000    0.208    0.014 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       15    0.000    0.000    0.208    0.014 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+        1    0.000    0.000    0.105    0.105 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.002    0.000    0.105    0.105 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.004    0.000    0.105    0.105 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.105    0.105 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.104    0.104 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.009    0.000    0.103    0.004 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       18    0.100    0.006    0.100    0.006 {built-in method _overlapped.GetQueuedCompletionStatus}
+       27    0.000    0.000    0.070    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.068    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.063    0.063 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  17839/1    0.036    0.000    0.063    0.063 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       97    0.042    0.000    0.042    0.000 {built-in method torch._C._nn.linear}
+       24    0.000    0.000    0.042    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       24    0.001    0.000    0.040    0.002 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+       24    0.003    0.000    0.037    0.002 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:6276(multi_head_attention_forward)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 429.48ms
+-----------------------------------------------------------------------------------------------------------
+         205613 function calls (187086 primitive calls) in 0.430 seconds
+
+   Ordered by: cumulative time
+   List reduced from 888 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.343    0.343 D:\event-retrieval-system\backend\main.py:718(search_api)
+        1    0.000    0.000    0.321    0.321 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.321    0.321 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+    18/15    0.001    0.000    0.255    0.017 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       19    0.000    0.000    0.250    0.013 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       19    0.000    0.000    0.250    0.013 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       22    0.198    0.009    0.198    0.009 {built-in method _overlapped.GetQueuedCompletionStatus}
+       34    0.000    0.000    0.087    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.084    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.084    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.078    0.078 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  17839/1    0.043    0.000    0.078    0.078 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.053    0.053 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.053    0.053 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.053    0.053 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.053    0.053    0.053    0.053 {method 'cpu' of 'torch._C.TensorBase' objects}
+        1    0.000    0.000    0.049    0.049 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.049    0.049 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.049    0.049 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.049    0.049 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.048    0.048 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.047    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 2028.49ms
+-----------------------------------------------------------------------------------------------------------
+         1278799 function calls (1216243 primitive calls) in 2.028 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1195 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    44/41    0.010    0.000    3.809    0.093 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       45    0.001    0.000    1.798    0.040 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       45    0.023    0.001    1.156    0.026 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       76    0.001    0.000    0.457    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+       76    0.026    0.000    0.456    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+       76    0.002    0.000    0.337    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1591(itertuples)
+      100    0.001    0.000    0.312    0.003 {method 'extend' of 'list' objects}
+     1907    0.004    0.000    0.311    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1660(<genexpr>)
+     1831    0.009    0.000    0.306    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+     1831    0.008    0.000    0.261    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1710(_getitem_tuple)
+       59    0.000    0.000    0.236    0.004 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.001    0.000    0.232    0.039 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.231    0.046 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.217    0.217 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  47964/1    0.123    0.000    0.217    0.217 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.215    0.215 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.214    0.214 D:\event-retrieval-system\backend\src\index\retrieval_system.py:443(temporal_search)
+        1    0.006    0.006    0.214    0.214 D:\event-retrieval-system\backend\src\ui\temporal_search.py:175(temporal_search_from_candidates)
+       75    0.201    0.003    0.204    0.003 D:\event-retrieval-system\env\Lib\site-packages\numpy\_core\memmap.py:359(__getitem__)
+      109    0.006    0.000    0.195    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:8128(sort_values)
+     1831    0.019    0.000    0.194    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1058(_getitem_lowerdim)
+      109    0.002    0.000    0.184    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:7859(drop_duplicates)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1838.41ms
+-----------------------------------------------------------------------------------------------------------
+         1371959 function calls (1301557 primitive calls) in 1.838 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1188 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    40/37    0.015    0.000    2.481    0.067 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+        1    0.000    0.000    1.574    1.574 D:\event-retrieval-system\backend\main.py:718(search_api)
+       41    0.004    0.000    0.877    0.021 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+        1    0.000    0.000    0.648    0.648 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+       82    0.001    0.000    0.487    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+       82    0.024    0.000    0.485    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+       41    0.006    0.000    0.466    0.011 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       82    0.002    0.000    0.372    0.005 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1591(itertuples)
+      106    0.001    0.000    0.347    0.003 {method 'extend' of 'list' objects}
+     2057    0.004    0.000    0.346    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1660(<genexpr>)
+     1975    0.009    0.000    0.341    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+        1    0.001    0.001    0.313    0.313 D:\event-retrieval-system\backend\src\index\retrieval_system.py:443(temporal_search)
+     1975    0.009    0.000    0.292    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1710(_getitem_tuple)
+       57    0.000    0.000    0.264    0.005 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.001    0.000    0.261    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.260    0.052 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.246    0.246 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  55443/1    0.137    0.000    0.246    0.246 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+     1975    0.020    0.000    0.221    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1058(_getitem_lowerdim)
+       44    0.206    0.005    0.206    0.005 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.005    0.005    0.202    0.202 D:\event-retrieval-system\backend\src\ui\temporal_search.py:175(temporal_search_from_candidates)
+     1975    0.010    0.000    0.177    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1740(_getitem_axis)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1107.93ms
+-----------------------------------------------------------------------------------------------------------
+         164450 function calls (150322 primitive calls) in 1.108 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1080 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    34/33    0.003    0.000    2.008    0.061 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    54/24    0.000    0.000    1.109    0.046 {method 'run' of '_contextvars.Context' objects}
+        1    0.000    0.000    0.993    0.993 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.993    0.993 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+        1    0.000    0.000    0.961    0.961 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.001    0.001    0.960    0.960 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.959    0.959 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.000    0.000    0.818    0.818 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.818    0.818 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.818    0.818 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.818    0.818 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+       33    0.000    0.000    0.589    0.018 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       33    0.001    0.000    0.589    0.018 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+        1    0.000    0.000    0.512    0.512 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.004    0.000    0.511    0.021 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       37    0.478    0.013    0.478    0.013 {built-in method _overlapped.GetQueuedCompletionStatus}
+       24    0.000    0.000    0.430    0.018 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       97    0.175    0.002    0.175    0.002 {built-in method torch._C._nn.linear}
+    52/51    0.000    0.000    0.117    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+      7/6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.112    0.019 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.111    0.022 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+       24    0.001    0.000    0.095    0.004 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:5830(_in_projection_packed)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 526.73ms
+-----------------------------------------------------------------------------------------------------------
+         189498 function calls (175374 primitive calls) in 0.527 seconds
+
+   Ordered by: cumulative time
+   List reduced from 903 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.457    0.457 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.457    0.457 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+    18/15    0.000    0.000    0.315    0.021 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       19    0.000    0.000    0.312    0.016 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       19    0.000    0.000    0.311    0.016 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       21    0.182    0.009    0.182    0.009 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.126    0.126 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.126    0.126 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.126    0.126 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.125    0.125 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.120    0.120 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.004    0.000    0.120    0.005 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        1    0.000    0.000    0.101    0.101 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.101    0.101 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.101    0.101 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.101    0.101    0.101    0.101 {method 'cpu' of 'torch._C.TensorBase' objects}
+       97    0.096    0.001    0.096    0.001 {built-in method torch._C._nn.linear}
+       24    0.000    0.000    0.093    0.004 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       24    0.001    0.000    0.093    0.004 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+       24    0.001    0.000    0.092    0.004 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:6276(multi_head_attention_forward)
+       30    0.000    0.000    0.070    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.068    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 485.6ms
+-----------------------------------------------------------------------------------------------------------
+         174054 function calls (159933 primitive calls) in 0.486 seconds
+
+   Ordered by: cumulative time
+   List reduced from 959 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.403    0.403 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.403    0.403 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+    20/17    0.000    0.000    0.376    0.022 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       21    0.000    0.000    0.372    0.018 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       21    0.000    0.000    0.372    0.018 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       24    0.318    0.013    0.318    0.013 {built-in method _overlapped.GetQueuedCompletionStatus}
+       35    0.000    0.000    0.083    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.081    0.013 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.080    0.016 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.058    0.058 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  13443/1    0.032    0.000    0.058    0.058 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.050    0.050 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.050    0.050 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.049    0.049 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.049    0.049 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.049    0.049 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.048    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        1    0.000    0.000    0.030    0.030 D:\event-retrieval-system\backend\src\index\retrieval_system.py:382(multi_query_search)
+        1    0.006    0.006    0.028    0.028 D:\event-retrieval-system\backend\src\index\retrieval_system.py:335(_aggregate_multi_query)
+       24    0.000    0.000    0.024    0.001 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       97    0.024    0.000    0.024    0.000 {built-in method torch._C._nn.linear}
+       24    0.001    0.000    0.022    0.001 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 399.49ms
+-----------------------------------------------------------------------------------------------------------
+         159578 function calls (145467 primitive calls) in 0.400 seconds
+
+   Ordered by: cumulative time
+   List reduced from 959 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.311    0.311 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.311    0.311 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+    18/15    0.000    0.000    0.280    0.019 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       19    0.000    0.000    0.277    0.015 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       19    0.000    0.000    0.277    0.015 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       22    0.236    0.011    0.236    0.011 {built-in method _overlapped.GetQueuedCompletionStatus}
+       33    0.000    0.000    0.089    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.087    0.015 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.087    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.087    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.064    0.064 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  13439/1    0.035    0.000    0.064    0.064 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.037    0.037 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.037    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        4    0.000    0.000    0.019    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:320(run_endpoint_function)
+        4    0.000    0.000    0.019    0.005 D:\event-retrieval-system\backend\main.py:706(search_api)
+        1    0.000    0.000    0.018    0.018 D:\event-retrieval-system\backend\src\index\retrieval_system.py:382(multi_query_search)
+       24    0.000    0.000    0.018    0.001 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       24    0.001    0.000    0.017    0.001 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1948.26ms
+-----------------------------------------------------------------------------------------------------------
+         169534 function calls (155273 primitive calls) in 1.948 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1618 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    14/11    0.000    0.000    1.851    0.168 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       27    0.000    0.000    1.705    0.063 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    1.704    0.284 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    1.704    0.341 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        4    0.000    0.000    1.647    0.412 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:320(run_endpoint_function)
+        4    0.000    0.000    1.647    0.412 D:\event-retrieval-system\backend\main.py:706(search_api)
+    28/18    0.000    0.000    1.632    0.091 {method 'run' of '_contextvars.Context' objects}
+        1    0.001    0.001    1.630    1.630 D:\event-retrieval-system\backend\main.py:320(translate_query_if_needed)
+        1    0.000    0.000    1.628    1.628 D:\event-retrieval-system\env\Lib\site-packages\deep_translator\google.py:51(translate)
+        1    0.000    0.000    1.617    1.617 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:74(get)
+        1    0.000    0.000    1.617    1.617 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:24(request)
+        1    0.000    0.000    1.617    1.617 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:557(request)
+        1    0.000    0.000    1.612    1.612 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:752(send)
+       80    0.000    0.000    1.008    0.013 {method 'readline' of '_io.BufferedReader' objects}
+        6    0.000    0.000    1.008    0.168 D:\Python Installation\Lib\socket.py:706(readinto)
+        6    0.000    0.000    1.008    0.168 D:\Python Installation\Lib\ssl.py:1289(recv_into)
+        6    0.000    0.000    1.008    0.168 D:\Python Installation\Lib\ssl.py:1129(read)
+        6    1.008    0.168    1.008    0.168 {method 'read' of '_ssl._SSLSocket' objects}
+        1    0.000    0.000    0.896    0.896 D:\event-retrieval-system\env\Lib\site-packages\requests\adapters.py:634(send)
+        1    0.000    0.000    0.895    0.895 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:592(urlopen)
+        1    0.000    0.000    0.894    0.894 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:377(_make_request)
+        3    0.000    0.000    0.715    0.238 D:\event-retrieval-system\env\Lib\site-packages\requests\models.py:1030(content)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 2406.14ms
+-----------------------------------------------------------------------------------------------------------
+         161854 function calls (147734 primitive calls) in 2.406 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1505 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    16/13    0.000    0.000    2.248    0.173 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       35    0.000    0.000    2.003    0.057 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    2.000    0.333 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    2.000    0.400 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        4    0.000    0.000    1.936    0.484 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:320(run_endpoint_function)
+        4    0.000    0.000    1.936    0.484 D:\event-retrieval-system\backend\main.py:706(search_api)
+    36/19    0.000    0.000    1.920    0.101 {method 'run' of '_contextvars.Context' objects}
+        1    0.001    0.001    1.917    1.917 D:\event-retrieval-system\backend\main.py:320(translate_query_if_needed)
+        1    0.000    0.000    1.915    1.915 D:\event-retrieval-system\env\Lib\site-packages\deep_translator\google.py:51(translate)
+        1    0.000    0.000    1.908    1.908 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:74(get)
+        1    0.000    0.000    1.908    1.908 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:24(request)
+        1    0.000    0.000    1.908    1.908 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:557(request)
+        1    0.000    0.000    1.906    1.906 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:752(send)
+       50    0.000    0.000    1.299    0.026 {method 'readline' of '_io.BufferedReader' objects}
+        6    0.000    0.000    1.299    0.217 D:\Python Installation\Lib\socket.py:706(readinto)
+        6    0.000    0.000    1.299    0.217 D:\Python Installation\Lib\ssl.py:1289(recv_into)
+        6    0.000    0.000    1.299    0.217 D:\Python Installation\Lib\ssl.py:1129(read)
+        6    1.299    0.217    1.299    0.217 {method 'read' of '_ssl._SSLSocket' objects}
+        3    0.000    0.000    1.126    0.375 D:\event-retrieval-system\env\Lib\site-packages\requests\models.py:1030(content)
+       12    0.000    0.000    1.126    0.094 {method 'join' of 'bytes' objects}
+        5    0.000    0.000    1.126    0.225 D:\event-retrieval-system\env\Lib\site-packages\requests\models.py:933(generate)
+        5    0.000    0.000    1.126    0.225 D:\event-retrieval-system\env\Lib\site-packages\urllib3\response.py:1238(stream)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1882.3ms
+-----------------------------------------------------------------------------------------------------------
+         181972 function calls (167848 primitive calls) in 1.882 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1458 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    16/13    0.000    0.000    1.770    0.136 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       30    0.000    0.000    1.513    0.050 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    1.512    0.252 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    1.511    0.252 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    1.511    0.302 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        4    0.000    0.000    1.449    0.362 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:320(run_endpoint_function)
+        4    0.000    0.000    1.449    0.362 D:\event-retrieval-system\backend\main.py:706(search_api)
+    31/18    0.000    0.000    1.433    0.080 {method 'run' of '_contextvars.Context' objects}
+        1    0.002    0.002    1.431    1.431 D:\event-retrieval-system\backend\main.py:320(translate_query_if_needed)
+        1    0.000    0.000    1.428    1.428 D:\event-retrieval-system\env\Lib\site-packages\deep_translator\google.py:51(translate)
+        1    0.000    0.000    1.423    1.423 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:74(get)
+        1    0.000    0.000    1.423    1.423 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:24(request)
+        1    0.000    0.000    1.423    1.423 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:557(request)
+        1    0.000    0.000    1.421    1.421 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:752(send)
+        1    0.000    0.000    0.850    0.850 D:\event-retrieval-system\env\Lib\site-packages\requests\adapters.py:634(send)
+        1    0.000    0.000    0.849    0.849 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:592(urlopen)
+        1    0.000    0.000    0.848    0.848 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:377(_make_request)
+       58    0.000    0.000    0.807    0.014 {method 'readline' of '_io.BufferedReader' objects}
+        6    0.000    0.000    0.807    0.134 D:\Python Installation\Lib\socket.py:706(readinto)
+        6    0.000    0.000    0.807    0.134 D:\Python Installation\Lib\ssl.py:1289(recv_into)
+        6    0.000    0.000    0.807    0.134 D:\Python Installation\Lib\ssl.py:1129(read)
+        6    0.807    0.134    0.807    0.134 {method 'read' of '_ssl._SSLSocket' objects}
+        1    0.000    0.000    0.609    0.609 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:1098(_validate_conn)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 551.74ms
+-----------------------------------------------------------------------------------------------------------
+         168167 function calls (154046 primitive calls) in 0.552 seconds
+
+   Ordered by: cumulative time
+   List reduced from 953 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.467    0.467 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.000    0.000    0.467    0.467 D:\event-retrieval-system\backend\src\index\retrieval_system.py:412(semantic_search)
+    20/17    0.000    0.000    0.395    0.023 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       21    0.000    0.000    0.391    0.019 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       21    0.000    0.000    0.391    0.019 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       24    0.345    0.014    0.345    0.014 {built-in method _overlapped.GetQueuedCompletionStatus}
+       35    0.000    0.000    0.085    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.083    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.082    0.016 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.061    0.061 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  13443/1    0.034    0.000    0.061    0.061 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.050    0.050 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.050    0.050 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.050    0.050 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.050    0.050    0.050    0.050 {method 'cpu' of 'torch._C.TensorBase' objects}
+        1    0.000    0.000    0.042    0.042 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.042    0.042 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.042    0.042 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.042    0.042 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.042    0.042 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.041    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        1    0.000    0.000    0.024    0.024 D:\event-retrieval-system\backend\src\index\retrieval_system.py:382(multi_query_search)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1945.29ms
+-----------------------------------------------------------------------------------------------------------
+         1202431 function calls (1143065 primitive calls) in 1.945 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1220 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    42/39    0.013    0.000    2.217    0.057 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       43    0.001    0.000    1.759    0.041 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       43    0.015    0.000    0.825    0.019 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       71    0.001    0.000    0.427    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+       71    0.023    0.000    0.426    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+       71    0.003    0.000    0.315    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1591(itertuples)
+       95    0.001    0.000    0.292    0.003 {method 'extend' of 'list' objects}
+     1766    0.003    0.000    0.291    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1660(<genexpr>)
+     1695    0.008    0.000    0.286    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+       46    0.264    0.006    0.264    0.006 {built-in method _overlapped.GetQueuedCompletionStatus}
+       59    0.000    0.000    0.261    0.004 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.001    0.000    0.257    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        5    0.000    0.000    0.255    0.051 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.251    0.251 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.001    0.001    0.251    0.251 D:\event-retrieval-system\backend\src\index\retrieval_system.py:443(temporal_search)
+        1    0.008    0.008    0.251    0.251 D:\event-retrieval-system\backend\src\ui\temporal_search.py:175(temporal_search_from_candidates)
+     1695    0.008    0.000    0.243    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1710(_getitem_tuple)
+        1    0.000    0.000    0.206    0.206 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  45727/1    0.115    0.000    0.206    0.206 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       96    0.002    0.000    0.189    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:7859(drop_duplicates)
+     1695    0.018    0.000    0.180    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1058(_getitem_lowerdim)
+      103    0.001    0.000    0.180    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:1052(take)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1656.15ms
+-----------------------------------------------------------------------------------------------------------
+         1008189 function calls (972491 primitive calls) in 1.656 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1163 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    38/35    0.008    0.000    1.960    0.056 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       39    0.000    0.000    1.617    0.041 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       39    0.012    0.000    0.837    0.021 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       79    0.001    0.000    0.433    0.005 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+       79    0.016    0.000    0.432    0.005 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+       79    0.002    0.000    0.344    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1591(itertuples)
+      103    0.001    0.000    0.321    0.003 {method 'extend' of 'list' objects}
+     1966    0.004    0.000    0.320    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1660(<genexpr>)
+     1887    0.009    0.000    0.315    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+       41    0.271    0.007    0.271    0.007 {built-in method _overlapped.GetQueuedCompletionStatus}
+     1887    0.008    0.000    0.267    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1710(_getitem_tuple)
+        1    0.000    0.000    0.227    0.227 D:\event-retrieval-system\backend\src\index\retrieval_system.py:478(run_search)
+        1    0.001    0.001    0.227    0.227 D:\event-retrieval-system\backend\src\index\retrieval_system.py:443(temporal_search)
+        1    0.005    0.005    0.227    0.227 D:\event-retrieval-system\backend\src\ui\temporal_search.py:175(temporal_search_from_candidates)
+     1887    0.019    0.000    0.196    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1058(_getitem_lowerdim)
+      120    0.005    0.000    0.169    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:8128(sort_values)
+     1887    0.009    0.000    0.154    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1740(_getitem_axis)
+     2286    0.004    0.000    0.152    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:4292(_ixs)
+      120    0.002    0.000    0.149    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:7859(drop_duplicates)
+      520    0.005    0.000    0.125    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:4337(__getitem__)
+     4784    0.050    0.000    0.124    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\arrays\arrow\array.py:722(__getitem__)
+      494    0.014    0.000    0.123    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:399(apply)
+      296    0.001    0.000    0.120    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\generic.py:6560(copy)
+       50    0.000    0.000    0.120    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        6    0.000    0.000    0.118    0.020 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.118    0.020 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.118    0.020 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.118    0.020 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.118    0.020 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.118    0.020 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] GET /api/health | Total Latency: 14.39ms
+-----------------------------------------------------------------------------------------------------------
+         2538 function calls (2454 primitive calls) in 0.015 seconds
+
+   Ordered by: cumulative time
+   List reduced from 343 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      8/7    0.000    0.000    0.014    0.002 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    14/12    0.000    0.000    0.013    0.001 {method 'run' of '_contextvars.Context' objects}
+    12/11    0.000    0.000    0.013    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+      6/5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+      6/5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     11/5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        5    0.000    0.000    0.010    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        5    0.000    0.000    0.010    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        5    0.000    0.000    0.009    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        4    0.001    0.000    0.008    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        4    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:320(run_endpoint_function)
+        1    0.000    0.000    0.003    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:254(_extract_endpoint_context)
+        4    0.001    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\concurrency.py:30(run_in_threadpool)
+        1    0.001    0.001    0.002    0.002 D:\Python Installation\Lib\inspect.py:1229(getsourcelines)
+        4    0.000    0.000    0.002    0.000 D:\event-retrieval-system\env\Lib\site-packages\anyio\to_thread.py:25(run_sync)
+        4    0.000    0.000    0.002    0.000 D:\event-retrieval-system\env\Lib\site-packages\anyio\_backends\_asyncio.py:2459(run_sync_in_worker_thread)
+        3    0.001    0.000    0.002    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:112(call_next)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py:419(run_asgi)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\middleware\proxy_headers.py:27(__call__)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\fastapi\applications.py:1156(__call__)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\applications.py:86(__call__)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\errors.py:149(__call__)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:78(__call__)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:152(simple_response)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:101(__call__)
+        2    0.000    0.000    0.001    0.001 D:\event-retrieval-system\backend\main.py:89(profile_and_bottleneck_tracker)
+        1    0.000    0.000    0.001    0.001 D:\Python Installation\Lib\inspect.py:1210(getblock)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] GET /api/health | Total Latency: 5.33ms
+-----------------------------------------------------------------------------------------------------------
+         2169 function calls (2082 primitive calls) in 0.006 seconds
+
+   Ordered by: cumulative time
+   List reduced from 398 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    23/16    0.000    0.000    0.005    0.000 {method 'run' of '_contextvars.Context' objects}
+       21    0.000    0.000    0.005    0.000 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+      9/6    0.000    0.000    0.004    0.001 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+        4    0.000    0.000    0.002    0.001 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py:419(run_asgi)
+        4    0.000    0.000    0.002    0.001 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\middleware\proxy_headers.py:27(__call__)
+        4    0.000    0.000    0.002    0.001 D:\event-retrieval-system\env\Lib\site-packages\fastapi\applications.py:1156(__call__)
+        4    0.000    0.000    0.002    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\applications.py:86(__call__)
+        4    0.000    0.000    0.002    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\errors.py:149(__call__)
+        4    0.000    0.000    0.002    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:78(__call__)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     10/5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        3    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\responses.py:163(__call__)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        3    0.000    0.000    0.001    0.000 D:\Python Installation\Lib\asyncio\proactor_events.py:376(_loop_writing)
+        2    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\errors.py:156(_send)
+        2    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py:462(send)
+        2    0.001    0.000    0.001    0.000 D:\Python Installation\Lib\asyncio\windows_events.py:539(send)
+        2    0.000    0.000    0.001    0.000 D:\Python Installation\Lib\asyncio\proactor_events.py:338(write)
+        3    0.001    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:152(simple_response)
+        1    0.000    0.000    0.001    0.001 D:\Python Installation\Lib\concurrent\futures\_base.py:537(set_result)
+        1    0.000    0.000    0.001    0.001 D:\Python Installation\Lib\concurrent\futures\_base.py:337(_invoke_callbacks)
+        1    0.000    0.000    0.000    0.000 D:\Python Installation\Lib\logging\__init__.py:1509(info)
+        2    0.000    0.000    0.000    0.000 D:\Python Installation\Lib\asyncio\proactor_events.py:276(_loop_reading)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] GET /api/config | Total Latency: 6.29ms
+-----------------------------------------------------------------------------------------------------------
+         4477 function calls (4398 primitive calls) in 0.006 seconds
+
+   Ordered by: cumulative time
+   List reduced from 428 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       32    0.000    0.000    0.010    0.000 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        7    0.000    0.000    0.010    0.001 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    34/32    0.000    0.000    0.006    0.000 {method 'run' of '_contextvars.Context' objects}
+        6    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        6    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     12/6    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        6    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        6    0.000    0.000    0.003    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        6    0.000    0.000    0.003    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        6    0.000    0.000    0.003    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        6    0.000    0.000    0.003    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        6    0.000    0.000    0.003    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        4    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.002    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:254(_extract_endpoint_context)
+        1    0.000    0.000    0.002    0.002 D:\Python Installation\Lib\inspect.py:1229(getsourcelines)
+        1    0.000    0.000    0.002    0.002 D:\Python Installation\Lib\inspect.py:1210(getblock)
+      435    0.001    0.000    0.001    0.000 D:\Python Installation\Lib\tokenize.py:575(_generate_tokens_from_c_tokenizer)
+        2    0.000    0.000    0.001    0.001 D:\Python Installation\Lib\asyncio\proactor_events.py:840(loop)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py:419(run_asgi)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\middleware\proxy_headers.py:27(__call__)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\applications.py:1156(__call__)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\applications.py:86(__call__)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\errors.py:149(__call__)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:78(__call__)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:152(simple_response)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:101(__call__)
+        2    0.000    0.000    0.001    0.000 D:\Python Installation\Lib\asyncio\proactor_events.py:642(_make_socket_transport)
+        2    0.000    0.000    0.001    0.000 D:\Python Installation\Lib\asyncio\proactor_events.py:608(__init__)
+        2    0.000    0.000    0.001    0.000 D:\Python Installation\Lib\asyncio\proactor_events.py:185(__init__)
+      434    0.000    0.000    0.000    0.000 D:\Python Installation\Lib\collections\__init__.py:450(_make)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] GET /api/config | Total Latency: 2.35ms
+-----------------------------------------------------------------------------------------------------------
+         1469 function calls (1390 primitive calls) in 0.002 seconds
+
+   Ordered by: cumulative time
+   List reduced from 260 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    15/14    0.000    0.000    0.002    0.000 {method 'run' of '_contextvars.Context' objects}
+       13    0.000    0.000    0.002    0.000 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     10/5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        5    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        4    0.000    0.000    0.001    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+      6/3    0.000    0.000    0.001    0.000 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+        1    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+     62/1    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        3    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:112(call_next)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py:419(run_asgi)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\uvicorn\middleware\proxy_headers.py:27(__call__)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\applications.py:1156(__call__)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\applications.py:86(__call__)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\errors.py:149(__call__)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:78(__call__)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\cors.py:152(simple_response)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:101(__call__)
+        2    0.000    0.000    0.000    0.000 D:\event-retrieval-system\backend\main.py:89(profile_and_bottleneck_tracker)
+        7    0.000    0.000    0.000    0.000 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+        4    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:320(run_endpoint_function)
+        4    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\starlette\concurrency.py:30(run_in_threadpool)
+        7    0.000    0.000    0.000    0.000 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+        4    0.000    0.000    0.000    0.000 D:\event-retrieval-system\env\Lib\site-packages\anyio\to_thread.py:25(run_sync)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1217.48ms
+-----------------------------------------------------------------------------------------------------------
+         122456 function calls (112120 primitive calls) in 1.218 seconds
+
+   Ordered by: cumulative time
+   List reduced from 985 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    38/31    0.006    0.000    1.575    0.051 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       39    0.001    0.000    1.551    0.040 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+        1    0.000    0.000    1.104    1.104 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    1.104    1.104 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+        1    0.000    0.000    0.975    0.975 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.824    0.824 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.824    0.824 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.824    0.824 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.823    0.823 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+       39    0.001    0.000    0.702    0.018 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       43    0.637    0.015    0.637    0.015 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.502    0.502 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.501    0.021 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       24    0.000    0.000    0.434    0.018 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+        1    0.000    0.000    0.129    0.129 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.033    0.033    0.084    0.084 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1112(_embeds)
+       24    0.000    0.000    0.072    0.003 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+       24    0.001    0.000    0.071    0.003 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:6276(multi_head_attention_forward)
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\backend\src\index\retrieval_system.py:322(_faiss_search)
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\env\Lib\site-packages\faiss\class_wrappers.py:408(replacement_search)
+        1    0.000    0.000    0.068    0.068 D:\event-retrieval-system\env\Lib\site-packages\faiss\swigfaiss.py:8127(search)
+        1    0.068    0.068    0.068    0.068 {built-in method faiss._swigfaiss.IndexHNSW_search}
+        1    0.000    0.000    0.063    0.063 D:\event-retrieval-system\env\Lib\site-packages\torch\_tensor.py:896(norm)
+        1    0.000    0.000    0.063    0.063 D:\event-retrieval-system\env\Lib\site-packages\torch\functional.py:1685(norm)
+        1    0.063    0.063    0.063    0.063 {built-in method torch._C._linalg.linalg_vector_norm}
+       53    0.000    0.000    0.060    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       97    0.060    0.001    0.060    0.001 {built-in method torch._C._nn.linear}
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.057    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 547.38ms
+-----------------------------------------------------------------------------------------------------------
+         118298 function calls (107973 primitive calls) in 0.548 seconds
+
+   Ordered by: cumulative time
+   List reduced from 957 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.478    0.478 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.478    0.478 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    28/21    0.001    0.000    0.358    0.017 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       29    0.000    0.000    0.353    0.012 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       29    0.000    0.000    0.353    0.012 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       34    0.313    0.009    0.313    0.009 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.133    0.133 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.117    0.117 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+        1    0.000    0.000    0.074    0.074 D:\event-retrieval-system\backend\src\index\retrieval_system.py:322(_faiss_search)
+        1    0.000    0.000    0.073    0.073 D:\event-retrieval-system\env\Lib\site-packages\faiss\class_wrappers.py:408(replacement_search)
+        1    0.000    0.000    0.073    0.073 D:\event-retrieval-system\env\Lib\site-packages\faiss\swigfaiss.py:8127(search)
+        1    0.073    0.073    0.073    0.073 {built-in method faiss._swigfaiss.IndexHNSW_search}
+       46    0.000    0.000    0.052    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.044    0.044 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   9620/1    0.025    0.000    0.044    0.044 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.036    0.036 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.036    0.036 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.036    0.036 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.036    0.036 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.035    0.035 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 474.5ms
+-----------------------------------------------------------------------------------------------------------
+         118066 function calls (107748 primitive calls) in 0.475 seconds
+
+   Ordered by: cumulative time
+   List reduced from 913 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.396    0.396 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.396    0.396 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    26/19    0.002    0.000    0.186    0.010 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       27    0.000    0.000    0.178    0.007 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       27    0.000    0.000    0.177    0.007 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+        1    0.000    0.000    0.142    0.142 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+       31    0.140    0.005    0.140    0.005 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.122    0.122 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+        1    0.000    0.000    0.105    0.105 D:\event-retrieval-system\backend\src\index\retrieval_system.py:322(_faiss_search)
+        1    0.000    0.000    0.105    0.105 D:\event-retrieval-system\env\Lib\site-packages\faiss\class_wrappers.py:408(replacement_search)
+        1    0.000    0.000    0.105    0.105 D:\event-retrieval-system\env\Lib\site-packages\faiss\swigfaiss.py:8127(search)
+        1    0.105    0.105    0.105    0.105 {built-in method faiss._swigfaiss.IndexHNSW_search}
+        1    0.000    0.000    0.093    0.093 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.093    0.093 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.093    0.093 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.093    0.093    0.093    0.093 {method 'cpu' of 'torch._C.TensorBase' objects}
+       39    0.000    0.000    0.062    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.059    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.055    0.055 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   9620/1    0.034    0.000    0.055    0.055 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.035    0.035 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 635.95ms
+-----------------------------------------------------------------------------------------------------------
+         135768 function calls (125429 primitive calls) in 0.636 seconds
+
+   Ordered by: cumulative time
+   List reduced from 963 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.570    0.570 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.570    0.570 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    30/23    0.001    0.000    0.394    0.017 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       31    0.000    0.000    0.389    0.013 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       31    0.001    0.000    0.388    0.013 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       36    0.290    0.008    0.290    0.008 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.114    0.114 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.096    0.096 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.096    0.096 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.096    0.096 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.096    0.096    0.096    0.096 {method 'cpu' of 'torch._C.TensorBase' objects}
+        1    0.000    0.000    0.093    0.093 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.093    0.093 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.093    0.093 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.093    0.093 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.086    0.086 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+        1    0.000    0.000    0.079    0.079 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.004    0.000    0.078    0.003 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\backend\src\index\retrieval_system.py:322(_faiss_search)
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\env\Lib\site-packages\faiss\class_wrappers.py:408(replacement_search)
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\env\Lib\site-packages\faiss\swigfaiss.py:8127(search)
+        1    0.070    0.070    0.070    0.070 {built-in method faiss._swigfaiss.IndexHNSW_search}
+       48    0.000    0.000    0.051    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       24    0.000    0.000    0.050    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 2040.39ms
+-----------------------------------------------------------------------------------------------------------
+         1127771 function calls (1080260 primitive calls) in 2.040 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1160 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    52/45    0.002    0.000    1.263    0.028 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       53    0.000    0.000    1.255    0.024 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+        1    0.000    0.000    0.874    0.874 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.874    0.874 D:\event-retrieval-system\backend\src\index\retrieval_system.py:450(temporal_search)
+        1    0.028    0.028    0.873    0.873 D:\event-retrieval-system\backend\src\ui\temporal_search.py:175(temporal_search_from_candidates)
+       53    0.018    0.000    0.768    0.014 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+     2037    0.011    0.000    0.612    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+       77    0.001    0.000    0.452    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+     2037    0.010    0.000    0.452    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1740(_getitem_axis)
+       77    0.021    0.000    0.451    0.006 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+       77    0.003    0.000    0.347    0.005 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1591(itertuples)
+      101    0.001    0.000    0.321    0.003 {method 'extend' of 'list' objects}
+     1916    0.004    0.000    0.320    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1660(<genexpr>)
+      192    0.002    0.000    0.314    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:1052(take)
+      192    0.014    0.000    0.284    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:800(reindex_indexer)
+      199    0.008    0.000    0.279    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\generic.py:4010(take)
+     1839    0.008    0.000    0.268    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1710(_getitem_tuple)
+     2414    0.011    0.000    0.253    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\blocks.py:995(take_nd)
+       58    0.245    0.004    0.245    0.004 {built-in method _overlapped.GetQueuedCompletionStatus}
+     2416    0.010    0.000    0.230    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\array_algos\take.py:57(take_nd)
+       99    0.001    0.000    0.216    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1221(_getbool_axis)
+     1839    0.020    0.000    0.200    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1058(_getitem_lowerdim)
+       71    0.000    0.000    0.180    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.176    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.176    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.176    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.176    0.015 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.176    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.176    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.176    0.015 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1305.32ms
+-----------------------------------------------------------------------------------------------------------
+         123096 function calls (112773 primitive calls) in 1.305 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1083 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    46/45    0.002    0.000    2.768    0.062 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       45    0.001    0.000    1.454    0.032 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       45    0.003    0.000    1.449    0.032 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+    71/35    0.001    0.000    1.307    0.037 {method 'run' of '_contextvars.Context' objects}
+        1    0.000    0.000    1.179    1.179 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    1.179    1.179 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+        1    0.000    0.000    0.785    0.785 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.785    0.785 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.785    0.785 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.785    0.785 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+       51    0.534    0.010    0.629    0.012 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.533    0.533 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.004    0.000    0.533    0.022 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       24    0.000    0.000    0.456    0.019 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+        1    0.000    0.000    0.241    0.241 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+       97    0.190    0.002    0.190    0.002 {built-in method torch._C._nn.linear}
+        1    0.000    0.000    0.175    0.175 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+       49    0.000    0.000    0.120    0.002 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\linear.py:130(forward)
+       24    0.001    0.000    0.117    0.005 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+       24    0.001    0.000    0.116    0.005 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:6276(multi_head_attention_forward)
+        1    0.030    0.030    0.083    0.083 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1112(_embeds)
+        1    0.000    0.000    0.077    0.077 D:\event-retrieval-system\backend\src\index\retrieval_system.py:322(_faiss_search)
+        1    0.000    0.000    0.076    0.076 D:\event-retrieval-system\env\Lib\site-packages\faiss\class_wrappers.py:408(replacement_search)
+        1    0.000    0.000    0.076    0.076 D:\event-retrieval-system\env\Lib\site-packages\faiss\swigfaiss.py:8127(search)
+        1    0.076    0.076    0.076    0.076 {built-in method faiss._swigfaiss.IndexHNSW_search}
+       24    0.001    0.000    0.075    0.003 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:5830(_in_projection_packed)
+    65/64    0.000    0.000    0.067    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        1    0.010    0.010    0.066    0.066 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+    13/12    0.000    0.000    0.063    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.063    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 724.56ms
+-----------------------------------------------------------------------------------------------------------
+         118189 function calls (107867 primitive calls) in 0.725 seconds
+
+   Ordered by: cumulative time
+   List reduced from 907 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.658    0.658 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.658    0.658 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    30/23    0.001    0.000    0.624    0.027 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       31    0.000    0.000    0.621    0.020 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       31    0.000    0.000    0.620    0.020 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       35    0.584    0.017    0.584    0.017 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.348    0.348 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.324    0.324 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+       43    0.000    0.000    0.051    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.049    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.045    0.045 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   9620/1    0.025    0.000    0.045    0.045 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.035    0.035 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.035    0.035 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.035    0.035 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.035    0.035 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.034    0.034 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.002    0.000    0.034    0.001 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        1    0.003    0.003    0.023    0.023 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+        4    0.000    0.000    0.020    0.005 D:\Python Installation\Lib\asyncio\base_events.py:876(call_soon_threadsafe)
+       24    0.000    0.000    0.016    0.001 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 531.07ms
+-----------------------------------------------------------------------------------------------------------
+         117048 function calls (106733 primitive calls) in 0.531 seconds
+
+   Ordered by: cumulative time
+   List reduced from 907 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.457    0.457 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.457    0.457 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    26/19    0.001    0.000    0.330    0.017 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       27    0.000    0.000    0.327    0.012 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       27    0.000    0.000    0.327    0.012 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       31    0.290    0.009    0.290    0.009 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.239    0.239 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.192    0.192 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+       40    0.000    0.000    0.060    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.058    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.057    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.055    0.055 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.055    0.055 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.055    0.055 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.055    0.055    0.055    0.055 {method 'cpu' of 'torch._C.TensorBase' objects}
+        1    0.000    0.000    0.053    0.053 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   9620/1    0.030    0.000    0.053    0.053 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.004    0.004    0.047    0.047 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+        1    0.000    0.000    0.034    0.034 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.034    0.034 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.034    0.034 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.034    0.034 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] GET /api/surrounding-frames | Total Latency: 59.31ms
+-----------------------------------------------------------------------------------------------------------
+         32731 function calls (30584 primitive calls) in 0.059 seconds
+
+   Ordered by: cumulative time
+   List reduced from 728 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        7    0.000    0.000    0.059    0.008 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    13/12    0.000    0.000    0.059    0.005 {method 'run' of '_contextvars.Context' objects}
+        1    0.000    0.000    0.044    0.044 D:\event-retrieval-system\backend\main.py:700(_fetch_surround)
+       15    0.000    0.000    0.024    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+        2    0.000    0.000    0.024    0.012 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\generic.py:4010(take)
+        2    0.000    0.000    0.024    0.012 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:1052(take)
+       15    0.000    0.000    0.023    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1740(_getitem_axis)
+        2    0.000    0.000    0.021    0.011 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:800(reindex_indexer)
+        1    0.000    0.000    0.021    0.021 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1717(_get_list_axis)
+       20    0.000    0.000    0.021    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\blocks.py:995(take_nd)
+       20    0.000    0.000    0.020    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\array_algos\take.py:57(take_nd)
+       11    0.000    0.000    0.015    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     10/5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        5    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        4    0.000    0.000    0.014    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+       10    0.000    0.000    0.013    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\arrays\arrow\array.py:1551(take)
+       10    0.012    0.001    0.012    0.001 D:\event-retrieval-system\env\Lib\site-packages\pyarrow\compute.py:467(take)
+        1    0.000    0.000    0.009    0.009 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   1986/1    0.005    0.000    0.009    0.009 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       10    0.006    0.001    0.007    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\array_algos\take.py:118(_take_nd_ndarray)
+        4    0.000    0.000    0.005    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:4337(__getitem__)
+        1    0.000    0.000    0.004    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+        1    0.000    0.000    0.004    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 631.16ms
+-----------------------------------------------------------------------------------------------------------
+         134764 function calls (124432 primitive calls) in 0.631 seconds
+
+   Ordered by: cumulative time
+   List reduced from 913 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.575    0.575 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.575    0.575 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    28/21    0.001    0.000    0.531    0.025 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       29    0.000    0.000    0.528    0.018 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       29    0.000    0.000    0.527    0.018 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       33    0.451    0.014    0.451    0.014 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.252    0.252 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.214    0.214 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+        1    0.000    0.000    0.071    0.071 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.071    0.071 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.071    0.071 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.071    0.071 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.061    0.061 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.004    0.000    0.061    0.003 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       97    0.046    0.000    0.046    0.000 {built-in method torch._C._nn.linear}
+       41    0.000    0.000    0.044    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.042    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.042    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.042    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.042    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.042    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.042    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.042    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.042    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.042    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.042    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.004    0.004    0.038    0.038 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+        1    0.000    0.000    0.037    0.037 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   9626/1    0.021    0.000    0.037    0.037 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       24    0.000    0.000    0.037    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 484.21ms
+-----------------------------------------------------------------------------------------------------------
+         67299 function calls (66417 primitive calls) in 0.484 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1030 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.480    0.480 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.480    0.480 D:\event-retrieval-system\backend\src\index\retrieval_system.py:450(temporal_search)
+    24/21    0.006    0.000    0.339    0.016 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       25    0.000    0.000    0.310    0.012 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       25    0.000    0.000    0.308    0.012 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       29    0.258    0.009    0.259    0.009 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.092    0.092 D:\event-retrieval-system\backend\src\index\retrieval_system.py:424(_build_temporal_candidates)
+        2    0.001    0.000    0.073    0.037 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.046    0.046 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.046    0.046 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.046    0.046 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.046    0.046 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.045    0.045 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.045    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        1    0.000    0.000    0.042    0.042 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.042    0.042 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.042    0.042 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.042    0.042    0.042    0.042 {method 'cpu' of 'torch._C.TensorBase' objects}
+        1    0.000    0.000    0.036    0.036 D:\event-retrieval-system\backend\src\ui\temporal_search.py:179(temporal_search_from_candidates)
+        1    0.000    0.000    0.033    0.033 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+        1    0.009    0.009    0.033    0.033 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+        2    0.004    0.002    0.032    0.016 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+       24    0.000    0.000    0.023    0.001 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       24    0.001    0.000    0.023    0.001 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\activation.py:1255(forward)
+       24    0.001    0.000    0.021    0.001 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:6276(multi_head_attention_forward)
+       97    0.021    0.000    0.021    0.000 {built-in method torch._C._nn.linear}
+     1451    0.003    0.000    0.018    0.000 D:\event-retrieval-system\env\Lib\site-packages\numpy\lib\_arraysetops_impl.py:145(unique)
+      860    0.016    0.000    0.016    0.000 {method 'copy' of 'dict' objects}
+        2    0.000    0.000    0.015    0.007 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+        2    0.000    0.000    0.015    0.007 D:\event-retrieval-system\backend\src\index\retrieval_system.py:322(_faiss_search)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1156.33ms
+-----------------------------------------------------------------------------------------------------------
+         122794 function calls (112480 primitive calls) in 1.156 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1083 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    40/39    0.001    0.000    2.207    0.057 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    63/36    0.000    0.000    1.157    0.032 {method 'run' of '_contextvars.Context' objects}
+        1    0.000    0.000    1.074    1.074 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    1.074    1.074 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+        1    0.000    0.000    1.054    1.054 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    1.054    1.054 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    1.052    1.052 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.000    0.000    0.915    0.915 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.846    0.846 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.846    0.846 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.846    0.846 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+       39    0.000    0.000    0.749    0.019 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       39    0.001    0.000    0.748    0.019 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       44    0.597    0.014    0.639    0.015 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.516    0.516 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.004    0.000    0.516    0.021 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       24    0.000    0.000    0.445    0.019 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+       97    0.202    0.002    0.202    0.002 {built-in method torch._C._nn.linear}
+       24    0.001    0.000    0.114    0.005 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:5830(_in_projection_packed)
+       49    0.000    0.000    0.088    0.002 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\linear.py:130(forward)
+        1    0.018    0.018    0.084    0.084 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\functional.py:5709(normalize)
+    57/56    0.000    0.000    0.057    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+    13/12    0.000    0.000    0.054    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.054    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.054    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.054    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.053    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.053    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.053    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.053    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 435.3ms
+-----------------------------------------------------------------------------------------------------------
+         118035 function calls (107717 primitive calls) in 0.435 seconds
+
+   Ordered by: cumulative time
+   List reduced from 907 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.356    0.356 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.356    0.356 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    24/17    0.001    0.000    0.267    0.016 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       25    0.000    0.000    0.264    0.011 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       25    0.000    0.000    0.263    0.011 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       29    0.214    0.007    0.214    0.007 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.078    0.078 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.078    0.078 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.078    0.078 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.078    0.078    0.078    0.078 {method 'cpu' of 'torch._C.TensorBase' objects}
+       39    0.000    0.000    0.062    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.060    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.059    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.059    0.005 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.054    0.054 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   9620/1    0.030    0.000    0.054    0.054 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.047    0.047 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.047    0.047 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.047    0.047 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.047    0.047 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.046    0.046 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.003    0.000    0.046    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+       24    0.000    0.000    0.024    0.001 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:272(attention)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 533.08ms
+-----------------------------------------------------------------------------------------------------------
+         135519 function calls (125183 primitive calls) in 0.533 seconds
+
+   Ordered by: cumulative time
+   List reduced from 957 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.468    0.468 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.468    0.468 D:\event-retrieval-system\backend\src\index\retrieval_system.py:419(semantic_search)
+    28/21    0.001    0.000    0.391    0.019 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       29    0.000    0.000    0.388    0.013 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       29    0.000    0.000    0.387    0.013 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       34    0.314    0.009    0.314    0.009 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.070    0.070 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.070    0.070 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.070    0.070 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        1    0.000    0.000    0.065    0.065 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.004    0.000    0.064    0.003 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+        1    0.000    0.000    0.052    0.052 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.052    0.052 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.052    0.052 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.052    0.052    0.052    0.052 {method 'cpu' of 'torch._C.TensorBase' objects}
+       45    0.000    0.000    0.050    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.048    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.043    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   9626/1    0.024    0.000    0.043    0.043 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       97    0.042    0.000    0.042    0.000 {built-in method torch._C._nn.linear}
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] GET /api/surrounding-frames | Total Latency: 34.03ms
+-----------------------------------------------------------------------------------------------------------
+         33509 function calls (31362 primitive calls) in 0.034 seconds
+
+   Ordered by: cumulative time
+   List reduced from 714 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        7    0.000    0.000    0.034    0.005 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    11/10    0.000    0.000    0.034    0.003 {method 'run' of '_contextvars.Context' objects}
+        1    0.000    0.000    0.018    0.018 D:\event-retrieval-system\backend\main.py:700(_fetch_surround)
+        9    0.000    0.000    0.016    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     10/5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        5    0.000    0.000    0.015    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        4    0.000    0.000    0.015    0.004 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.011    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   1986/1    0.006    0.000    0.011    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       15    0.000    0.000    0.005    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+        2    0.000    0.000    0.004    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\generic.py:4010(take)
+        2    0.000    0.000    0.004    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:1052(take)
+       15    0.000    0.000    0.004    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1740(_getitem_axis)
+        1    0.000    0.000    0.004    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+        1    0.000    0.000    0.004    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+        2    0.000    0.000    0.004    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:800(reindex_indexer)
+12989/12987    0.003    0.000    0.004    0.000 {built-in method builtins.isinstance}
+       20    0.000    0.000    0.004    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\blocks.py:995(take_nd)
+       20    0.000    0.000    0.003    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\array_algos\take.py:57(take_nd)
+        4    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:4337(__getitem__)
+        1    0.000    0.000    0.002    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1591(itertuples)
+     1986    0.002    0.000    0.002    0.000 D:\Python Installation\Lib\dataclasses.py:1331(is_dataclass)
+        1    0.000    0.000    0.002    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:4406(_getitem_bool_array)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] GET /api/surrounding-frames | Total Latency: 26.33ms
+-----------------------------------------------------------------------------------------------------------
+         29708 function calls (27563 primitive calls) in 0.027 seconds
+
+   Ordered by: cumulative time
+   List reduced from 683 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        7    0.000    0.000    0.026    0.004 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+    11/10    0.000    0.000    0.026    0.003 {method 'run' of '_contextvars.Context' objects}
+        1    0.000    0.000    0.014    0.014 D:\event-retrieval-system\backend\main.py:700(_fetch_surround)
+        9    0.000    0.000    0.011    0.001 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+     10/5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+        5    0.000    0.000    0.011    0.002 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+        4    0.000    0.000    0.010    0.003 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.009    0.009 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+   1986/1    0.005    0.000    0.009    0.009 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       15    0.000    0.000    0.005    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1192(__getitem__)
+        1    0.000    0.000    0.004    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+        1    0.000    0.000    0.004    0.004 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+       15    0.000    0.000    0.003    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\indexing.py:1740(_getitem_axis)
+        2    0.000    0.000    0.003    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\generic.py:4010(take)
+12943/12941    0.003    0.000    0.003    0.000 {built-in method builtins.isinstance}
+        2    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:1052(take)
+        2    0.000    0.000    0.003    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\managers.py:800(reindex_indexer)
+        1    0.000    0.000    0.002    0.002 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1591(itertuples)
+       20    0.000    0.000    0.002    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\internals\blocks.py:995(take_nd)
+        2    0.000    0.000    0.002    0.001 {method 'extend' of 'list' objects}
+       14    0.000    0.000    0.002    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:1660(<genexpr>)
+       20    0.000    0.000    0.002    0.000 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\array_algos\take.py:57(take_nd)
+        4    0.000    0.000    0.002    0.001 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\generic.py:6560(copy)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 4695.65ms
+-----------------------------------------------------------------------------------------------------------
+         2417804 function calls (2295946 primitive calls) in 4.693 seconds
+
+   Ordered by: cumulative time
+   List reduced from 4042 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   100/93    0.005    0.000    5.795    0.062 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+      101    0.001    0.000    4.742    0.047 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+      101    0.015    0.000    4.558    0.045 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       61    0.004    0.000    3.818    0.063 D:\event-retrieval-system\backend\src\ui\temporal_search.py:120(_temporal_topk_dp)
+      531    0.005    0.000    3.809    0.007 D:\event-retrieval-system\backend\src\ui\temporal_search.py:105(_run_dp_on_window)
+        1    0.000    0.000    3.802    3.802 D:\event-retrieval-system\env\Lib\site-packages\numba\core\dispatcher.py:344(_compile_for_args)
+     32/1    0.001    0.000    3.665    3.665 D:\event-retrieval-system\env\Lib\site-packages\numba\core\dispatcher.py:862(compile)
+  506/275    0.002    0.000    3.118    0.011 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler_lock.py:32(_acquire_compile_lock)
+      7/1    0.000    0.000    2.667    2.667 D:\event-retrieval-system\env\Lib\site-packages\numba\core\dispatcher.py:79(compile)
+      7/1    0.000    0.000    2.667    2.667 D:\event-retrieval-system\env\Lib\site-packages\numba\core\dispatcher.py:86(_compile_cached)
+      7/1    0.001    0.000    2.667    2.667 D:\event-retrieval-system\env\Lib\site-packages\numba\core\dispatcher.py:101(_compile_core)
+      7/1    0.000    0.000    2.666    2.666 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler.py:713(compile_extra)
+      8/1    0.000    0.000    2.665    2.665 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler.py:433(compile_extra)
+      8/1    0.000    0.000    2.655    2.655 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler.py:500(_compile_bytecode)
+      8/1    0.000    0.000    2.655    2.655 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler.py:456(_compile_core)
+      8/1    0.002    0.000    2.654    2.654 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler_machinery.py:342(run)
+   216/27    0.010    0.000    2.653    0.098 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler_machinery.py:267(_runPass)
+   648/81    0.001    0.000    2.644    0.033 D:\event-retrieval-system\env\Lib\site-packages\numba\core\compiler_machinery.py:271(check)
+      8/6    0.002    0.000    1.812    0.302 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typed_passes.py:439(run_pass)
+      8/1    0.000    0.000    1.592    1.592 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typed_passes.py:107(run_pass)
+      8/1    0.000    0.000    1.592    1.592 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typed_passes.py:68(type_inference_stage)
+      8/1    0.000    0.000    1.543    1.543 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typeinfer.py:1064(propagate)
+     17/3    0.004    0.000    1.542    0.514 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typeinfer.py:147(propagate)
+  206/177    0.011    0.000    1.446    0.008 D:\event-retrieval-system\env\Lib\site-packages\numba\core\types\functions.py:284(get_call_type)
+  198/168    0.003    0.000    1.419    0.008 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typeinfer.py:574(resolve)
+  207/177    0.001    0.000    1.407    0.008 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typing\context.py:268(resolve_function_type)
+  198/168    0.000    0.000    1.407    0.008 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typeinfer.py:1531(resolve_call)
+  205/175    0.001    0.000    1.401    0.008 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typing\context.py:320(_resolve_user_function_type)
+1385/1218    0.004    0.000    1.385    0.001 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typing\templates.py:356(apply)
+  789/670    0.002    0.000    1.345    0.002 D:\event-retrieval-system\env\Lib\site-packages\numba\core\typing\templates.py:614(generic)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 907.12ms
+-----------------------------------------------------------------------------------------------------------
+         502503 function calls (466629 primitive calls) in 0.907 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1067 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    30/23    0.001    0.000    0.912    0.040 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       31    0.000    0.000    0.908    0.029 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       31    0.020    0.001    0.472    0.015 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       35    0.250    0.007    0.250    0.007 {built-in method _overlapped.GetQueuedCompletionStatus}
+       45    0.000    0.000    0.172    0.004 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.170    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.169    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.169    0.015 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.157    0.157 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  34792/1    0.088    0.000    0.157    0.157 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+      144    0.125    0.001    0.128    0.001 D:\event-retrieval-system\env\Lib\site-packages\numpy\_core\memmap.py:359(__getitem__)
+        1    0.000    0.000    0.093    0.093 D:\event-retrieval-system\backend\src\index\retrieval_system.py:424(_build_temporal_candidates)
+        1    0.000    0.000    0.089    0.089 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.001    0.001    0.088    0.088 D:\event-retrieval-system\backend\src\index\retrieval_system.py:450(temporal_search)
+        1    0.010    0.010    0.088    0.088 D:\event-retrieval-system\backend\src\ui\temporal_search.py:180(temporal_search_from_candidates)
+        2    0.000    0.000    0.082    0.041 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.057    0.057 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.057    0.057 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.057    0.057 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.057    0.057    0.057    0.057 {method 'cpu' of 'torch._C.TensorBase' objects}
+237824/237803    0.046    0.000    0.047    0.000 {built-in method builtins.isinstance}
+        2    0.000    0.000    0.041    0.021 D:\event-retrieval-system\backend\src\index\retrieval_system.py:328(_results_for_queries)
+        2    0.007    0.004    0.040    0.020 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 833.1ms
+-----------------------------------------------------------------------------------------------------------
+         373580 function calls (346932 primitive calls) in 0.833 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1123 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    32/25    0.001    0.000    0.991    0.040 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       33    0.000    0.000    0.988    0.030 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       33    0.017    0.001    0.513    0.016 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       38    0.297    0.008    0.297    0.008 {built-in method _overlapped.GetQueuedCompletionStatus}
+       49    0.000    0.000    0.128    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.125    0.010 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.124    0.011 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.116    0.116 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  25558/1    0.065    0.000    0.116    0.116 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+       81    0.097    0.001    0.099    0.001 D:\event-retrieval-system\env\Lib\site-packages\numpy\_core\memmap.py:359(__getitem__)
+        1    0.000    0.000    0.074    0.074 D:\event-retrieval-system\backend\src\index\retrieval_system.py:424(_build_temporal_candidates)
+        1    0.000    0.000    0.072    0.072 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.072    0.072 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.071    0.071 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.071    0.071    0.071    0.071 {method 'cpu' of 'torch._C.TensorBase' objects}
+        2    0.000    0.000    0.064    0.032 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        2    0.006    0.003    0.038    0.019 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+175159/175138    0.034    0.000    0.035    0.000 {built-in method builtins.isinstance}
+        2    0.000    0.000    0.033    0.016 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\frame.py:2125(to_dict)
+        2    0.008    0.004    0.033    0.016 D:\event-retrieval-system\env\Lib\site-packages\pandas\core\methods\to_dict.py:97(to_dict)
+        1    0.000    0.000    0.031    0.031 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.031    0.031 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 857.64ms
+-----------------------------------------------------------------------------------------------------------
+         397665 function calls (371012 primitive calls) in 0.858 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1117 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    34/27    0.001    0.000    0.941    0.035 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       35    0.000    0.000    0.937    0.027 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       35    0.019    0.001    0.496    0.014 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       41    0.272    0.007    0.272    0.007 {built-in method _overlapped.GetQueuedCompletionStatus}
+       54    0.000    0.000    0.144    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.001    0.000    0.141    0.012 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.140    0.013 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.132    0.132 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  25558/1    0.080    0.000    0.132    0.132 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+      132    0.113    0.001    0.115    0.001 D:\event-retrieval-system\env\Lib\site-packages\numpy\_core\memmap.py:359(__getitem__)
+        1    0.000    0.000    0.079    0.079 D:\event-retrieval-system\backend\src\index\retrieval_system.py:424(_build_temporal_candidates)
+        1    0.000    0.000    0.065    0.065 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.001    0.001    0.065    0.065 D:\event-retrieval-system\backend\src\index\retrieval_system.py:450(temporal_search)
+        1    0.008    0.008    0.064    0.064 D:\event-retrieval-system\backend\src\ui\temporal_search.py:180(temporal_search_from_candidates)
+        2    0.000    0.000    0.064    0.032 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.050    0.050 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.050    0.050 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.050    0.050 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.050    0.050    0.050    0.050 {method 'cpu' of 'torch._C.TensorBase' objects}
+      558    0.010    0.000    0.040    0.000 D:\event-retrieval-system\backend\src\ui\temporal_search.py:43(_clean_row)
+        2    0.006    0.003    0.040    0.020 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+        1    0.000    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 2552.2ms
+-----------------------------------------------------------------------------------------------------------
+         392156 function calls (365296 primitive calls) in 2.552 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1782 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    60/53    0.002    0.000    4.292    0.081 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       61    0.015    0.000    1.950    0.032 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       61    0.007    0.000    1.825    0.030 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       65    1.732    0.027    1.732    0.027 {built-in method _overlapped.GetQueuedCompletionStatus}
+    79/22    0.001    0.000    1.711    0.078 {method 'run' of '_contextvars.Context' objects}
+        1    0.001    0.001    1.709    1.709 D:\event-retrieval-system\backend\main.py:308(translate_query_if_needed)
+        1    0.000    0.000    1.706    1.706 D:\event-retrieval-system\env\Lib\site-packages\deep_translator\google.py:51(translate)
+        1    0.000    0.000    1.693    1.693 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:74(get)
+        1    0.000    0.000    1.693    1.693 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:24(request)
+        1    0.000    0.000    1.692    1.692 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:557(request)
+        1    0.000    0.000    1.685    1.685 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:752(send)
+       69    0.000    0.000    0.984    0.014 {method 'readline' of '_io.BufferedReader' objects}
+        3    0.000    0.000    0.906    0.302 D:\event-retrieval-system\env\Lib\site-packages\requests\models.py:1030(content)
+       12    0.000    0.000    0.906    0.076 {method 'join' of 'bytes' objects}
+       23    0.000    0.000    0.906    0.039 D:\event-retrieval-system\env\Lib\site-packages\requests\models.py:933(generate)
+       43    0.000    0.000    0.789    0.018 D:\event-retrieval-system\env\Lib\site-packages\urllib3\response.py:1338(_update_chunk_length)
+        1    0.000    0.000    0.778    0.778 D:\event-retrieval-system\env\Lib\site-packages\requests\adapters.py:634(send)
+        1    0.000    0.000    0.776    0.776 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:592(urlopen)
+       23    0.000    0.000    0.776    0.034 D:\event-retrieval-system\env\Lib\site-packages\urllib3\response.py:1238(stream)
+       23    0.000    0.000    0.776    0.034 D:\event-retrieval-system\env\Lib\site-packages\urllib3\response.py:1378(read_chunked)
+        1    0.000    0.000    0.776    0.776 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:377(_make_request)
+        1    0.000    0.000    0.692    0.692 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.000    0.000    0.577    0.577 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:1098(_validate_conn)
+        1    0.000    0.000    0.198    0.198 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connection.py:540(getresponse)
+        1    0.000    0.000    0.197    0.197 D:\Python Installation\Lib\http\client.py:1386(getresponse)
+        1    0.000    0.000    0.197    0.197 D:\Python Installation\Lib\http\client.py:324(begin)
+        1    0.000    0.000    0.196    0.196 D:\Python Installation\Lib\http\client.py:291(_read_status)
+        1    0.000    0.000    0.182    0.182 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connection.py:724(connect)
+        1    0.000    0.000    0.182    0.182 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connection.py:901(_ssl_wrap_socket_and_match_hostname)
+        1    0.000    0.000    0.182    0.182 D:\event-retrieval-system\env\Lib\site-packages\urllib3\util\ssl_.py:363(ssl_wrap_socket)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 3301.9ms
+-----------------------------------------------------------------------------------------------------------
+         524147 function calls (488710 primitive calls) in 3.302 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1664 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    75/65    0.006    0.000    4.733    0.073 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       77    0.001    0.000    3.160    0.041 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       77    0.014    0.000    3.159    0.041 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+   100/36    0.001    0.000    2.640    0.073 {method 'run' of '_contextvars.Context' objects}
+       82    2.270    0.028    2.359    0.029 {built-in method _overlapped.GetQueuedCompletionStatus}
+        1    0.001    0.001    2.245    2.245 D:\event-retrieval-system\backend\main.py:308(translate_query_if_needed)
+        1    0.000    0.000    2.243    2.243 D:\event-retrieval-system\env\Lib\site-packages\deep_translator\google.py:51(translate)
+        1    0.000    0.000    2.237    2.237 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:74(get)
+        1    0.000    0.000    2.237    2.237 D:\event-retrieval-system\env\Lib\site-packages\requests\api.py:24(request)
+        1    0.000    0.000    2.236    2.236 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:557(request)
+        1    0.000    0.000    2.234    2.234 D:\event-retrieval-system\env\Lib\site-packages\requests\sessions.py:752(send)
+       84    0.000    0.000    1.617    0.019 {method 'readline' of '_io.BufferedReader' objects}
+        3    0.000    0.000    1.425    0.475 D:\event-retrieval-system\env\Lib\site-packages\requests\models.py:1030(content)
+       12    0.000    0.000    1.425    0.119 {method 'join' of 'bytes' objects}
+       18    0.000    0.000    1.425    0.079 D:\event-retrieval-system\env\Lib\site-packages\requests\models.py:933(generate)
+       18    0.000    0.000    1.425    0.079 D:\event-retrieval-system\env\Lib\site-packages\urllib3\response.py:1238(stream)
+       18    0.000    0.000    1.425    0.079 D:\event-retrieval-system\env\Lib\site-packages\urllib3\response.py:1378(read_chunked)
+       59    0.000    0.000    1.424    0.024 D:\event-retrieval-system\env\Lib\site-packages\urllib3\response.py:1338(_update_chunk_length)
+        1    0.000    0.000    0.808    0.808 D:\event-retrieval-system\env\Lib\site-packages\requests\adapters.py:634(send)
+        1    0.000    0.000    0.807    0.807 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:592(urlopen)
+        1    0.000    0.000    0.807    0.807 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:377(_make_request)
+        1    0.000    0.000    0.611    0.611 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connectionpool.py:1098(_validate_conn)
+        1    0.000    0.000    0.254    0.254 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connection.py:724(connect)
+        1    0.000    0.000    0.254    0.254 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connection.py:901(_ssl_wrap_socket_and_match_hostname)
+        1    0.000    0.000    0.254    0.254 D:\event-retrieval-system\env\Lib\site-packages\urllib3\util\ssl_.py:363(ssl_wrap_socket)
+        1    0.000    0.000    0.195    0.195 D:\event-retrieval-system\env\Lib\site-packages\urllib3\connection.py:540(getresponse)
+        1    0.000    0.000    0.195    0.195 D:\Python Installation\Lib\http\client.py:1386(getresponse)
+        1    0.000    0.000    0.195    0.195 D:\Python Installation\Lib\http\client.py:324(begin)
+        1    0.000    0.000    0.194    0.194 D:\Python Installation\Lib\http\client.py:291(_read_status)
+       94    0.000    0.000    0.179    0.002 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 835.24ms
+-----------------------------------------------------------------------------------------------------------
+         496911 function calls (461548 primitive calls) in 0.835 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1123 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    32/25    0.001    0.000    1.017    0.041 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+        1    0.000    0.000    0.651    0.651 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+       33    0.018    0.001    0.527    0.016 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       33    0.000    0.000    0.418    0.013 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       38    0.354    0.009    0.376    0.010 {built-in method _overlapped.GetQueuedCompletionStatus}
+       49    0.000    0.000    0.158    0.003 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.155    0.013 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.155    0.014 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.146    0.146 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  34172/1    0.081    0.000    0.146    0.146 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+        1    0.000    0.000    0.063    0.063 D:\event-retrieval-system\backend\src\index\retrieval_system.py:424(_build_temporal_candidates)
+        3    0.000    0.000    0.047    0.016 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+234260/234232    0.043    0.000    0.044    0.000 {built-in method builtins.isinstance}
+      111    0.038    0.000    0.039    0.000 D:\event-retrieval-system\env\Lib\site-packages\numpy\_core\memmap.py:359(__getitem__)
+        1    0.000    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\open_clip\model.py:539(encode_text)
+    245/1    0.001    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1774(_wrapped_call_impl)
+    245/1    0.001    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\torch\nn\modules\module.py:1782(_call_impl)
+        1    0.000    0.000    0.038    0.038 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:1222(forward)
+        3    0.008    0.003    0.038    0.013 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+        1    0.000    0.000    0.037    0.037 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:563(forward)
+       24    0.002    0.000    0.037    0.002 D:\event-retrieval-system\env\Lib\site-packages\open_clip\transformer.py:289(forward)
+      525    0.008    0.000    0.033    0.000 D:\event-retrieval-system\backend\src\ui\temporal_search.py:43(_clean_row)
+
+
+===========================================================================================================
+
+======================================== BOTTLENECK PROFILE REPORT ========================================
+[REQ] POST /api/search | Total Latency: 1017.0ms
+-----------------------------------------------------------------------------------------------------------
+         657775 function calls (613694 primitive calls) in 1.017 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1123 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    34/27    0.014    0.000    1.100    0.041 D:\Python Installation\Lib\asyncio\base_events.py:1960(_run_once)
+       35    0.000    0.000    0.983    0.028 D:\Python Installation\Lib\asyncio\windows_events.py:444(select)
+       35    0.024    0.001    0.389    0.011 D:\Python Installation\Lib\asyncio\windows_events.py:762(_poll)
+       52    0.000    0.000    0.205    0.004 D:\Python Installation\Lib\asyncio\events.py:87(_run)
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\base.py:139(coro)
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\middleware\exceptions.py:47(__call__)
+    24/12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\_exception_handler.py:31(wrapped_app)
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\middleware\asyncexitstack.py:15(__call__)
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:656(__call__)
+       40    0.202    0.005    0.202    0.005 {built-in method _overlapped.GetQueuedCompletionStatus}
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:662(app)
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\starlette\routing.py:267(handle)
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:110(app)
+       12    0.000    0.000    0.202    0.017 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:113(app)
+       11    0.000    0.000    0.201    0.018 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:382(app)
+        1    0.000    0.000    0.188    0.188 D:\event-retrieval-system\env\Lib\site-packages\fastapi\routing.py:277(serialize_response)
+  42786/1    0.105    0.000    0.188    0.188 D:\event-retrieval-system\env\Lib\site-packages\fastapi\encoders.py:129(jsonable_encoder)
+      136    0.125    0.001    0.127    0.001 D:\event-retrieval-system\env\Lib\site-packages\numpy\_core\memmap.py:359(__getitem__)
+        1    0.000    0.000    0.114    0.114 D:\event-retrieval-system\backend\src\index\retrieval_system.py:424(_build_temporal_candidates)
+        1    0.000    0.000    0.090    0.090 D:\event-retrieval-system\env\Lib\site-packages\torch\utils\_contextlib.py:120(decorate_context)
+        1    0.000    0.000    0.090    0.090 D:\event-retrieval-system\env\Lib\site-packages\torch\autograd\grad_mode.py:293(__exit__)
+        1    0.000    0.000    0.090    0.090 D:\event-retrieval-system\backend\src\index\retrieval_system.py:291(encode_texts)
+        1    0.090    0.090    0.090    0.090 {method 'cpu' of 'torch._C.TensorBase' objects}
+        4    0.001    0.000    0.088    0.022 D:\event-retrieval-system\backend\src\index\retrieval_system.py:389(multi_query_search)
+        1    0.000    0.000    0.077    0.077 D:\event-retrieval-system\backend\src\index\retrieval_system.py:485(run_search)
+        1    0.001    0.001    0.076    0.076 D:\event-retrieval-system\backend\src\index\retrieval_system.py:450(temporal_search)
+        1    0.009    0.009    0.076    0.076 D:\event-retrieval-system\backend\src\ui\temporal_search.py:180(temporal_search_from_candidates)
+      956    0.017    0.000    0.070    0.000 D:\event-retrieval-system\backend\src\ui\temporal_search.py:43(_clean_row)
+307761/307726    0.059    0.000    0.060    0.000 {built-in method builtins.isinstance}
+        4    0.011    0.003    0.058    0.014 D:\event-retrieval-system\backend\src\index\retrieval_system.py:336(_aggregate_multi_query)
+
+
+===========================================================================================================
