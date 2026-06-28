@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -20,13 +19,22 @@ class TemporalMatch:
     end_time: float
 
 
-def _load_embedding(path: str | Path) -> np.ndarray:
-    path = Path(path)
-    if not path.is_absolute():
-        path = Path(__file__).resolve().parents[2] / path
-    emb = np.asarray(np.load(path), dtype=np.float32).reshape(-1)
-    norm = np.linalg.norm(emb)
-    return emb / norm if norm > 1e-12 else emb
+@dataclass(slots=True)
+class Candidates:
+    """Per-video candidate keyframes handed to Temporal Search by a
+    Retrieval Backend.
+
+    All arrays are positional and share the same length ``n``. The
+    ``embedding_matrix`` has ``n`` rows of unit-norm float32 vectors.
+    ``records`` carries the backend-specific metadata dicts (one per row)
+    which Temporal Search returns verbatim inside each ``TemporalMatch``.
+    """
+
+    video_id: np.ndarray
+    timestamp_sec: np.ndarray
+    row_index: np.ndarray
+    records: list[dict]
+    embedding_matrix: np.ndarray
 
 
 def _python(value):
@@ -45,8 +53,7 @@ def _clean_row(row: dict) -> dict:
 
 
 # =====================================================================
-# TỐI ƯU C-LEVEL 1: Thuật toán DP Dịch bằng Numba JIT (Siêu Tốc Độ)
-# Bỏ qua GIL, không cấp phát mảng trung gian gây tốn RAM.
+# DP core (Numba JIT). O(m*n) strict-order alignment.
 # =====================================================================
 @njit(fastmath=True, nogil=True, cache=True)
 def _run_dp_on_window_numba(S: np.ndarray) -> tuple[float, np.ndarray]:
@@ -62,23 +69,20 @@ def _run_dp_on_window_numba(S: np.ndarray) -> tuple[float, np.ndarray]:
         dp_cur = np.full(n, -np.inf, dtype=np.float32)
         current_max_val = -np.inf
         current_max_idx = -1
-        
+
         for j in range(n):
-            # Tính max cộng dồn từ các frame trước đó
             if j > 0:
                 prev_j = j - 1
                 if dp_prev[prev_j] > current_max_val:
                     current_max_val = dp_prev[prev_j]
                     current_max_idx = prev_j
-            
-            # Nếu có chuỗi hợp lệ thì cộng điểm
+
             if current_max_idx != -1:
                 dp_cur[j] = current_max_val + S[qi, j]
                 parents[qi, j] = current_max_idx
-                
+
         dp_prev = dp_cur
 
-    # Tìm điểm kết thúc chuỗi có score cao nhất
     best_score = -np.inf
     last = -1
     for j in range(n):
@@ -89,7 +93,6 @@ def _run_dp_on_window_numba(S: np.ndarray) -> tuple[float, np.ndarray]:
     if last == -1 or not np.isfinite(best_score):
         return -np.inf, np.empty(0, dtype=np.int32)
 
-    # Backtrack tìm đường đi ngược
     path = np.empty(m, dtype=np.int32)
     path[m - 1] = last
     for qi in range(m - 1, 0, -1):
@@ -101,7 +104,6 @@ def _run_dp_on_window_numba(S: np.ndarray) -> tuple[float, np.ndarray]:
     return float(best_score), path
 
 
-# Wrapper kết nối Numba Core với code Python
 def _run_dp_on_window(S: np.ndarray) -> tuple[float, list[int]]:
     score, path_array = _run_dp_on_window_numba(S)
     return score, path_array.tolist() if path_array.size > 0 else []
@@ -137,7 +139,9 @@ def _temporal_topk_dp(
             if not path:
                 break
 
-            candidates.append((score, path, float(timestamps[path[0]]), float(timestamps[path[-1]])))
+            candidates.append(
+                (score, path, float(timestamps[path[0]]), float(timestamps[path[-1]]))
+            )
 
             for qi, frame_idx in enumerate(path):
                 work[qi, frame_idx] = -np.inf
@@ -156,7 +160,14 @@ def _temporal_topk_dp(
             score, local = _run_dp_on_window(S[:, start:end])
             if local:
                 path = [start + i for i in local]
-                candidates.append((score, path, float(timestamps[path[0]]), float(timestamps[path[-1]])))
+                candidates.append(
+                    (
+                        score,
+                        path,
+                        float(timestamps[path[0]]),
+                        float(timestamps[path[-1]]),
+                    )
+                )
 
     candidates.sort(key=lambda x: x[0], reverse=True)
 
@@ -177,87 +188,67 @@ def _temporal_topk_dp(
     return [(score, path) for score, path, _, _ in selected]
 
 
-def temporal_search_from_candidates(
+def search(
+    candidates: Candidates,
     query_embeddings: np.ndarray,
     sub_queries: list[str],
-    candidate_df: pd.DataFrame,
     duration_limit: float = -1,
     top_k_videos: int = 10,
     max_sequences_per_video: int = 3,
     overlap_threshold: float = 0.6,
-    embedding_matrix: np.ndarray | np.memmap | None = None,
-    allow_npy_fallback: bool = False,
-) -> pd.DataFrame:
-    required = {"video_id", "timestamp_sec"}
-    if not required.issubset(candidate_df.columns):
-        raise ValueError(f"Missing columns for temporal search: {required - set(candidate_df.columns)}")
+) -> list[TemporalMatch]:
+    """Align ``query_embeddings`` against per-video candidate keyframes.
 
+    Solves a strict-order dynamic program over the query x frame similarity
+    matrix for each video, then non-maximum-suppresses overlapping results
+    and returns the top matches ranked by average score.
+    """
     if len(sub_queries) != len(query_embeddings):
         raise ValueError("sub_queries/query_embeddings length mismatch")
 
     query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
     results: list[TemporalMatch] = []
 
-    # =====================================================================
-    # TỐI ƯU C-LEVEL 2: Tiêu diệt Overhead của Pandas
-    # 1. Map Dict CHỈ 1 LẦN.
-    # 2. Xử lý cắt mảng hoàn toàn bằng NumPy Con trỏ (Numpy Slicing)
-    # =====================================================================
-    all_records = candidate_df.to_dict(orient="records")
-    
-    v_ids = candidate_df["video_id"].to_numpy()
+    v_ids = np.asarray(candidates.video_id)
+    timestamps_all = np.asarray(candidates.timestamp_sec, dtype=np.float32)
+    row_index_all = np.asarray(candidates.row_index, dtype=np.int64)
+    embedding_matrix = np.asarray(candidates.embedding_matrix, dtype=np.float32)
+    records = candidates.records
+
     unique_vids = np.unique(v_ids)
 
-    faiss_id_col = "_faiss_id" if "_faiss_id" in candidate_df.columns else "keyframe_id"
-    faiss_ids = candidate_df[faiss_id_col].to_numpy(dtype=np.int64)
-    timestamps_all = pd.to_numeric(candidate_df["timestamp_sec"], errors="coerce").fillna(0).to_numpy(np.float32)
-    
-    emb_paths_all = candidate_df["embedding_path"].to_numpy() if (allow_npy_fallback and "embedding_path" in candidate_df.columns) else None
-
     for video_id in unique_vids:
-        # Lấy Index của video này bằng Array Mask (O(1) Memory)
         idx_for_vid = np.where(v_ids == video_id)[0]
 
-        # 1. Sort theo timestamp bằng argsort
         sub_times = timestamps_all[idx_for_vid]
         sort_order = np.argsort(sub_times, kind="mergesort")
         idx_for_vid = idx_for_vid[sort_order]
 
-        # 2. Drop duplicates bằng faiss_id (Thay thế DataFrame.drop_duplicates)
-        sub_faiss = faiss_ids[idx_for_vid]
-        _, unique_local_idx = np.unique(sub_faiss, return_index=True)
-        idx_for_vid = idx_for_vid[np.sort(unique_local_idx)]
+        sub_row_index = row_index_all[idx_for_vid]
+        sub_times_final = timestamps_all[idx_for_vid]
 
         if len(idx_for_vid) < len(query_embeddings):
             continue
 
-        sub_faiss_final = faiss_ids[idx_for_vid]
-        sub_times_final = timestamps_all[idx_for_vid]
+        frame_embeddings = embedding_matrix[sub_row_index]
 
-        # 3. Tra cứu Vector
-        if embedding_matrix is not None:
-            if np.any(sub_faiss_final < 0) or np.any(sub_faiss_final >= len(embedding_matrix)):
-                raise IndexError(f"Invalid FAISS ID in temporal candidates for video_id={video_id}")
-            frame_embeddings = np.asarray(embedding_matrix[sub_faiss_final], dtype=np.float32)
-        elif emb_paths_all is not None:
-            frame_embeddings = np.stack([_load_embedding(emb_paths_all[i]) for i in idx_for_vid])
-        else:
-            raise RuntimeError("Temporal search needs vector cache by _faiss_id.")
-
-        # 4. Nhân Ma trận
         S = (query_embeddings @ frame_embeddings.T).astype(np.float32, copy=False)
 
-        # 5. Gọi Numba DP Tìm đường tốt nhất
-        matches = _temporal_topk_dp(S, sub_times_final, duration_limit, max_sequences_per_video, overlap_threshold)
+        matches = _temporal_topk_dp(
+            S,
+            sub_times_final,
+            duration_limit,
+            max_sequences_per_video,
+            overlap_threshold,
+        )
         if not matches:
             continue
 
-        # 6. Rút trích kết quả trả về
         for score, path in matches:
             selected = []
             for qi, local_frame_idx in enumerate(path):
-                global_idx = idx_for_vid[local_frame_idx]
-                row = _clean_row(all_records[global_idx])
+                global_row = int(sub_row_index[local_frame_idx])
+                row = _clean_row(records[global_row])
                 row.update(
                     sub_query_idx=qi,
                     sub_query=str(sub_queries[qi]),
@@ -282,9 +273,18 @@ def temporal_search_from_candidates(
             )
 
     results.sort(key=lambda item: item.avg_score, reverse=True)
+    return results[:top_k_videos]
 
+
+def matches_to_dataframe(matches: list[TemporalMatch]) -> pd.DataFrame:
+    """Shape ``TemporalMatch`` results into the legacy response DataFrame.
+
+    Shared by both Retrieval Backends so the df-shaping logic lives in one
+    place. Each row represents one video-level match and carries the matched
+    keyframe sequence under ``matched_sequence``.
+    """
     rows = []
-    for rank, item in enumerate(results[:top_k_videos], 1):
+    for rank, item in enumerate(matches, 1):
         row = dict(item.selected_keyframes[len(item.selected_keyframes) // 2])
         row.update(
             rank=rank,

@@ -30,7 +30,10 @@ const TemporalSequence = memo(function TemporalSequence({
   onSimilaritySearch,
   onSurroundingImages,
 }) {
-  const sequence = Array.isArray(result?.matched_sequence) ? result.matched_sequence : [];
+  const sequence = useMemo(
+    () => (Array.isArray(result?.matched_sequence) ? result.matched_sequence : []),
+    [result]
+  );
   const viewportRef = useRef(null);
   const [page, setPage] = useState(0);
   const frameResults = useMemo(
@@ -38,16 +41,16 @@ const TemporalSequence = memo(function TemporalSequence({
     [result, sequence]
   );
 
+  useEffect(() => {
+    setPage(0);
+    viewportRef.current?.scrollTo({ left: 0, behavior: "auto" });
+  }, [result?.id, sequence.length]);
+
   if (!sequence.length) return null;
 
   const isCarousel = sequence.length > 3;
   const visibleCount = Math.min(sequence.length, 3);
   const maxPage = Math.max(0, sequence.length - visibleCount);
-
-  useEffect(() => {
-    setPage(0);
-    viewportRef.current?.scrollTo({ left: 0, behavior: "auto" });
-  }, [result?.id, sequence.length]);
 
   function move(direction) {
     const viewport = viewportRef.current;

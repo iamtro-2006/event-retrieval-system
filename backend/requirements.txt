@@ -1,10 +1,32 @@
-opencv-python
-numpy
-pandas
-tqdm
-Pillow
-imagehash
-scenedetect[opencv]
-open_clip_torch
+# Core ML / retrieval
+open-clip-torch>=2.31
+timm>=1.0.15
 torch
+faiss-cpu
+numba
+
+# Data
+numpy>=1.26
+pandas>=2.1
 scikit-learn
+Pillow>=10.0
+imagehash
+
+# Indexing pipelines
+opencv-python-headless>=4.9
+scenedetect[opencv]
+tqdm>=4.66
+
+# Vector store
+pymilvus
+
+# API server
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+python-multipart>=0.0.9
+PyYAML>=6.0
+requests>=2.31
+deep-translator>=1.11
+faster-whisper>=1.1
+python-dotenv

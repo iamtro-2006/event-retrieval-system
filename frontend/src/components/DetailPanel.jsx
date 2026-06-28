@@ -24,10 +24,6 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
   const centerRef = useRef(null);
 
   useEffect(() => {
-    setActiveResult(result);
-  }, [result]);
-
-  useEffect(() => {
     centerRef.current?.scrollIntoView({
       behavior: "smooth",
       inline: "center",
@@ -263,6 +259,7 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
       </aside>
 
       <VideoModal
+        key={activeResult?.id}
         open={videoOpen}
         result={activeResult}
         onClose={() => setVideoOpen(false)}

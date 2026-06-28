@@ -1,0 +1,12 @@
+[
+  {"query": "a person walking in a park", "mode": "semantic", "top_k": 20},
+  {"query": "a car driving on a road", "mode": "semantic", "top_k": 20},
+  {"query": "people sitting at a table", "mode": "semantic", "top_k": 20},
+  {"query": "a dog running in a field", "mode": "semantic", "top_k": 20},
+  {"query": "a building with a red roof", "mode": "semantic", "top_k": 20},
+  {"query": "a person entering a room. then sitting on a chair", "mode": "temporal", "top_k": 20},
+  {"query": "a car approaching. then stopping. then a person getting out", "mode": "temporal", "top_k": 20},
+  {"query": "someone opening a door. then walking through a hallway", "mode": "temporal", "top_k": 20},
+  {"query": "a group of people gathered. then dispersing", "mode": "temporal", "top_k": 20},
+  {"query": "a dog barking. then running away", "mode": "temporal", "top_k": 20}
+]

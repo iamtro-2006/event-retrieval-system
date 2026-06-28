@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-import yaml
 from deep_translator import GoogleTranslator
 
-from src.index.retrieval_system import FaissRetrievalSystem
+from src.api.serialization import format_keyframe_id as format_keyframe_id_from_dict
+from src.index.retrieval_backend import create_retrieval_backend
 from src.ui import (
     split_query,
     rerank_multi_query,
@@ -213,22 +213,16 @@ div[data-testid="stTextInput"] label {
 # Cache
 # =========================
 @st.cache_data
-def load_yaml(path: str) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+def load_config_cached(path: str) -> dict:
+    from src.config.retrieval_config import load_retrieval_config, to_dict
+
+    cfg = load_retrieval_config(path)
+    return to_dict(cfg)
 
 
 @st.cache_resource
 def load_retrieval_system(cfg: dict):
-    return FaissRetrievalSystem(
-        index_path=cfg["faiss"]["index_path"],
-        metadata_path=cfg["faiss"]["metadata_path"],
-        model_name=cfg["model"]["name"],
-        pretrained=cfg["model"]["pretrained"],
-        device=cfg["model"].get("device", "auto"),
-        precision=cfg["model"].get("precision", "fp32"),
-        normalize=cfg["model"].get("normalize", True),
-    )
+    return create_retrieval_backend(cfg)
 
 
 # =========================
@@ -241,19 +235,7 @@ def translate_query(query: str, cfg: dict) -> str:
 
 
 def format_keyframe_id(row: pd.Series) -> str:
-    if "keyframe_id" in row:
-        value = str(row["keyframe_id"])
-        if value.isdigit():
-            return value.zfill(6)
-        return value
-
-    if "keyframe_id_int" in row:
-        return f"{int(row['keyframe_id_int']):06d}"
-
-    if "frame_idx" in row:
-        return f"{int(row['frame_idx']):06d}"
-
-    return "unknown"
+    return format_keyframe_id_from_dict(row.to_dict())
 
 
 def short_label(row: pd.Series) -> str:
@@ -283,7 +265,9 @@ def get_video_path(row: pd.Series, cfg: dict) -> Path | None:
     return None
 
 
-def run_search(system, query: str, top_k: int, candidate_multiplier: int, use_split: bool):
+def run_search(
+    system, query: str, top_k: int, candidate_multiplier: int, use_split: bool
+):
     sub_queries = split_query(query) if use_split else [query]
     candidate_k = top_k * candidate_multiplier
 
@@ -298,7 +282,10 @@ def run_search(system, query: str, top_k: int, candidate_multiplier: int, use_sp
     if results.empty:
         return results, sub_queries
 
-    if "alignment_score" in results.columns and "retrieval_score" not in results.columns:
+    if (
+        "alignment_score" in results.columns
+        and "retrieval_score" not in results.columns
+    ):
         results["retrieval_score"] = results["alignment_score"]
 
     results = results.head(top_k).copy()
@@ -379,7 +366,9 @@ score={row.get("retrieval_score", row.get("alignment_score", 0)):.3f}
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        if st.button("🖼️", key=f"sur_{rank}_{row['keyframe_path']}", help="Surrounding frames"):
+        if st.button(
+            "🖼️", key=f"sur_{rank}_{row['keyframe_path']}", help="Surrounding frames"
+        ):
             surrounding_dialog(row.to_dict(), radius)
 
     with c2:
@@ -397,7 +386,7 @@ score={row.get("retrieval_score", row.get("alignment_score", 0)):.3f}
 def render_grid(results: pd.DataFrame, cfg: dict, radius: int, columns: int):
     for start in range(0, len(results), columns):
         cols = st.columns(columns)
-        batch = results.iloc[start:start + columns]
+        batch = results.iloc[start : start + columns]
 
         for col, (_, row) in zip(cols, batch.iterrows()):
             with col:
@@ -417,7 +406,7 @@ def main():
         st.markdown("## ⚙️ Settings")
 
         cfg_path = st.text_input("Config", "configs/app.yaml")
-        cfg = load_yaml(cfg_path)
+        cfg = load_config_cached(cfg_path)
 
         top_k = st.slider(
             "Top K",
@@ -446,7 +435,10 @@ def main():
 
     st.markdown('<section class="gemini-shell">', unsafe_allow_html=True)
     st.markdown('<div class="gemini-logo">✦</div>', unsafe_allow_html=True)
-    st.markdown('<div class="gemini-title">Hi Tân, what frame are you looking for?</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="gemini-title">Hi Tân, what frame are you looking for?</div>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown('<div class="search-wrap">', unsafe_allow_html=True)
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Send, X } from "lucide-react";
 
 export default function VideoModal({ open, result, onClose, onSubmit, layer = 40 }) {
@@ -7,11 +7,6 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
   const [currentMs, setCurrentMs] = useState(initialMs);
   const [durationMs, setDurationMs] = useState(Math.max(initialMs + 1000, 1000));
   const [stepMs, setStepMs] = useState(500);
-
-  useEffect(() => {
-    if (!open) return;
-    setCurrentMs(initialMs);
-  }, [open, initialMs]);
 
   if (!open || !result) return null;
 

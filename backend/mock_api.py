@@ -12,6 +12,18 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from src.api.models import (
+    DresLoginRequest,
+    DresSubmitRequest,
+    SearchRequest,
+    SimilaritySearchRequest,
+)
+from src.api.serialization import (
+    format_keyframe_id,
+    safe_float,
+    safe_int,
+)
+
 
 # =========================
 # CONFIG
@@ -104,60 +116,8 @@ FRAME_LOOKUP: dict[tuple[str, int], Path] = {}
 
 
 # =========================
-# REQUEST MODELS
-# =========================
-
-class SearchRequest(BaseModel):
-    query: str
-    top_k: int | None = None
-    candidate_multiplier: int | None = None
-    use_split: bool | None = None
-    use_translate: bool | None = None
-    search_mode: str | None = "semantic"
-    duration_limit: float | None = -1
-
-
-class SimilaritySearchRequest(BaseModel):
-    video_id: str
-    frame_id: int
-    top_k: int | None = None
-
-
-class DresLoginRequest(BaseModel):
-    dres_url: str
-    username: str
-    password: str
-
-
-class DresSubmitRequest(BaseModel):
-    dres_url: str
-    session_id: str
-    evaluation_id: str | None = None
-    video_id: str
-    frame_id: int
-    timestamp: float | None = None
-
-
-# =========================
 # UTILS
 # =========================
-
-def safe_int(value: Any, default: int = 0) -> int:
-    try:
-        if value is None:
-            return default
-        return int(float(value))
-    except Exception:
-        return default
-
-
-def safe_float(value: Any, default: float = 0.0) -> float:
-    try:
-        if value is None:
-            return default
-        return float(value)
-    except Exception:
-        return default
 
 
 def clamp_top_k(top_k: int | None) -> int:
@@ -349,16 +309,23 @@ def sample_images(top_k: int) -> list[Path]:
 # STARTUP SCAN
 # =========================
 
+
 @app.on_event("startup")
 def startup_scan_images():
     global IMAGE_CACHE, VIDEO_FRAME_INDEX, FRAME_LOOKUP
 
     start = time.perf_counter()
 
-    logger.info("[STARTUP_SCAN_START] root=%s exists=%s", KEYFRAMES_ROOT, KEYFRAMES_ROOT.exists())
+    logger.info(
+        "[STARTUP_SCAN_START] root=%s exists=%s",
+        KEYFRAMES_ROOT,
+        KEYFRAMES_ROOT.exists(),
+    )
 
     if not KEYFRAMES_ROOT.exists():
-        logger.warning("[STARTUP_SCAN_FAIL] keyframes root does not exist: %s", KEYFRAMES_ROOT)
+        logger.warning(
+            "[STARTUP_SCAN_FAIL] keyframes root does not exist: %s", KEYFRAMES_ROOT
+        )
         IMAGE_CACHE = []
         VIDEO_FRAME_INDEX = {}
         FRAME_LOOKUP = {}
@@ -372,7 +339,11 @@ def startup_scan_images():
             logger.info("[STARTUP_SCAN_ITEM] %s", path)
 
         if checked % 10000 == 0:
-            logger.info("[STARTUP_SCAN_PROGRESS] checked=%d found_images=%d", checked, len(images))
+            logger.info(
+                "[STARTUP_SCAN_PROGRESS] checked=%d found_images=%d",
+                checked,
+                len(images),
+            )
 
         if path.is_file() and path.suffix.lower() in IMAGE_EXTS:
             images.append(path)
@@ -389,9 +360,7 @@ def startup_scan_images():
         frame_lookup[(video_id, frame_id)] = image_path
 
     for video_id in video_index:
-        video_index[video_id].sort(
-            key=lambda p: safe_int(p.stem, 0)
-        )
+        video_index[video_id].sort(key=lambda p: safe_int(p.stem, 0))
 
     IMAGE_CACHE = images
     VIDEO_FRAME_INDEX = video_index
@@ -411,6 +380,7 @@ def startup_scan_images():
 # =========================
 # BASIC ENDPOINTS
 # =========================
+
 
 @app.get("/api/health")
 def health():
@@ -469,6 +439,7 @@ def get_public_config():
 # =========================
 # MOCK SEARCH
 # =========================
+
 
 @app.post("/api/search")
 def search_api(payload: SearchRequest):
@@ -533,9 +504,7 @@ def search_api(payload: SearchRequest):
                 "start_time": min(timestamps) if timestamps else item["timestamp"],
                 "end_time": max(timestamps) if timestamps else item["timestamp"],
                 "duration_sec": (
-                    max(timestamps) - min(timestamps)
-                    if len(timestamps) >= 2
-                    else 0.0
+                    max(timestamps) - min(timestamps) if len(timestamps) >= 2 else 0.0
                 ),
                 "avg_score": item["similarity"],
             }
@@ -570,11 +539,15 @@ def search_api(payload: SearchRequest):
         "original_query": original_query,
         "query": original_query,
         "translated_query": None,
-        "use_translate": False if payload.use_translate is None else bool(payload.use_translate),
+        "use_translate": False
+        if payload.use_translate is None
+        else bool(payload.use_translate),
         "use_split": True if payload.use_split is None else bool(payload.use_split),
         "mode": mode,
         "search_mode": mode,
-        "duration_limit": -1.0 if payload.duration_limit is None else float(payload.duration_limit),
+        "duration_limit": -1.0
+        if payload.duration_limit is None
+        else float(payload.duration_limit),
         "top_k": top_k,
         "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k,
@@ -590,6 +563,7 @@ def search_api(payload: SearchRequest):
 # =========================
 # MOCK SIMILARITY SEARCH
 # =========================
+
 
 @app.post("/api/similarity-search")
 def similarity_search_api(payload: SimilaritySearchRequest):
@@ -684,6 +658,7 @@ def similarity_search_api(payload: SimilaritySearchRequest):
 # FRAME INFO
 # =========================
 
+
 @app.get("/api/frame-info")
 def get_frame_info(video_id: str, keyframe_id: int):
     request_start = time.perf_counter()
@@ -719,6 +694,7 @@ def get_frame_info(video_id: str, keyframe_id: int):
 # =========================
 # SURROUNDING FRAMES
 # =========================
+
 
 @app.get("/api/surrounding-frames")
 def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 10):
@@ -790,9 +766,12 @@ def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 10):
 # MOCK DRES ENDPOINTS
 # =========================
 
+
 @app.post("/api/dres/login")
 def dres_login(payload: DresLoginRequest):
-    logger.info("[MOCK_DRES_LOGIN] dres_url=%s username=%s", payload.dres_url, payload.username)
+    logger.info(
+        "[MOCK_DRES_LOGIN] dres_url=%s username=%s", payload.dres_url, payload.username
+    )
 
     return {
         "status": "ok",

@@ -6,13 +6,9 @@ from typing import Any
 
 import faiss
 import numpy as np
-import yaml
 from numpy.lib.format import open_memmap
 
-
-def load_yaml(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+from src.config.loader import load_yaml
 
 
 def normalize_path_text(path_value: str | Path) -> str:
@@ -70,7 +66,7 @@ def build_vector_cache(
         if normalize:
             faiss.normalize_L2(batch)
 
-        vectors[start:start + count] = batch.astype(dtype, copy=False)
+        vectors[start : start + count] = batch.astype(dtype, copy=False)
         vectors.flush()
 
         done = start + count
@@ -84,17 +80,25 @@ def build_vector_cache(
 
     print(
         "[VECTOR CACHE BUILD] done | "
-        f"path={output_path} | size={check.nbytes / (1024 ** 2):.2f} MB"
+        f"path={output_path} | size={check.nbytes / (1024**2):.2f} MB"
     )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build a contiguous FAISS vector cache .npy file.")
-    parser.add_argument("--config", default="configs/app.yaml", help="Path to backend app.yaml")
+    parser = argparse.ArgumentParser(
+        description="Build a contiguous FAISS vector cache .npy file."
+    )
+    parser.add_argument(
+        "--config", default="configs/app.yaml", help="Path to backend app.yaml"
+    )
     parser.add_argument("--output", default=None, help="Override output .npy path")
     parser.add_argument("--dtype", default=None, help="float16 or float32")
     parser.add_argument("--batch-size", type=int, default=50_000)
-    parser.add_argument("--no-normalize", action="store_true", help="Do not L2-normalize reconstructed vectors")
+    parser.add_argument(
+        "--no-normalize",
+        action="store_true",
+        help="Do not L2-normalize reconstructed vectors",
+    )
     return parser.parse_args()
 
 
@@ -128,7 +132,9 @@ def main() -> None:
     if not output_path.is_absolute():
         output_path = backend_dir / output_path
 
-    dtype = normalize_dtype(args.dtype or faiss_cfg.get("vector_cache_dtype", "float16"))
+    dtype = normalize_dtype(
+        args.dtype or faiss_cfg.get("vector_cache_dtype", "float16")
+    )
     normalize = bool(model_cfg.get("normalize", True)) and not args.no_normalize
 
     build_vector_cache(

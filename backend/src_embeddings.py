@@ -2,21 +2,9 @@ from __future__ import annotations
 
 import argparse
 import logging
-from pathlib import Path
 
-import yaml
-
+from src.config.loader import load_yaml
 from src.pipelines.extract_embeddings import ExtractEmbeddingPipeline
-
-
-def load_config(path: str | Path) -> dict:
-    path = Path(path)
-
-    if not path.exists():
-        raise FileNotFoundError(f"Config not found: {path}")
-
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def setup_logger() -> logging.Logger:
@@ -37,7 +25,7 @@ def main():
     args = parse_args()
     logger = setup_logger()
 
-    cfg = load_config(args.config)
+    cfg = load_yaml(args.config)
 
     pipeline = ExtractEmbeddingPipeline(
         cfg=cfg,

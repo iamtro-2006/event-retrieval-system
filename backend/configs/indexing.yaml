@@ -1,20 +1,20 @@
 keyframes_root: data/processed/keyframes
-embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256
+embeddings_root: data/processed/embeddings_clip_vitb16_quickgelu
 map_keyframes_root: data/processed/map_keyframes
 
+collection_name: keyframes_clip_vitb16_quickgelu
 index:
-  output_dir: data/database/faiss_hnsw_clip_vitl16_siglip_256
-  index_name: keyframes.faiss
-  metadata_name: metadata.csv
-  type: hnsw
-  metric: cosine
-  hnsw_m: 32
-  ef_construction: 200
-  ef_search: 64
+  field_name: vector
+  index_type: HNSW
+  metric_type: IP
+  params:
+    M: 32
+    efConstruction: 200
+partition_key_field: video_id
 
 model:
-  name: ViT-L-16-SigLIP-256
-  pretrained: webli
+  name: ViT-B-16-quickgelu
+  pretrained: dfn2b
   device: auto
-  precision: amp
+  precision: fp32
   normalize: true

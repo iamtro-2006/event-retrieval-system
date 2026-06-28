@@ -148,11 +148,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const timers = toastTimersRef.current;
     return () => {
-      for (const timer of toastTimersRef.current.values()) {
+      for (const timer of timers.values()) {
         clearTimeout(timer);
       }
-      toastTimersRef.current.clear();
+      timers.clear();
     };
   }, []);
 
@@ -458,6 +459,7 @@ export default function App() {
 
                   {selected && (
                     <DetailPanel
+                      key={selected.id}
                       result={selected}
                       onClose={() => setSelected(null)}
                       onSubmit={handleSubmitResult}

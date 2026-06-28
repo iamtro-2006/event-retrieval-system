@@ -1,0 +1,34 @@
+# Milvus volumes
+volumes/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+
+# Data (large files)
+backend/data/
+backend/weights/
+backend/transnetv2-pytorch-weights.pth
+backend/logs/
+backend/search_profile_log.txt
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.pytest_cache/
+backend/.pytest_cache/

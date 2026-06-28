@@ -1,16 +1,9 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-import yaml
 
+from src.config.loader import load_yaml
 from src.index.retrieval_system import FaissRetrievalSystem
-
-
-def load_yaml(path):
-    path = Path(path)
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def main():
@@ -36,14 +29,18 @@ def main():
 
     results = system.search(args.query, top_k=args.top_k)
 
-    print(results[[
-        "rank",
-        "score",
-        "dataset",
-        "video_id",
-        "keyframe_id",
-        "keyframe_path",
-    ]])
+    print(
+        results[
+            [
+                "rank",
+                "score",
+                "dataset",
+                "video_id",
+                "keyframe_id",
+                "keyframe_path",
+            ]
+        ]
+    )
 
 
 if __name__ == "__main__":
