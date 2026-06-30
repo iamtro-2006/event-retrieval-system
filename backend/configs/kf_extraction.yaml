@@ -4,7 +4,7 @@ project:
 
 paths:
   input_dir: data/raw/videos
-  output_dir: data/processed
+  output_dir: data/processed/test
 
 logging:
   level: INFO
@@ -28,8 +28,8 @@ frame_loader:
   persistent_workers: false
 
 embedding:
-  model_name: MobileCLIP2-S0
-  pretrained: dfndr2b
+  model_name: ViT-L-16-SigLIP-256 
+  pretrained: webli
   batch_size: 16
   device: auto
   precision: fp16
@@ -38,7 +38,7 @@ embedding:
 keyframe:
   min_scene_frames: 3
   max_scene_gap_frames: 5000
-  hist_threshold: 0.90
+  hist_threshold: 0.95
   min_hist_bins: 10
   image_quality: 95
   save_images: true

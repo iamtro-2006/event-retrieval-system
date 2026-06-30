@@ -1,4 +1,4 @@
-keyframes_root: data/processed/keyframes
+keyframes_root: data/processed/keyframes_test
 embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256
 map_keyframes_root: data/processed/map_keyframes
 

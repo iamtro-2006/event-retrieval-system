@@ -1,12 +1,13 @@
 faiss:
   index_path: data/database/faiss_hnsw_clip_vitl16_siglip_256/keyframes.faiss
   metadata_path: data/database/faiss_hnsw_clip_vitl16_siglip_256/metadata.csv
-  ef_search: 64
+  ef_search: 256
   threads: 8
   vector_cache_mode: memmap
   vector_cache_dtype: float32
   vector_cache_path: data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp32.npy
   allow_npy_fallback: false
+
 model:
   name: ViT-L-16-SigLIP-256
   pretrained: webli
@@ -14,25 +15,32 @@ model:
   precision: amp
   normalize: true
   compile: false
+
 paths:
   keyframes_root: data/processed/keyframes
   videos_root: data/raw/videos
   map_keyframe_path: data/processed/map_keyfram es
+
 search:
   candidate_multiplier: 3
   default_top_k: 20
   max_top_k: 200
+
 ui:
   surrounding_radius: 5
   max_surrounding_radius: 10
+
 translate:
-  enabled_default: true
+  enabled_default: false
   source: vi
+
   target: en
+
 speech:
   model_size: base
   device: cpu
   compute_type: int8
   lazy_load: true
+
 debug: 
-  profile: True
+  profile: False

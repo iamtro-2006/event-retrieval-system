@@ -1,5 +1,5 @@
-input_keyframes_root: data/processed/keyframes
-output_embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256
+input_keyframes_root: data/processed/keyframes_test
+output_embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256_test
 
 image:
   extensions: [".jpg", ".jpeg", ".png", ".webp"]
@@ -13,5 +13,5 @@ model:
   normalize: true
 
 save:
-  overwrite: true
+  overwrite: false
   extension: ".npy"
