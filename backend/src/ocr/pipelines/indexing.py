@@ -41,8 +41,9 @@ class IndexPipeline:
 
         documents: list[OCRDocument] = []
 
-        for keyframe_id, bboxs, texts in data.items():
+        for keyframe_id, values in data.items():
 
+            bboxs, texts = values 
             documents.append(
 
                 OCRDocument(
