@@ -1,0 +1,22 @@
+elasticsearch:
+  host: "192.168.1.15"
+  port: 9200
+  scheme: "http"
+  index: "ocr"
+
+dataset:
+  root: "data/mock/ocr"
+
+mock:
+  datasets:
+    - L21
+    - L22
+
+  videos_per_dataset: 5
+
+  keyframes_per_video: 100
+
+  min_texts_per_frame: 1
+  max_texts_per_frame: 15
+
+  seed: 42

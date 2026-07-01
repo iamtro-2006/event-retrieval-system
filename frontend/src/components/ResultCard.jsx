@@ -12,6 +12,10 @@ const ResultCard = memo(function ResultCard({
   const score    = (result.similarity * 100).toFixed(1);
   const label    = `${result.video_id}/${String(result.frame_id).padStart(6, "0")}`;
   const sequence = result.matched_sequence || [];
+  // OCR-only: on-screen text that matched the query (ASR results don't reach
+  // this component — they carry a matched_sequence and render via
+  // TemporalSequence instead).
+  const matchedTexts = Array.isArray(result.matched_texts) ? result.matched_texts : [];
 
   // Memoize handlers to prevent child re-renders
   const openVideoAt = useCallback((timestamp) => {
@@ -73,6 +77,12 @@ const ResultCard = memo(function ResultCard({
           <Play size={16} fill="currentColor" />
         </button>
       </div>
+
+      {matchedTexts.length > 0 && (
+        <div className="ocr-matched-text" title={matchedTexts.join(" · ")}>
+          {matchedTexts.join(" · ")}
+        </div>
+      )}
 
       {sequence.length > 0 && (
         <div className="temporal-sequence">

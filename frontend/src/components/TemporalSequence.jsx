@@ -31,6 +31,11 @@ const TemporalSequence = memo(function TemporalSequence({
   onSurroundingImages,
 }) {
   const sequence = Array.isArray(result?.matched_sequence) ? result.matched_sequence : [];
+  // ASR hits share ONE transcript across every frame in the sequence (see
+  // FaissRetrievalSystem._enrich_asr_hits) and already show it once in the
+  // header below, so the per-frame caption would just repeat it 3x. Real
+  // temporal search hits don't set `matched_texts`, so this only affects ASR.
+  const hasSharedSegmentText = Array.isArray(result?.matched_texts) && result.matched_texts.length > 0;
   const viewportRef = useRef(null);
   const [page, setPage] = useState(0);
   const frameResults = useMemo(
@@ -114,6 +119,12 @@ const TemporalSequence = memo(function TemporalSequence({
         </div>
       </div>
 
+      {hasSharedSegmentText && (
+        <div className="temporal-sequence-transcript" title={result.matched_texts.join(" ")}>
+          &ldquo;{result.matched_texts.join(" ")}&rdquo;
+        </div>
+      )}
+
       <div className={`temporal-carousel-shell ${isCarousel ? "is-carousel" : "is-fluid"}`}>
         {isCarousel && (
           <button className="temporal-carousel-nav left" type="button" disabled={page === 0} onClick={() => move(-1)}>
@@ -156,7 +167,9 @@ const TemporalSequence = memo(function TemporalSequence({
                     <Send size={12} /><span>Submit</span>
                   </button>
                 </div>
-                {frame.sub_query && <div className="temporal-frame-query" title={frame.sub_query}>{frame.sub_query}</div>}
+                {!hasSharedSegmentText && frame.sub_query && (
+                  <div className="temporal-frame-query" title={frame.sub_query}>{frame.sub_query}</div>
+                )}
               </article>
             );
           })}

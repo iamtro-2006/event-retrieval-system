@@ -26,6 +26,8 @@ from pydantic import BaseModel
 
 from src.retrieval.models.retrieval_system import FaissRetrievalSystem, SearchMode
 from src.logic import get_timestamp_from_row
+from src.ocr.pipelines.factory import build_ocr_search_pipeline
+from src.asr.pipelines.factory import build_asr_search_pipeline
 
 load_dotenv()
 
@@ -35,6 +37,8 @@ if HF_TOKEN:
 
 BACKEND_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BACKEND_DIR / "configs" / "app.yaml"
+OCR_CONFIG_PATH = BACKEND_DIR / "configs" / "ocr.yaml"
+ASR_CONFIG_PATH = BACKEND_DIR / "configs" / "asr.yaml"
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -98,7 +102,7 @@ async def profile_and_bottleneck_tracker(request: Request, call_next):
     pr = cProfile.Profile()
     pr.enable()
     start_time = time.perf_counter()
-    
+
     response = await call_next(request)
     latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
     pr.disable()
@@ -106,7 +110,7 @@ async def profile_and_bottleneck_tracker(request: Request, call_next):
     s = io.StringIO()
     ps = pstats.Stats(pr, stream=s).sort_stats("cumulative")
     ps.print_stats(30)
-    
+
     report_text = (
         f"\n{'='*40} BOTTLENECK PROFILE REPORT {'='*40}\n"
         f"[REQ] {request.method} {request.url.path} | Total Latency: {latency_ms}ms\n"
@@ -119,7 +123,7 @@ async def profile_and_bottleneck_tracker(request: Request, call_next):
         log_file = BACKEND_DIR / "search_profile_log.txt"
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(report)
-            
+
     asyncio.create_task(asyncio.to_thread(_write_log, report_text))
     return response
 
@@ -139,6 +143,56 @@ if VIDEOS_ROOT.exists():
 if MAP_KEYFRAME_ROOT.exists():
     app.mount("/static/map-keyframes", StaticFiles(directory=str(MAP_KEYFRAME_ROOT)), name="map_keyframes")
 
+
+def build_ocr_pipeline_or_none():
+    """Build the OCR search pipeline, degrading gracefully if Elasticsearch is unreachable.
+
+    OCR is treated as an optional, independently-failing subsystem: if
+    Elasticsearch is down or misconfigured at startup, the rest of the API
+    (semantic/temporal search, DRES, ASR, ...) must still boot normally.
+    `mode="ocr"` requests will simply fail fast with a clear 503 until fixed.
+    """
+    if not OCR_CONFIG_PATH.exists():
+        print(f"[OCR] Config not found at {OCR_CONFIG_PATH}, OCR search disabled")
+        return None
+    try:
+        pipeline = build_ocr_search_pipeline(config_path=str(OCR_CONFIG_PATH))
+        if not pipeline.repository.es.ping():
+            print("[OCR] Elasticsearch did not respond to ping, OCR search may be unavailable")
+        else:
+            print(f"[OCR] Connected | documents={pipeline.repository.count()}")
+        return pipeline
+    except Exception as exc:
+        print(f"[OCR] Failed to initialize OCR pipeline: {type(exc).__name__}: {exc}")
+        return None
+
+
+def build_asr_pipeline_or_none():
+    """Build the ASR search pipeline, degrading gracefully if Elasticsearch is unreachable.
+
+    ASR is treated as an optional, independently-failing subsystem, exactly like
+    OCR: if Elasticsearch is down or misconfigured at startup, the rest of the
+    API must still boot normally. `mode="asr"` requests will simply fail fast
+    with a clear 503 until fixed.
+    """
+    if not ASR_CONFIG_PATH.exists():
+        print(f"[ASR] Config not found at {ASR_CONFIG_PATH}, ASR search disabled")
+        return None
+    try:
+        pipeline = build_asr_search_pipeline(config_path=str(ASR_CONFIG_PATH))
+        if not pipeline.repository.es.ping():
+            print("[ASR] Elasticsearch did not respond to ping, ASR search may be unavailable")
+        else:
+            print(f"[ASR] Connected | documents={pipeline.repository.count()}")
+        return pipeline
+    except Exception as exc:
+        print(f"[ASR] Failed to initialize ASR pipeline: {type(exc).__name__}: {exc}")
+        return None
+
+
+OCR_SEARCH_PIPELINE = build_ocr_pipeline_or_none()
+ASR_SEARCH_PIPELINE = build_asr_pipeline_or_none()
+
 retrieval_system = FaissRetrievalSystem(
     index_path=str(FAISS_INDEX_PATH),
     metadata_path=str(METADATA_PATH),
@@ -155,6 +209,8 @@ retrieval_system = FaissRetrievalSystem(
     vector_cache_path=str(VECTOR_CACHE_PATH),
     allow_npy_fallback=bool(CFG.get("faiss", {}).get("allow_npy_fallback", False)),
     compile_model=bool(CFG.get("model", {}).get("compile", False)),
+    ocr_search_pipeline=OCR_SEARCH_PIPELINE,
+    asr_search_pipeline=ASR_SEARCH_PIPELINE,
 )
 
 _speech_model: WhisperModel | None = None
@@ -287,14 +343,14 @@ def translate_query_if_needed(query: str, use_translate: bool) -> str:
 def serialize_matched_sequence(sequence: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Serialize a list of matched temporal sequence frames."""
     if not sequence: return []
-    
+
     rows: list[dict[str, Any]] = []
     for idx, item in enumerate(sequence):
         if not isinstance(item, dict): continue
-        
+
         get = item.get  # Localize method lookup for C-speed access
         raw_k_path = resolve_keyframe_path_from_dict(item)
-        
+
         if "keyframes/" in raw_k_path:
             image_rel_path = raw_k_path.split("keyframes/", 1)[1]
         else:
@@ -329,7 +385,7 @@ def serialize_matched_sequence(sequence: list[dict[str, Any]]) -> list[dict[str,
 def dict_to_result_FAST(item: dict[str, Any]) -> dict[str, Any]:
     """High-performance serialization of a metadata row to an API response dictionary."""
     get = item.get  # Localize method lookup for C-speed access
-    
+
     dataset = str(get("dataset", "") or "")
     video_id = str(get("video_id", "unknown_video") or "unknown_video")
     frame_id_text = format_keyframe_id_from_dict(item)
@@ -340,7 +396,7 @@ def dict_to_result_FAST(item: dict[str, Any]) -> dict[str, Any]:
         image_rel_path = raw_k_path.split("keyframes/", 1)[1]
     else:
         image_rel_path = f"{dataset}/{video_id}/{frame_id_text}.jpg" if dataset else f"{video_id}/{frame_id_text}.jpg"
-        
+
     raw_v_path = find_video_path_from_dict(item)
     if "videos/" in raw_v_path:
         video_rel_path = raw_v_path.split("videos/", 1)[1]
@@ -355,9 +411,15 @@ def dict_to_result_FAST(item: dict[str, Any]) -> dict[str, Any]:
         get("retrieval_score", get("alignment_score", get("avg_score", get("score", 0.0)))), 0.0
     )
     avg_score = safe_float(get("avg_score", retrieval_score), retrieval_score)
-    
+
     temporal_start = safe_float(get("temporal_start_time", timestamp), timestamp)
     temporal_end = safe_float(get("temporal_end_time", timestamp), timestamp)
+
+    # OCR-only field: on-screen text strings that matched the query (absent/empty
+    # for semantic/temporal results). Kept at top-level, like `caption`, so the
+    # frontend can render OCR hits with the exact same result card component.
+    matched_texts_raw = get("matched_texts")
+    matched_texts = [str(t) for t in matched_texts_raw] if isinstance(matched_texts_raw, (list, tuple)) else []
 
     return {
         "id": f"{video_id}_{frame_id_text}",
@@ -377,6 +439,9 @@ def dict_to_result_FAST(item: dict[str, Any]) -> dict[str, Any]:
         "caption": str(get("caption", "") or ""),
         "rank": safe_int(get("display_rank", get("rank", 0)), 0),
         "matched_sequence": serialize_matched_sequence(get("matched_sequence", [])),
+        "matched_texts": matched_texts,
+        "ocr_score": safe_float(get("ocr_score"), 0.0) if get("ocr_score") is not None else None,
+        "asr_score": safe_float(get("asr_score"), 0.0) if get("asr_score") is not None else None,
         "temporal": {
             "video_score": safe_float(get("video_score", 0), 0.0),
             "start_time": temporal_start,
@@ -409,7 +474,7 @@ def fetch_dres_evaluations(dres_url: str, session_id: str) -> list[dict]:
     try:
         res = requests.get(f"{dres_url}/api/v2/client/evaluation/list", params={"session": session_id}, headers=DRES_HEADERS, timeout=10)
         return res.json() if res.ok else []
-    except Exception: 
+    except Exception:
         return []
 
 def pick_active_evaluation_id(evaluations: list) -> str | None:
@@ -449,6 +514,14 @@ def health():
         "map_keyframe_root_exists": MAP_KEYFRAME_ROOT.exists(),
         "faiss_index_exists": FAISS_INDEX_PATH.exists(), "metadata_exists": METADATA_PATH.exists(),
         "model": CFG["model"],
+        "ocr": {
+            "config_path": str(OCR_CONFIG_PATH),
+            "available": retrieval_system.ocr_search_pipeline is not None,
+        },
+        "asr": {
+            "config_path": str(ASR_CONFIG_PATH),
+            "available": retrieval_system.asr_search_pipeline is not None,
+        },
     }
 
 @app.get("/api/config")
@@ -485,21 +558,27 @@ def get_public_config():
             "vector_cache_available": retrieval_system.cache_info.get("available", False),
             "allow_npy_fallback": bool(CFG.get("faiss", {}).get("allow_npy_fallback", False)),
         },
+        "ocr": {
+            "available": retrieval_system.ocr_search_pipeline is not None,
+        },
+        "asr": {
+            "available": retrieval_system.asr_search_pipeline is not None,
+        },
     }
 
 @app.post("/api/dres/login")
 def dres_login(payload: DresLoginRequest):
     """Authenticate with the DRES server and retrieve session details."""
     dres_url = clean_external_url(payload.dres_url)
-    if not payload.username.strip() or not payload.password: 
+    if not payload.username.strip() or not payload.password:
         raise HTTPException(status_code=400, detail="Missing username or password")
-        
+
     session = requests.Session()
     session.headers.update(DRES_HEADERS)
-    
+
     try:
         login_res = session.post(f"{dres_url}/api/v2/login", json={"username": payload.username, "password": payload.password}, timeout=15)
-    except requests.RequestException as e: 
+    except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"DRES login connection failed: {e}")
 
     if not login_res.ok:
@@ -507,21 +586,21 @@ def dres_login(payload: DresLoginRequest):
         except Exception: err_desc = login_res.text or "Login failed"
         raise HTTPException(status_code=login_res.status_code, detail=err_desc)
 
-    try: 
+    try:
         sess_res = session.get(f"{dres_url}/api/v2/user/session", timeout=15)
-    except requests.RequestException as e: 
+    except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"DRES session fetch failed: {e}")
-        
-    if not sess_res.ok: 
+
+    if not sess_res.ok:
         raise HTTPException(status_code=sess_res.status_code, detail="Cannot fetch DRES session")
 
     session_id = sess_res.text.strip().strip('"')
     evaluations = fetch_dres_evaluations(dres_url, session_id)
-    
+
     return {
-        "status": "ok", "session_id": session_id, 
+        "status": "ok", "session_id": session_id,
         "evaluation_id": pick_active_evaluation_id(evaluations),
-        "evaluations": evaluations, 
+        "evaluations": evaluations,
         "user": login_res.json() if login_res.text else {}
     }
 
@@ -529,24 +608,24 @@ def dres_login(payload: DresLoginRequest):
 def dres_submit(payload: DresSubmitRequest):
     """Submit a retrieval result to the active DRES evaluation."""
     dres_url = clean_external_url(payload.dres_url)
-    if not payload.session_id.strip(): 
+    if not payload.session_id.strip():
         raise HTTPException(status_code=400, detail="Missing active session_id")
 
     evaluation_id = payload.evaluation_id or pick_active_evaluation_id(fetch_dres_evaluations(dres_url, payload.session_id))
-    if not evaluation_id: 
+    if not evaluation_id:
         raise HTTPException(status_code=400, detail="No active DRES evaluation found")
 
     time_ms = int(round(payload.timestamp * 1000)) if payload.timestamp is not None and payload.timestamp >= 0 else int(payload.frame_id)
     submit_payload = {
         "answerSets": [{
             "answers": [{
-                "mediaItemName": str(payload.video_id).strip(), 
-                "start": time_ms, "end": time_ms, 
+                "mediaItemName": str(payload.video_id).strip(),
+                "start": time_ms, "end": time_ms,
                 "text": None, "mediaItemCollectionName": None
             }]
         }]
     }
-    
+
     try:
         res = requests.post(f"{dres_url}/api/v2/submit/{evaluation_id}", params={"session": payload.session_id}, json=submit_payload, timeout=15)
         return normalize_dres_verdict(res)
@@ -563,7 +642,24 @@ async def get_frame_info(video_id: str, keyframe_id: int):
 
 @app.post("/api/search")
 async def search_api(payload: SearchRequest):
-    """Execute a multi-modal retrieval search based on the query payload."""
+    """Execute a multi-modal retrieval search based on the query payload.
+
+    `payload.search_mode` selects the retrieval strategy: "semantic" (CLIP),
+    "temporal" (multi-event), "ocr" (on-screen text via Elasticsearch), "asr"
+    (speech transcript via Elasticsearch), or "auto" (semantic/temporal
+    auto-detected from query structure). All modes return results through the
+    same `dict_to_result_FAST` serializer, so the frontend renders them with
+    the same result-card component, but the *shape* of each result differs by
+    mode:
+      - "ocr": one row per matched keyframe, no `matched_sequence` -> renders
+        identically to "semantic" (a plain result grid), with a non-empty
+        `matched_texts` field showing the on-screen text that matched.
+      - "asr": one row per matched speech segment, with a populated
+        `matched_sequence` (every keyframe spoken during that segment) -> the
+        frontend's existing temporal-sequence detection renders it identically
+        to "temporal" (a horizontal frame-chain strip), with `matched_texts`
+        carrying the segment's transcript.
+    """
     original_query = payload.query.strip()
     if not original_query:
         raise HTTPException(status_code=400, detail="Query is empty")
@@ -571,18 +667,24 @@ async def search_api(payload: SearchRequest):
     max_top_k = int(CFG["search"].get("max_top_k", 200))
     default_top_k = int(CFG["search"].get("default_top_k", 20))
     top_k = max(1, min(int(payload.top_k or default_top_k), max_top_k))
-    
+
     candidate_multiplier = max(1, int(payload.candidate_multiplier or CFG["search"].get("candidate_multiplier", 5)))
     use_split = True if payload.use_split is None else bool(payload.use_split)
     use_translate = bool(CFG.get("translate", {}).get("enabled_default", False)) if payload.use_translate is None else bool(payload.use_translate)
-    
+
     mode = payload.search_mode
     duration_limit = -1.0 if payload.duration_limit is None or payload.duration_limit == 0 else float(payload.duration_limit)
+
+    # OCR/ASR search match raw text via Elasticsearch (its own tokenizer/fuzzy
+    # matching, over on-screen text or Vietnamese speech transcripts), so
+    # translation is skipped for those modes: translating the query would
+    # work against literal signage/labels or the transcript language.
+    should_translate = use_translate and mode not in ("ocr", "asr")
 
     start = time.perf_counter()
 
     try:
-        search_query = await run_in_threadpool(translate_query_if_needed, query=original_query, use_translate=use_translate)
+        search_query = await run_in_threadpool(translate_query_if_needed, query=original_query, use_translate=should_translate)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
 
@@ -593,6 +695,9 @@ async def search_api(payload: SearchRequest):
         )
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc))
+    except RuntimeError as exc:
+        # e.g. OCR requested but Elasticsearch is unavailable/not configured.
+        raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Search failed: {type(exc).__name__}: {exc}")
 
@@ -600,9 +705,9 @@ async def search_api(payload: SearchRequest):
     candidate_k = max(top_k * candidate_multiplier, top_k)
 
     response_base = {
-        "original_query": original_query, "query": search_query, 
-        "translated_query": search_query if use_translate else None,
-        "use_translate": use_translate, "use_split": use_split, "mode": mode, "search_mode": mode,
+        "original_query": original_query, "query": search_query,
+        "translated_query": search_query if should_translate else None,
+        "use_translate": should_translate, "use_split": use_split, "mode": mode, "search_mode": mode,
         "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k, "latency_ms": latency_ms,
         "events": query_plan.events, "event_queries": query_plan.event_queries, "sub_queries": query_plan.flat_queries,
@@ -613,10 +718,19 @@ async def search_api(payload: SearchRequest):
 
     try:
         def _serialize_results():
-            cols_to_keep = [c for c in ["video_id", "keyframe_id", "keyframe_id_int", "frame_idx", "dataset", "keyframe_path", "video_path", "timestamp_sec", "timestamp", "score", "retrieval_score", "avg_score", "caption", "matched_sequence", "temporal_start_time", "temporal_end_time", "temporal_duration_sec", "video_score"] if c in results_df.columns]
+            cols_to_keep = [c for c in [
+                "video_id", "keyframe_id", "keyframe_id_int", "frame_idx", "dataset",
+                "keyframe_path", "video_path", "timestamp_sec", "timestamp", "fps",
+                "score", "retrieval_score", "avg_score", "caption", "matched_sequence",
+                "temporal_start_time", "temporal_end_time", "temporal_duration_sec", "video_score",
+                # OCR-specific columns (see FaissRetrievalSystem._enrich_ocr_hits)
+                "matched_texts", "ocr_score",
+                # ASR-specific columns (see FaissRetrievalSystem._enrich_asr_hits)
+                "asr_score", "segment_id",
+            ] if c in results_df.columns]
             records = results_df[cols_to_keep].to_dict(orient="records")
             return [dict_to_result_FAST(rec) for rec in records]
-            
+
         results = await run_in_threadpool(_serialize_results)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Serialize failed: {type(exc).__name__}: {exc}")
@@ -632,9 +746,9 @@ async def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 
         target_keyframe_id = int(keyframe_id)
 
         row_ids = retrieval_system._rows_by_video.get(str(video_id))
-        if not row_ids:
+        if row_ids is None or len(row_ids) == 0:
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
-            
+
         video_df = metadata_df.iloc[row_ids].copy()
         if video_df.empty:
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
@@ -643,10 +757,10 @@ async def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 
         sort_col = next((c for c in ["keyframe_id_int", "keyframe_id", "frame_idx"] if c in video_df.columns), None)
         if not sort_col:
             raise HTTPException(status_code=500, detail="Metadata missing keyframe identifier column")
-            
+
         video_df["_keyframe_sort"] = pd.to_numeric(video_df[sort_col], errors="coerce").fillna(0).astype(np.int32)
         video_df = video_df.sort_values("_keyframe_sort", kind="stable").reset_index(drop=True)
-        
+
         center_matches = video_df[video_df["_keyframe_sort"] == target_keyframe_id]
         if center_matches.empty:
             raise HTTPException(status_code=404, detail=f"Frame not found: {video_id}/{keyframe_id}")
@@ -657,7 +771,7 @@ async def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 
 
         surrounding_df = video_df.iloc[start_pos:end_pos]
         records = surrounding_df.to_dict(orient="records")
-        
+
         frames = []
         for rec in records:
             item = dict_to_result_FAST(rec)
@@ -679,7 +793,8 @@ async def similarity_search_api(payload: SimilaritySearchRequest):
     def _run_sim_search():
         max_top_k = int(CFG["search"].get("max_top_k", 200))
         default_top_k = int(CFG["search"].get("default_top_k", 20))
-        top_k = max(1, min(int(payload.top_k or default_top_k), max_top_k))
+
+        top_k = 20
 
         row = find_metadata_row(payload.video_id, payload.frame_id)
         source_dict = row.to_dict()
@@ -704,7 +819,7 @@ async def similarity_search_api(payload: SimilaritySearchRequest):
 
     def _parse():
         return [dict_to_result_FAST(rec) for rec in df_results.to_dict(orient="records")]
-        
+
     results = await run_in_threadpool(_parse)
 
     return {
@@ -725,7 +840,7 @@ async def transcribe_speech(file: UploadFile = File(...)):
     try:
         def _run_whisper():
             return get_speech_model().transcribe(tmp_path, beam_size=1, language="vi", vad_filter=True)
-            
+
         segments, info = await run_in_threadpool(_run_whisper)
         text = " ".join(seg.text.strip() for seg in segments).strip()
 

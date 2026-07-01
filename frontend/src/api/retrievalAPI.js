@@ -244,6 +244,13 @@ function normalizeResults(results) {
       caption: item.caption || "",
       rank: safeNumber(item.rank, index + 1),
       matched_sequence: matchedSequence,
+      // OCR/ASR-only: the on-screen text or transcript snippet that matched
+      // the query. Empty for semantic/temporal results.
+      matched_texts: Array.isArray(item.matched_texts ?? raw.matched_texts)
+        ? (item.matched_texts ?? raw.matched_texts)
+        : [],
+      ocr_score: item.ocr_score ?? raw.ocr_score ?? null,
+      asr_score: item.asr_score ?? raw.asr_score ?? null,
       temporal: {
         video_score: safeNumber(item.temporal?.video_score ?? raw.video_score, 0),
         start_time: safeNumber(
@@ -446,4 +453,58 @@ export async function transcribeSpeech(blob) {
   }
 
   return response.json();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// RERANK API — gửi danh sách kết quả hiện tại lên backend để VLM chấm điểm lại
+// ─────────────────────────────────────────────────────────────────────────────
+export async function rerankResults({
+  results,
+  query,
+  searchMode = "semantic",
+  topCandidate = 1.0,
+  topK = 20,
+}) {
+  const payload = {
+    results,
+    query,
+    search_mode: searchMode,
+    top_candidate: topCandidate,
+    top_k: topK,
+  };
+
+  const t0 = performance.now();
+  console.log("[RERANK] payload", { query, searchMode, topK, topCandidate, count: results.length });
+
+  const response = await fetch(apiUrl("/api/rerank"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...NGROK_HEADER,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const t1 = performance.now();
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Rerank request failed");
+  }
+
+  const data = await response.json();
+  const normalizedResults = normalizeResults(data.results ?? []);
+
+  console.table({
+    mode: "rerank",
+    backendMs: data.latency_ms,
+    fetchMs: Number((t1 - t0).toFixed(2)),
+    resultCount: normalizedResults.length,
+  });
+
+  return {
+    query: data.query,
+    latencyMs: data.latency_ms ?? null,
+    count: data.count ?? 0,
+    results: normalizedResults,
+  };
 }

@@ -39,6 +39,15 @@ export default function GroupedResults({
         );
 
         if (hasTemporal) {
+          const pageSize = Math.max(1, columns);
+          const totalPages = Math.max(Math.ceil(items.length / pageSize), 1);
+          const currentPage = Math.min(getCurrentPage(videoId), totalPages - 1);
+
+          const pages = Array.from({ length: totalPages }, (_, pageIndex) => {
+            const start = pageIndex * pageSize;
+            return items.slice(start, start + pageSize);
+          });
+
           return (
             <section key={videoId} className="video-strip-group">
               <div className="video-strip-label">
@@ -47,26 +56,64 @@ export default function GroupedResults({
 
               <div className="video-strip-main">
                 <div className="video-strip-topbar">
-                  <span>{items.length} temporal sequences</span>
+                  <span>
+                    {items.length} temporal sequences · page {currentPage + 1}/{totalPages}
+                  </span>
                 </div>
 
-                <div
-                  className="temporal-sequences-grid grouped-temporal-sequences-grid"
-                  style={{ "--sequence-cols": columns }}
-                >
-                  {items.map((result, idx) => (
-                    <TemporalSequence
-                      key={result.id}
-                      result={result}
-                      sequenceIndex={idx}
-                      selectedId={selectedId}
-                      onSelect={onSelect}
-                      onSubmit={onSubmit}
-                      onPlay={onPlay}
-                      onSimilaritySearch={onSimilaritySearch}
-                      onSurroundingImages={onSurroundingImages}
-                    />
-                  ))}
+                <div className="video-strip-content">
+                  <button
+                    type="button"
+                    className="group-nav-button left"
+                    disabled={currentPage <= 0}
+                    onClick={() => changePage(videoId, -1, totalPages)}
+                  >
+                    <ChevronLeft size={22} />
+                  </button>
+
+                  <div className="video-group-viewport">
+                    <div
+                      className="video-group-track"
+                      style={{
+                        width: `${totalPages * 100}%`,
+                        transform: `translateX(-${currentPage * (100 / totalPages)}%)`,
+                      }}
+                    >
+                      {pages.map((pageItems, pageIndex) => (
+                        <div
+                          key={`${videoId}-tpage-${pageIndex}`}
+                          className="video-group-page temporal-sequences-grid grouped-temporal-sequences-grid"
+                          style={{
+                            width: `${100 / totalPages}%`,
+                            "--sequence-cols": columns,
+                          }}
+                        >
+                          {pageItems.map((result, idx) => (
+                            <TemporalSequence
+                              key={result.id}
+                              result={result}
+                              sequenceIndex={pageIndex * pageSize + idx}
+                              selectedId={selectedId}
+                              onSelect={onSelect}
+                              onSubmit={onSubmit}
+                              onPlay={onPlay}
+                              onSimilaritySearch={onSimilaritySearch}
+                              onSurroundingImages={onSurroundingImages}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="group-nav-button right"
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={() => changePage(videoId, 1, totalPages)}
+                  >
+                    <ChevronRight size={22} />
+                  </button>
                 </div>
               </div>
             </section>

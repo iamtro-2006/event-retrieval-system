@@ -19,7 +19,7 @@ model:
 paths:
   keyframes_root: data/processed/keyframes
   videos_root: data/raw/videos
-  map_keyframe_path: data/processed/map_keyfram es
+  map_keyframe_path: data/processed/map_keyframes
 
 search:
   candidate_multiplier: 3

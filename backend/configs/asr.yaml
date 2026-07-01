@@ -1,0 +1,24 @@
+elasticsearch:
+  host: "192.168.1.15"
+  port: 9200
+  scheme: "http"
+  index: "asr"
+
+dataset:
+  root: "data/mock/asr"
+
+mock:
+  datasets:
+    - L21
+    - L22
+
+  videos_per_dataset: 5
+
+  # Mock videos are treated as `video_duration_sec` seconds long, cut into
+  # sequential, non-overlapping speech segments of `segment_duration_sec` each.
+  video_duration_sec: 600
+
+  min_segment_duration_sec: 3.0
+  max_segment_duration_sec: 8.0
+
+  seed: 42

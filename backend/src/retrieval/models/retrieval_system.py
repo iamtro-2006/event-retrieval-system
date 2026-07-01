@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 import faiss
 import numpy as np
@@ -16,7 +16,26 @@ from PIL import Image
 
 from src.logic.temporal_search import temporal_search_from_candidates
 
+if TYPE_CHECKING:
+    from src.ocr.pipelines.search import SearchPipeline as OCRSearchPipeline
+    from src.asr.pipelines.search import SearchPipeline as ASRSearchPipeline
+
 SearchMode = Literal["semantic", "temporal", "ocr", "asr", "auto"]
+
+# Columns copied verbatim from FAISS metadata rows when enriching OCR/ASR hits,
+# so that OCR/ASR results share an identical shape with semantic search results
+# (and the frontend can render both with the same component).
+_METADATA_DISPLAY_COLUMNS = (
+    "dataset",
+    "video_id",
+    "keyframe_id",
+    "keyframe_id_int",
+    "source_name",
+    "frame_idx",
+    "timestamp_sec",
+    "fps",
+    "keyframe_path",
+)
 
 
 def resolve_device(device_name: str) -> torch.device:
@@ -132,6 +151,8 @@ class FaissRetrievalSystem:
         vector_cache_path: str | Path | None = None,
         allow_npy_fallback: bool = False,
         compile_model: bool = False,
+        ocr_search_pipeline: "OCRSearchPipeline | None" = None,
+        asr_search_pipeline: "ASRSearchPipeline | None" = None,
     ) -> None:
         """Initialize the retrieval system, load models, and configure caches.
 
@@ -151,6 +172,12 @@ class FaissRetrievalSystem:
             vector_cache_path: Path to the .npy file for memmap mode.
             allow_npy_fallback: Allow fallback to disk reads if cache is missing.
             compile_model: Whether to apply `torch.compile` to the model.
+            ocr_search_pipeline: Optional OCR `SearchPipeline` (Elasticsearch-backed).
+                When provided, enables `mode="ocr"` in `run_search`/`search`. Injected
+                as a dependency so this class stays decoupled from Elasticsearch.
+            asr_search_pipeline: Optional ASR `SearchPipeline` (Elasticsearch-backed).
+                When provided, enables `mode="asr"` in `run_search`/`search`. Injected
+                the same way as `ocr_search_pipeline`.
         """
         if faiss_threads is None:
             faiss_threads = max(1, min(os.cpu_count() or 1, 12))
@@ -210,6 +237,12 @@ class FaissRetrievalSystem:
         self.vector_cache_mode = str(vector_cache_mode or "none").strip().lower()
         self.vector_cache_dtype = self._normalize_cache_dtype(vector_cache_dtype)
         self._vector_cache: np.ndarray | np.memmap | None = self._init_vector_cache()
+
+        # Optional OCR backend (Elasticsearch-based full-text search over on-screen text).
+        self.ocr_search_pipeline: "OCRSearchPipeline | None" = ocr_search_pipeline
+
+        # Optional ASR backend (Elasticsearch-based full-text search over speech transcripts).
+        self.asr_search_pipeline: "ASRSearchPipeline | None" = asr_search_pipeline
 
     @staticmethod
     def _normalize_cache_dtype(dtype_name: str) -> str:
@@ -611,6 +644,263 @@ class FaissRetrievalSystem:
             allow_npy_fallback=self.allow_npy_fallback,
         )
 
+    def _metadata_row_for_ocr_hit(self, video_id: str, keyframe_id: str) -> dict | None:
+        """Resolve an OCR hit (video_id, keyframe_id) to its full FAISS metadata row.
+
+        Reuses the same `(video_id, keyframe_id_int)` lookup table built for temporal
+        search, so OCR results reference the exact same keyframe records (paths,
+        timestamps, fps, ...) as semantic search.
+        """
+        try:
+            keyframe_id_int = int(str(keyframe_id))
+        except ValueError:
+            return None
+        row_idx = self._row_by_video_frame.get((str(video_id), keyframe_id_int))
+        if row_idx is None:
+            return None
+        return self._metadata_records[row_idx]
+
+    def _enrich_ocr_hits(self, hits: list[dict], top_k: int) -> pd.DataFrame:
+        """Join raw OCR hits with FAISS metadata and normalize scores to `[0, 1]`.
+
+        Hits whose (video_id, keyframe_id) cannot be resolved against the FAISS
+        metadata (e.g. stale/partial OCR index) are dropped rather than surfaced
+        as broken results.
+        """
+        if not hits:
+            return pd.DataFrame()
+
+        max_score = max(float(hit["score"]) for hit in hits) or 1.0
+
+        rows: list[dict] = []
+        for hit in hits:
+            meta = self._metadata_row_for_ocr_hit(hit["video_id"], hit["keyframe_id"])
+            if meta is None:
+                continue
+
+            item = {col: meta.get(col) for col in _METADATA_DISPLAY_COLUMNS}
+            ocr_score = float(hit["score"])
+            normalized_score = ocr_score / max_score  # bound to (0, 1] for the frontend
+
+            item.update(
+                ocr_score=ocr_score,
+                score=normalized_score,
+                retrieval_score=normalized_score,
+                matched_texts=hit["texts"],
+                search_mode="ocr",
+            )
+            rows.append(item)
+
+        if not rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame.from_records(rows).sort_values("retrieval_score", ascending=False)
+        df = df.head(int(top_k)).reset_index(drop=True)
+        df["display_rank"] = np.arange(1, len(df) + 1)
+        df["rank"] = df["display_rank"]
+        return df
+
+    def ocr_search(self, query: str, top_k: int = 10, oversample_factor: int = 3) -> pd.DataFrame:
+        """Execute an OCR (on-screen text) search and return results shaped like semantic search.
+
+        Args:
+            query: Free-text query matched against OCR'd on-screen text.
+            top_k: Number of results to return after metadata enrichment/dedup.
+            oversample_factor: Fetch `top_k * oversample_factor` raw hits from
+                Elasticsearch before enrichment, to compensate for hits dropped
+                during metadata resolution (e.g. stale OCR entries).
+
+        Returns:
+            A DataFrame with the same display columns as `semantic_search`, plus
+            `matched_texts` (OCR strings that matched) and `ocr_score` (raw BM25 score).
+
+        Raises:
+            RuntimeError: If no OCR backend was injected at construction time.
+        """
+        if self.ocr_search_pipeline is None:
+            raise RuntimeError(
+                "OCR search is not available: FaissRetrievalSystem was built without "
+                "an `ocr_search_pipeline`. Build one via "
+                "src.ocr.pipelines.factory.build_ocr_search_pipeline(...) and pass it in."
+            )
+
+        query = str(query or "").strip()
+        if not query:
+            return pd.DataFrame()
+
+        raw_top_k = max(int(top_k) * max(1, int(oversample_factor)), int(top_k))
+        hits = self.ocr_search_pipeline.search(query=query, top_k=raw_top_k)
+        return self._enrich_ocr_hits(hits, top_k)
+
+    def _metadata_rows_for_asr_hit(
+        self, video_id: str, start_time: float, end_time: float
+    ) -> list[dict]:
+        """Resolve an ASR hit's speech segment to every keyframe of that video
+        whose timestamp falls inside `[start_time, end_time]`.
+
+        This is the ASR analogue of `_metadata_row_for_ocr_hit`: instead of a
+        single (video_id, keyframe_id) lookup, an ASR hit is a time window, so
+        it expands to a *set* of frames sharing the same `video_id`.
+        """
+        row_ids = self._rows_by_video.get(str(video_id))
+        if row_ids is None or len(row_ids) == 0:
+            return []
+
+        sub = self.metadata.iloc[row_ids]
+
+        if "timestamp_sec" in sub.columns:
+            ts = pd.to_numeric(sub["timestamp_sec"], errors="coerce")
+        elif "frame_idx" in sub.columns and "fps" in sub.columns:
+            frame_idx = pd.to_numeric(sub["frame_idx"], errors="coerce")
+            fps = pd.to_numeric(sub["fps"], errors="coerce")
+            ts = frame_idx / fps.replace(0, np.nan)
+        else:
+            return []
+
+        mask = ts.notna() & (ts >= float(start_time)) & (ts <= float(end_time))
+        matched = sub[mask]
+        if matched.empty:
+            return []
+
+        return matched.to_dict(orient="records")
+
+    def _enrich_asr_hits(
+        self, hits: list[dict], top_k: int, max_frames_per_hit: int = 50
+    ) -> pd.DataFrame:
+        """Join raw ASR hits (speech segments) with FAISS metadata and normalize scores.
+
+        Unlike OCR (one keyframe per hit -> displayed exactly like semantic
+        search), each ASR hit is a *spoken segment* that spans many keyframes.
+        To make that visually distinct in the frontend (the same way
+        `temporal_search` results are), every accepted segment is collapsed
+        into a SINGLE result row shaped like a temporal-search hit:
+          - a representative frame at the top level (used as the card cover),
+          - a `matched_sequence` list containing every keyframe inside the
+            segment's `[start_time, end_time]` window.
+
+        The frontend has no ASR-specific code path: `ResultCard`/`GroupedResults`
+        already render any row carrying a non-empty `matched_sequence` as a
+        horizontal "temporal sequence" strip (see `TemporalSequence.jsx`), so
+        populating `matched_sequence` here is what makes ASR hits *look like*
+        temporal search, exactly as requested. Each frame's `sub_query` field
+        is set to the segment's transcript text so it is shown under the frame.
+
+        `top_k` limits the number of distinct segments (hits) returned, not
+        the resulting frame count.
+        """
+        if not hits:
+            return pd.DataFrame()
+
+        max_score = max(float(hit["score"]) for hit in hits) or 1.0
+
+        rows: list[dict] = []
+        accepted = 0
+        for hit in hits:
+            if accepted >= int(top_k):
+                break
+
+            frames = self._metadata_rows_for_asr_hit(
+                hit["video_id"], hit["start_time"], hit["end_time"]
+            )
+            if not frames:
+                continue
+
+            frames = frames[: int(max_frames_per_hit)]
+            accepted += 1
+            asr_score = float(hit["score"])
+            normalized_score = asr_score / max_score  # bound to (0, 1] for the frontend
+            transcript_text = str(hit["text"])
+
+            # Build the per-frame chain shown inside the temporal-sequence strip.
+            matched_sequence: list[dict] = []
+            for seq_idx, meta in enumerate(frames):
+                seq_item = {col: meta.get(col) for col in _METADATA_DISPLAY_COLUMNS}
+                seq_item.update(
+                    score=normalized_score,
+                    candidate_score=normalized_score,
+                    candidate_rank=seq_idx + 1,
+                    sub_query_idx=seq_idx,
+                    sub_query=transcript_text,
+                )
+                matched_sequence.append(seq_item)
+
+            # Representative "cover" frame for the row: the middle keyframe of
+            # the segment reads better as a thumbnail than the first/last one.
+            anchor_meta = frames[len(frames) // 2]
+            item = {col: anchor_meta.get(col) for col in _METADATA_DISPLAY_COLUMNS}
+            item.update(
+                asr_score=asr_score,
+                score=normalized_score,
+                retrieval_score=normalized_score,
+                avg_score=normalized_score,
+                video_score=normalized_score,
+                matched_texts=[transcript_text],
+                segment_id=hit["segment_id"],
+                temporal_start_time=hit["start_time"],
+                temporal_end_time=hit["end_time"],
+                temporal_duration_sec=max(0.0, float(hit["end_time"]) - float(hit["start_time"])),
+                search_mode="asr",
+                display_rank=accepted,
+                matched_sequence=matched_sequence,
+            )
+            rows.append(item)
+
+        if not rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame.from_records(rows).sort_values("display_rank", kind="stable")
+        df = df.reset_index(drop=True)
+        df["rank"] = df["display_rank"]
+        return df
+
+    def asr_search(
+        self,
+        query: str,
+        top_k: int = 10,
+        oversample_factor: int = 3,
+        max_frames_per_hit: int = 50,
+    ) -> pd.DataFrame:
+        """Execute an ASR (speech transcript) search and return results shaped like semantic search.
+
+        Args:
+            query: Free-text query matched against ASR'd speech transcripts.
+            top_k: Number of distinct speech segments (hits) to return after
+                metadata enrichment/dedup. Each hit may expand to several rows
+                (one per matching keyframe).
+            oversample_factor: Fetch `top_k * oversample_factor` raw hits from
+                Elasticsearch before enrichment, to compensate for hits dropped
+                during metadata resolution (e.g. a segment with no keyframes in range).
+            max_frames_per_hit: Safety cap on how many frames a single segment
+                can expand to.
+
+        Returns:
+            A DataFrame with one row per matched speech segment, shaped like a
+            `temporal_search` hit: the same display columns as
+            `semantic_search`, plus `matched_texts` (the segment's transcript),
+            `asr_score` (raw BM25 score), `segment_id`, and `matched_sequence`
+            (every keyframe inside the segment's time window, so the frontend
+            renders it as a temporal-sequence strip). `temporal.start_time`/
+            `temporal.end_time` in the serialized API response carry the
+            segment's `[start_time, end_time]` window.
+
+        Raises:
+            RuntimeError: If no ASR backend was injected at construction time.
+        """
+        if self.asr_search_pipeline is None:
+            raise RuntimeError(
+                "ASR search is not available: FaissRetrievalSystem was built without "
+                "an `asr_search_pipeline`. Build one via "
+                "src.asr.pipelines.factory.build_asr_search_pipeline(...) and pass it in."
+            )
+
+        query = str(query or "").strip()
+        if not query:
+            return pd.DataFrame()
+
+        raw_top_k = max(int(top_k) * max(1, int(oversample_factor)), int(top_k))
+        hits = self.asr_search_pipeline.search(query=query, top_k=raw_top_k)
+        return self._enrich_asr_hits(hits, top_k, max_frames_per_hit)
+
     def run_search(
         self,
         query: str,
@@ -636,7 +926,13 @@ class FaissRetrievalSystem:
             return self.semantic_search(plan.events, top_k, candidate_k), plan
         if effective_mode == "temporal":
             return self.temporal_search(plan.events, top_k, candidate_k, duration_limit), plan
-        if effective_mode in {"ocr", "asr"}:
-            raise NotImplementedError(f"Search mode '{effective_mode}' is not implemented yet")
-            
+        if effective_mode == "ocr":
+            # OCR search operates on the raw query text (Elasticsearch does its own
+            # tokenization/fuzzy matching), not the CLIP-oriented temporal/semantic split.
+            return self.ocr_search(plan.query, top_k), plan
+        if effective_mode == "asr":
+            # ASR search operates on the raw query text (Elasticsearch does its own
+            # tokenization/fuzzy matching), not the CLIP-oriented temporal/semantic split.
+            return self.asr_search(plan.query, top_k), plan
+
         raise ValueError(f"Unsupported search mode: {effective_mode}")

@@ -648,6 +648,20 @@ img {
 .play-button:hover { background: var(--accent); }
 .play-button:active { transform: scale(0.88); }
 
+/* OCR-only: matched on-screen text snippet, shown between the thumbnail and footer */
+.ocr-matched-text {
+  padding: 5px 8px;
+  background: var(--bg-card);
+  color: var(--accent-text);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
 /* Card footer — unified */
 .result-card .card-footer {
   background: var(--bg-card);
@@ -902,6 +916,22 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* ASR-only: full transcript of the segment, shown as its own line below the
+   header so it always wraps and stays visible (unlike .temporal-sequence-meta,
+   which is a nowrap column sized to fit next to the title/actions and gets
+   clipped or hidden on narrow cards). */
+.temporal-sequence-transcript {
+  padding: 6px 12px 8px;
+  background: var(--temporal-header-bg);
+  border-bottom: 1px solid var(--border-card);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .temporal-sequence-header button {
@@ -3602,3 +3632,214 @@ img {
     min-height: 48px !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RERANK TAG — toggle nằm trong SearchBar
+───────────────────────────────────────────────────────────────────────────── */
+.rerank-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.15));
+  background: transparent;
+  color: var(--text-tertiary, rgba(255,255,255,0.45));
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+.rerank-tag:hover:not(:disabled) {
+  border-color: var(--accent-purple, #a78bfa);
+  color: var(--accent-purple, #a78bfa);
+  background: rgba(167, 139, 250, 0.08);
+}
+.rerank-tag--active {
+  border-color: var(--accent-purple, #a78bfa) !important;
+  background: rgba(167, 139, 250, 0.18) !important;
+  color: var(--accent-purple, #a78bfa) !important;
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.25);
+}
+.rerank-tag--active svg {
+  filter: drop-shadow(0 0 4px rgba(167, 139, 250, 0.7));
+}
+.rerank-tag:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   QUERY SUMMARY — layout bổ sung
+───────────────────────────────────────────────────────────────────────────── */
+.query-summary-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RERANK STATUS BADGE
+───────────────────────────────────────────────────────────────────────────── */
+.rerank-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--accent-purple, #a78bfa);
+  opacity: 0.85;
+}
+.rerank-status-badge--done {
+  color: var(--color-correct, #4ade80);
+}
+.rerank-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(167,139,250,0.3);
+  border-top-color: var(--accent-purple, #a78bfa);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RERANK MANUAL BUTTON (popover trigger)
+───────────────────────────────────────────────────────────────────────────── */
+.rerank-popover-host {
+  position: relative;
+  display: inline-flex;
+}
+.rerank-manual-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.15));
+  background: transparent;
+  color: var(--text-secondary, rgba(255,255,255,0.65));
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.rerank-manual-btn:hover:not(:disabled) {
+  border-color: var(--accent-purple, #a78bfa);
+  color: var(--accent-purple, #a78bfa);
+  background: rgba(167,139,250,0.08);
+}
+.rerank-manual-btn.open {
+  border-color: var(--accent-purple, #a78bfa);
+  color: var(--accent-purple, #a78bfa);
+  background: rgba(167,139,250,0.12);
+}
+.rerank-manual-btn.reranking {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.rerank-manual-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.rerank-manual-btn .rotated {
+  transform: rotate(180deg);
+  transition: transform 0.18s ease;
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RERANK POPOVER — dropdown nhỏ
+───────────────────────────────────────────────────────────────────────────── */
+.rerank-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  width: 260px;
+  background: var(--surface-card, #1e1e2e);
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.12));
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rerank-popover-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, rgba(255,255,255,0.6));
+  margin: 0 0 2px;
+  letter-spacing: 0.02em;
+}
+.rerank-popover-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary, rgba(255,255,255,0.45));
+}
+.rerank-popover-input {
+  background: var(--surface-input, rgba(255,255,255,0.06));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  color: var(--text-primary, #fff);
+  font-size: 13px;
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.rerank-popover-input:focus {
+  border-color: var(--accent-purple, #a78bfa);
+}
+.rerank-popover-textarea {
+  resize: vertical;
+  min-height: 52px;
+  font-family: inherit;
+}
+.rerank-popover-number {
+  width: 80px;
+}
+.rerank-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rerank-popover-hint {
+  font-size: 10px;
+  color: var(--accent-purple, #a78bfa);
+  opacity: 0.8;
+}
+.rerank-popover-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: none;
+  background: var(--accent-purple, #a78bfa);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+  margin-top: 2px;
+}
+.rerank-popover-submit:hover:not(:disabled) {
+  background: #c4b5fd;
+}
+.rerank-popover-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+
