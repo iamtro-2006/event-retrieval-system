@@ -11,4 +11,6 @@ class OCRDocument(BaseModel):
 
     keyframe_id: str = Field(...)
 
+    bboxs: list[list[float]] = Field(...)
+
     texts: list[str] = Field(default_factory=list)
