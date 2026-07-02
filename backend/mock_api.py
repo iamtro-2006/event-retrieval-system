@@ -4,9 +4,10 @@ import logging
 import random
 import time
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -30,6 +31,19 @@ DEFAULT_TOP_K = 20
 MAX_TOP_K = 200
 DEFAULT_SURROUNDING_RADIUS = 5
 MAX_SURROUNDING_RADIUS = 10
+
+# Fake vocabulary only used to fabricate plausible-looking OCR / ASR / caption text.
+MOCK_WORDS = [
+    "người", "đường", "phố", "biển", "xe", "buổi", "sáng", "chợ", "hoa",
+    "trời", "nắng", "mưa", "phóng", "viên", "tin", "tức", "hội", "nghị",
+    "sản", "phẩm", "khách", "hàng", "trường", "học", "sinh", "viên",
+    "báo", "cáo", "thị", "trường", "công", "ty", "sự", "kiện",
+]
+
+
+def _mock_sentence(min_words: int = 3, max_words: int = 8) -> str:
+    n = random.randint(min_words, max_words)
+    return " ".join(random.choice(MOCK_WORDS) for _ in range(n)).capitalize()
 
 
 # =========================
@@ -105,6 +119,8 @@ FRAME_LOOKUP: dict[tuple[str, int], Path] = {}
 
 # =========================
 # REQUEST MODELS
+# (giữ kiểu str cho search_mode thay vì Literal/SearchMode để mock không phụ
+# thuộc vào module retrieval_system thật)
 # =========================
 
 class SearchRequest(BaseModel):
@@ -242,7 +258,13 @@ def path_to_result(
     rank: int = 0,
     caption: str = "Mock result - random keyframe",
     score: float | None = None,
+    matched_texts: list[str] | None = None,
+    ocr_score: float | None = None,
+    asr_score: float | None = None,
+    segment_id: str | None = None,
 ) -> dict[str, Any]:
+    """Serialize a random keyframe into the same shape as main.py's
+    `dict_to_result_FAST`, but with every score / text field fabricated."""
     identity = parse_image_identity(image_path)
 
     dataset = identity["dataset"]
@@ -275,6 +297,9 @@ def path_to_result(
         "caption": caption,
         "rank": rank,
         "matched_sequence": [],
+        "matched_texts": matched_texts or [],
+        "ocr_score": round(float(ocr_score), 4) if ocr_score is not None else None,
+        "asr_score": round(float(asr_score), 4) if asr_score is not None else None,
         "temporal": {
             "video_score": score,
             "start_time": timestamp,
@@ -295,6 +320,10 @@ def path_to_result(
             "temporal_end_time": timestamp,
             "temporal_duration_sec": 0.0,
             "matched_sequence": [],
+            "matched_texts": matched_texts or [],
+            "ocr_score": ocr_score,
+            "asr_score": asr_score,
+            "segment_id": segment_id,
             "keyframe_path": str(image_path),
             "image_rel_path": image_rel_path,
             "video_rel_path": video_rel_path,
@@ -418,12 +447,20 @@ def health():
         "status": "ok",
         "mode": "mock",
         "backend_dir": str(BACKEND_DIR),
+        "config_path": str(BACKEND_DIR / "configs" / "app.yaml"),
+        "faiss_index_path": "",
+        "metadata_path": "",
+        "vector_cache_path": "",
+        "vector_cache_exists": False,
+        "vector_cache": {"available": False, "mode": "mock"},
         "keyframes_root": str(KEYFRAMES_ROOT),
         "videos_root": str(VIDEOS_ROOT),
         "map_keyframe_path": str(MAP_KEYFRAME_ROOT),
         "keyframes_root_exists": KEYFRAMES_ROOT.exists(),
         "videos_root_exists": VIDEOS_ROOT.exists(),
         "map_keyframe_root_exists": MAP_KEYFRAME_ROOT.exists(),
+        "faiss_index_exists": False,
+        "metadata_exists": False,
         "image_count": len(IMAGE_CACHE),
         "video_count": len(VIDEO_FRAME_INDEX),
         "model": {
@@ -433,6 +470,8 @@ def health():
             "precision": "none",
             "normalize": False,
         },
+        "ocr": {"config_path": "", "available": True},
+        "asr": {"config_path": "", "available": True},
     }
 
 
@@ -463,6 +502,17 @@ def get_public_config():
             "precision": "none",
             "normalize": False,
         },
+        "faiss": {
+            "ef_search": 0,
+            "threads": None,
+            "vector_cache_mode": None,
+            "vector_cache_dtype": "float32",
+            "vector_cache_path": "",
+            "vector_cache_available": False,
+            "allow_npy_fallback": False,
+        },
+        "ocr": {"available": True},
+        "asr": {"available": True},
     }
 
 
@@ -494,9 +544,20 @@ def search_api(payload: SearchRequest):
         )
 
     top_k = clamp_top_k(payload.top_k)
+
+    # "auto" mimics FaissRetrievalSystem.run_search: temporal if the query
+    # looks like it has multiple events (has a delimiter), else semantic.
     mode = payload.search_mode or "semantic"
+    if mode == "auto":
+        mode = "temporal" if any(sep in original_query for sep in [";", " then ", " sau đó "]) else "semantic"
+
     candidate_multiplier = max(1, int(payload.candidate_multiplier or 5))
     candidate_k = max(top_k * candidate_multiplier, top_k)
+
+    use_translate = False if payload.use_translate is None else bool(payload.use_translate)
+    # OCR/ASR skip translation, matching main.py's should_translate logic.
+    should_translate = use_translate and mode not in ("ocr", "asr")
+    translated_query = f"[mock-translated] {original_query}" if should_translate else None
 
     sample_start = time.perf_counter()
     selected = sample_images(top_k)
@@ -546,7 +607,59 @@ def search_api(payload: SearchRequest):
 
             results.append(item)
 
+    elif mode == "ocr":
+        # One row per matched keyframe, no matched_sequence, with matched_texts
+        # (on-screen text) + ocr_score, exactly like main.py's OCR shape.
+        for rank, image_path in enumerate(selected, start=1):
+            item = path_to_result(
+                image_path=image_path,
+                rank=rank,
+                caption="Mock OCR result - random keyframe",
+                matched_texts=[_mock_sentence() for _ in range(random.randint(1, 2))],
+                ocr_score=random.uniform(1.0, 20.0),
+            )
+            results.append(item)
+
+    elif mode == "asr":
+        # One row per matched speech segment, with matched_sequence populated
+        # (every keyframe "spoken" during that segment) so the frontend
+        # renders it as a horizontal frame-chain strip, like main.py's ASR shape.
+        for rank, image_path in enumerate(selected, start=1):
+            segment_text = _mock_sentence(min_words=6, max_words=14)
+            item = path_to_result(
+                image_path=image_path,
+                rank=rank,
+                caption="Mock ASR result - random keyframe",
+                matched_texts=[segment_text],
+                asr_score=random.uniform(1.0, 20.0),
+                segment_id=f"mock-seg-{rank:04d}",
+            )
+
+            sequence_paths = random.sample(IMAGE_CACHE, k=min(3, len(IMAGE_CACHE)))
+            matched_sequence = build_temporal_sequence(sequence_paths, segment_text)
+            timestamps = [safe_float(x["timestamp_sec"], 0.0) for x in matched_sequence]
+
+            item["matched_sequence"] = matched_sequence
+            item["temporal"] = {
+                "video_score": item["similarity"],
+                "start_time": min(timestamps) if timestamps else item["timestamp"],
+                "end_time": max(timestamps) if timestamps else item["timestamp"],
+                "duration_sec": (
+                    max(timestamps) - min(timestamps)
+                    if len(timestamps) >= 2
+                    else 0.0
+                ),
+                "avg_score": item["similarity"],
+            }
+            item["raw"]["matched_sequence"] = matched_sequence
+            item["raw"]["temporal_start_time"] = item["temporal"]["start_time"]
+            item["raw"]["temporal_end_time"] = item["temporal"]["end_time"]
+            item["raw"]["temporal_duration_sec"] = item["temporal"]["duration_sec"]
+
+            results.append(item)
+
     else:
+        # "semantic" (and anything else that falls through)
         for rank, image_path in enumerate(selected, start=1):
             results.append(
                 path_to_result(
@@ -568,9 +681,9 @@ def search_api(payload: SearchRequest):
 
     return {
         "original_query": original_query,
-        "query": original_query,
-        "translated_query": None,
-        "use_translate": False if payload.use_translate is None else bool(payload.use_translate),
+        "query": translated_query if should_translate else original_query,
+        "translated_query": translated_query,
+        "use_translate": should_translate,
         "use_split": True if payload.use_split is None else bool(payload.use_split),
         "mode": mode,
         "search_mode": mode,
@@ -580,7 +693,7 @@ def search_api(payload: SearchRequest):
         "candidate_k": candidate_k,
         "latency_ms": latency_ms,
         "events": [original_query],
-        "event_queries": [original_query],
+        "event_queries": [[original_query]],
         "sub_queries": [original_query],
         "count": len(results),
         "results": results,
@@ -609,7 +722,8 @@ def similarity_search_api(payload: SimilaritySearchRequest):
             detail=f"No images found in {KEYFRAMES_ROOT}",
         )
 
-    top_k = clamp_top_k(payload.top_k)
+    # main.py hardcodes top_k = 20 for similarity search regardless of payload.
+    top_k = 20
 
     selected = sample_images(top_k)
 
@@ -652,6 +766,9 @@ def similarity_search_api(payload: SimilaritySearchRequest):
             "caption": "Mock source frame not found",
             "rank": 0,
             "matched_sequence": [],
+            "matched_texts": [],
+            "ocr_score": None,
+            "asr_score": None,
             "temporal": {
                 "video_score": 1.0,
                 "start_time": 0.0,
@@ -678,6 +795,39 @@ def similarity_search_api(payload: SimilaritySearchRequest):
         "source": source,
         "results": results,
     }
+
+
+# =========================
+# MOCK SPEECH TRANSCRIBE
+# =========================
+
+@app.post("/api/speech/transcribe")
+async def transcribe_speech(file: UploadFile = File(...)):
+    """Mirrors main.py's /api/speech/transcribe shape, but returns a random
+    fake transcript instead of running Faster-Whisper."""
+    request_start = time.perf_counter()
+
+    suffix = Path(file.filename or "audio.webm").suffix or ".webm"
+
+    with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        text = _mock_sentence(min_words=5, max_words=15)
+        duration = round(random.uniform(1.0, 8.0), 2)
+
+        logger.info(
+            "[MOCK_TRANSCRIBE_DONE] filename=%s bytes=%d elapsed_ms=%s",
+            file.filename,
+            len(content),
+            round((time.perf_counter() - request_start) * 1000, 2),
+        )
+
+        return {"text": text, "language": "vi", "duration": duration}
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
 
 
 # =========================
@@ -794,6 +944,9 @@ def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 10):
 def dres_login(payload: DresLoginRequest):
     logger.info("[MOCK_DRES_LOGIN] dres_url=%s username=%s", payload.dres_url, payload.username)
 
+    if not payload.username.strip() or not payload.password:
+        raise HTTPException(status_code=400, detail="Missing username or password")
+
     return {
         "status": "ok",
         "session_id": "mock-session-id",
@@ -821,9 +974,19 @@ def dres_submit(payload: DresSubmitRequest):
         payload.timestamp,
     )
 
+    if not payload.session_id.strip():
+        raise HTTPException(status_code=400, detail="Missing active session_id")
+
+    status = random.choice(["correct", "wrong", "pending"])
+    message = {
+        "correct": "Correct!",
+        "wrong": "Wrong Answer",
+        "pending": "Submitted, waiting for verdict",
+    }[status]
+
     return {
-        "status": random.choice(["correct", "wrong", "pending"]),
-        "message": "Mock DRES verdict",
+        "status": status,
+        "message": message,
         "data": {
             "video_id": payload.video_id,
             "frame_id": payload.frame_id,

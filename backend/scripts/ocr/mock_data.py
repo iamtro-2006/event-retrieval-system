@@ -207,17 +207,31 @@ VOCABULARY = [
     "Version 2.0",
 ]
 
+
 def load_config():
 
     with open("configs/ocr.yaml", "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
-def random_sentence():
+def random_text():
+    """Single OCR-detected text string (one bounding box = one string)."""
 
-    length = random.randint(2, 6)
+    return random.choice(VOCABULARY)
 
-    return " ".join(random.sample(VOCABULARY, length))
+
+def random_box(frame_width: int, frame_height: int, box_w: int = 220, box_h: int = 40):
+    """Random [x1, y1, x2, y2] box that stays inside the frame."""
+
+    max_x1 = max(0, frame_width - box_w)
+    max_y1 = max(0, frame_height - box_h)
+
+    x1 = random.randint(0, max_x1)
+    y1 = random.randint(0, max_y1)
+    x2 = min(frame_width, x1 + box_w)
+    y2 = min(frame_height, y1 + box_h)
+
+    return [x1, y1, x2, y2]
 
 
 def generate_video_json(
@@ -225,6 +239,8 @@ def generate_video_json(
     num_keyframes: int,
     min_texts: int,
     max_texts: int,
+    frame_width: int,
+    frame_height: int,
 ):
 
     data = {}
@@ -235,12 +251,14 @@ def generate_video_json(
 
         num_texts = random.randint(min_texts, max_texts)
 
-        texts = [
-            random_sentence()
-            for _ in range(num_texts)
-        ]
+        boxes = []
+        texts = []
 
-        data[keyframe_id] = texts
+        for _ in range(num_texts):
+            boxes.append(random_box(frame_width, frame_height))
+            texts.append(random_text())
+
+        data[keyframe_id] = [boxes, texts]
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -271,6 +289,10 @@ def main():
 
     max_texts = cfg["mock"]["max_texts_per_frame"]
 
+    # Optional — fall back to common 16:9 frame size if not set in config.
+    frame_width = cfg["mock"].get("frame_width", 1280)
+    frame_height = cfg["mock"].get("frame_height", 720)
+
     for dataset in datasets:
 
         dataset_dir = root / dataset
@@ -286,6 +308,8 @@ def main():
                 num_keyframes=keyframes,
                 min_texts=min_texts,
                 max_texts=max_texts,
+                frame_width=frame_width,
+                frame_height=frame_height,
             )
 
             print(f"Generated {output_file}")
