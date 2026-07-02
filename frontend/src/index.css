@@ -155,12 +155,19 @@ img {
 }
 
 .ambient-searching {
+  /* This full-screen layer animates for the entire duration of a search,
+     which is exactly when result images are streaming in and need every bit
+     of main-thread/GPU budget. `filter: hue-rotate(...)` forces a full
+     repaint of the layer on every frame (it's not compositor-only like
+     transform), so it was fighting image decode/paint for frame time and
+     showing up as jank on exactly the pages people said felt laggy.
+     Transform-only keeps this animation on the compositor thread, free. */
   animation: ambient-motion 4s ease-in-out infinite alternate;
 }
 
 @keyframes ambient-motion {
-  from { transform: scale(1); filter: hue-rotate(0deg); }
-  to   { transform: scale(1.15) translate(24px, -16px); filter: hue-rotate(35deg); }
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.15) translate(24px, -16px); }
 }
 
 /* =============================================
@@ -543,22 +550,31 @@ img {
   cursor: pointer;
   border: 1px solid var(--border-card);
   background: var(--bg-card);
-  /* GPU layer */
-  will-change: transform;
-  transform: translateZ(0);
   transition:
     transform var(--t-fast) var(--spring),
     box-shadow var(--t-fast) var(--ease-out),
     border-color var(--t-fast) var(--ease-out);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+  animation: reveal-cascade 420ms var(--spring) both;
+  animation-delay: calc(min(var(--stagger-index, 0), 14) * 35ms);
+}
+
+.result-card:hover,
+.result-card:active {
+  /* Promote to its own GPU layer only while actually animating, instead of
+     permanently, so hundreds of idle off-screen cards don't each hold a
+     compositor layer at once. */
+  will-change: transform;
 }
 
 .result-card:hover {
-  transform: translateY(-2px) translateZ(0);
+  transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   border-color: rgba(96, 165, 250, 0.45);
 }
 
-.result-card:active { transform: scale(0.97) translateZ(0); }
+.result-card:active { transform: scale(0.97); }
 
 .result-card.selected {
   border-color: rgba(56, 189, 248, 0.85);
@@ -583,8 +599,7 @@ img {
   transition: opacity var(--t-normal) var(--ease-out);
 }
 
-.thumbnail-box img.loaded,
-.thumbnail-box img[src] { opacity: 1; }
+.thumbnail-box img.loaded { opacity: 1; }
 
 /* Score badge */
 .score-badge {
@@ -1017,11 +1032,17 @@ img {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
 
-  will-change: transform;
   transition:
     transform var(--t-fast) var(--spring),
     border-color var(--t-fast),
     box-shadow var(--t-fast);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
+.temporal-frame-card:hover,
+.temporal-frame-card:active {
+  will-change: transform;
 }
 
 .temporal-frame-card:hover {
@@ -2371,8 +2392,8 @@ img {
 
   content-visibility: auto;
   contain-intrinsic-size: 360px 280px;
-  transform: translateZ(0);
-  animation: temporal-card-in 420ms var(--spring) both;
+  animation: reveal-cascade 480ms var(--spring) both;
+  animation-delay: calc(min(var(--stagger-index, 0), 14) * 45ms);
   transition:
     transform 260ms var(--spring),
     box-shadow 260ms ease,
@@ -2382,7 +2403,8 @@ img {
 
 .temporal-flat-sequence:hover,
 .temporal-sequence-block:hover {
-  transform: translateY(-2px) translateZ(0);
+  will-change: transform;
+  transform: translateY(-2px);
   border-color: var(--temporal-border-hover) !important;
   box-shadow: var(--temporal-shadow-hover) !important;
 }
@@ -2796,16 +2818,17 @@ img {
   background: rgba(255, 255, 255, 0.96) !important;
 }
 
-@keyframes temporal-card-in {
+@keyframes reveal-cascade {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.985);
-    filter: blur(5px);
+    /* Slide down from above, like iOS list rows cascading in. Transform +
+       opacity only — both compositor-only, no repaint, so this stays smooth
+       no matter how many cards animate in at once. */
+    transform: translateY(-14px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
+    transform: translateY(0);
   }
 }
 

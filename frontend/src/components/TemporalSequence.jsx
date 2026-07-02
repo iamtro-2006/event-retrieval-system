@@ -23,6 +23,7 @@ function makeFrameResult(result, frame, idx) {
 const TemporalSequence = memo(function TemporalSequence({
   result,
   sequenceIndex = 0,
+  index = 0,
   selectedId,
   onSelect,
   onSubmit,
@@ -77,30 +78,40 @@ const TemporalSequence = memo(function TemporalSequence({
     viewport.scrollTo({ left: next * step, behavior: "smooth" });
   }
 
+  const scrollRafRef = useRef(0);
+
   function syncPageFromScroll() {
-    const viewport = viewportRef.current;
-    if (!viewport || !isCarousel) return;
+    // Scroll fires many times per frame; only do the DOM-measuring work once
+    // per animation frame so it can't fall behind and stack up jank.
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = 0;
+      const viewport = viewportRef.current;
+      if (!viewport || !isCarousel) return;
 
-    const cards = Array.from(viewport.querySelectorAll(".temporal-frame-card"));
-    if (!cards.length) return;
+      const cards = Array.from(viewport.querySelectorAll(".temporal-frame-card"));
+      if (!cards.length) return;
 
-    const currentLeft = viewport.scrollLeft;
-    let nearestIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
+      const currentLeft = viewport.scrollLeft;
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
 
-    cards.forEach((card, index) => {
-      const distance = Math.abs(card.offsetLeft - viewport.offsetLeft - currentLeft);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = index;
-      }
+      cards.forEach((card, index) => {
+        const distance = Math.abs(card.offsetLeft - viewport.offsetLeft - currentLeft);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      });
+
+      setPage(Math.min(nearestIndex, maxPage));
     });
-
-    setPage(Math.min(nearestIndex, maxPage));
   }
 
+  useEffect(() => () => cancelAnimationFrame(scrollRafRef.current), []);
+
   return (
-    <section className={`temporal-sequence-block temporal-events-${Math.min(sequence.length, 6)}`} style={{ "--sequence-event-total": sequence.length }}>
+    <section className={`temporal-sequence-block temporal-events-${Math.min(sequence.length, 6)}`} style={{ "--sequence-event-total": sequence.length, "--stagger-index": index }}>
       <div className="temporal-sequence-toolbar temporal-sequence-header">
         <div>
           <strong>Sequence #{sequenceIndex + 1}</strong>

@@ -7,12 +7,12 @@ const ResultGrid = memo(function ResultGrid({ results, columns, selectedId, onSe
   if (hasTemporal) {
     return <div className="temporal-sequences-grid temporal-flat-sequences-grid" style={{ "--sequence-cols": columns }}>{results.map((result, index) =>
       Array.isArray(result.matched_sequence) && result.matched_sequence.length ? (
-        <TemporalSequence key={result.id} result={result} sequenceIndex={index} selectedId={selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} />
+        <TemporalSequence key={result.id} result={result} sequenceIndex={index} index={index} selectedId={selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} />
       ) : (
-        <ResultCard key={result.id} result={result} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} />
+        <ResultCard key={result.id} result={result} index={index} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} />
       )
     )}</div>;
   }
-  return <div className="result-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>{results.map((result) => <ResultCard key={result.id} result={result} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} />)}</div>;
+  return <div className="result-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>{results.map((result, index) => <ResultCard key={result.id} result={result} index={index} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} />)}</div>;
 });
 export default ResultGrid;

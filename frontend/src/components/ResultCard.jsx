@@ -3,6 +3,7 @@ import { Play, ThumbsDown, ThumbsUp, Send, Search, Images } from "lucide-react";
 
 const ResultCard = memo(function ResultCard({
   result,
+  index = 0,
   selected,
   onSelect,
   onSubmit,
@@ -52,6 +53,7 @@ const ResultCard = memo(function ResultCard({
   return (
     <article
       className={`result-card${selected ? " selected" : ""}`}
+      style={{ "--stagger-index": index }}
       onClick={() => onSelect?.(result)}
     >
       <div className="thumbnail-box">
