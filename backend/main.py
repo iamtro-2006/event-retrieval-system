@@ -24,10 +24,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from src.retrieval.models.retrieval_system import FaissRetrievalSystem, SearchMode
-from src.logic import get_timestamp_from_row
-from src.ocr.pipelines.factory import build_ocr_search_pipeline
-from src.asr.pipelines.factory import build_asr_search_pipeline
+from src.retrieval.system import build_system
+from src.retrieval.retriever.common.orchestrator import SearchMode
 
 load_dotenv()
 
@@ -144,74 +142,34 @@ if MAP_KEYFRAME_ROOT.exists():
     app.mount("/static/map-keyframes", StaticFiles(directory=str(MAP_KEYFRAME_ROOT)), name="map_keyframes")
 
 
-def build_ocr_pipeline_or_none():
-    """Build the OCR search pipeline, degrading gracefully if Elasticsearch is unreachable.
+SYSTEM_CONFIG: dict[str, Any] = {
+    "semantic": {
+        "index_path": str(FAISS_INDEX_PATH),
+        "metadata_path": str(METADATA_PATH),
+        "model_name": CFG["model"]["name"],
+        "pretrained": CFG["model"]["pretrained"],
+        "device": CFG["model"].get("device", "auto"),
+        "precision": CFG["model"].get("precision", "fp32"),
+        "normalize": bool(CFG["model"].get("normalize", True)),
+        "ef_search": int(CFG.get("faiss", {}).get("ef_search", 64)),
+        "faiss_threads": CFG.get("faiss", {}).get("threads"),
+        "cache_index_vectors": CFG.get("faiss", {}).get("cache_index_vectors", None),
+        "vector_cache_mode": CFG.get("faiss", {}).get("vector_cache_mode", None),
+        "vector_cache_dtype": CFG.get("faiss", {}).get("vector_cache_dtype", "float32"),
+        "vector_cache_path": str(VECTOR_CACHE_PATH),
+        "allow_npy_fallback": bool(CFG.get("faiss", {}).get("allow_npy_fallback", False)),
+        "compile_model": bool(CFG.get("model", {}).get("compile", False)),
+    },
+    # OCR/ASR are optional subsystems: `build_system` degrades gracefully
+    # (prints a warning and disables the mode) if Elasticsearch is unreachable
+    # or the config file is missing, so the rest of the API still boots.
+    "ocr": {"config_path": str(OCR_CONFIG_PATH)} if OCR_CONFIG_PATH.exists() else None,
+    "asr": {"config_path": str(ASR_CONFIG_PATH)} if ASR_CONFIG_PATH.exists() else None,
+}
 
-    OCR is treated as an optional, independently-failing subsystem: if
-    Elasticsearch is down or misconfigured at startup, the rest of the API
-    (semantic/temporal search, DRES, ASR, ...) must still boot normally.
-    `mode="ocr"` requests will simply fail fast with a clear 503 until fixed.
-    """
-    if not OCR_CONFIG_PATH.exists():
-        print(f"[OCR] Config not found at {OCR_CONFIG_PATH}, OCR search disabled")
-        return None
-    try:
-        pipeline = build_ocr_search_pipeline(config_path=str(OCR_CONFIG_PATH))
-        if not pipeline.repository.es.ping():
-            print("[OCR] Elasticsearch did not respond to ping, OCR search may be unavailable")
-        else:
-            print(f"[OCR] Connected | documents={pipeline.repository.count()}")
-        return pipeline
-    except Exception as exc:
-        print(f"[OCR] Failed to initialize OCR pipeline: {type(exc).__name__}: {exc}")
-        return None
-
-
-def build_asr_pipeline_or_none():
-    """Build the ASR search pipeline, degrading gracefully if Elasticsearch is unreachable.
-
-    ASR is treated as an optional, independently-failing subsystem, exactly like
-    OCR: if Elasticsearch is down or misconfigured at startup, the rest of the
-    API must still boot normally. `mode="asr"` requests will simply fail fast
-    with a clear 503 until fixed.
-    """
-    if not ASR_CONFIG_PATH.exists():
-        print(f"[ASR] Config not found at {ASR_CONFIG_PATH}, ASR search disabled")
-        return None
-    try:
-        pipeline = build_asr_search_pipeline(config_path=str(ASR_CONFIG_PATH))
-        if not pipeline.repository.es.ping():
-            print("[ASR] Elasticsearch did not respond to ping, ASR search may be unavailable")
-        else:
-            print(f"[ASR] Connected | documents={pipeline.repository.count()}")
-        return pipeline
-    except Exception as exc:
-        print(f"[ASR] Failed to initialize ASR pipeline: {type(exc).__name__}: {exc}")
-        return None
-
-
-OCR_SEARCH_PIPELINE = build_ocr_pipeline_or_none()
-ASR_SEARCH_PIPELINE = build_asr_pipeline_or_none()
-
-retrieval_system = FaissRetrievalSystem(
-    index_path=str(FAISS_INDEX_PATH),
-    metadata_path=str(METADATA_PATH),
-    model_name=CFG["model"]["name"],
-    pretrained=CFG["model"]["pretrained"],
-    device=CFG["model"].get("device", "auto"),
-    precision=CFG["model"].get("precision", "fp32"),
-    normalize=bool(CFG["model"].get("normalize", True)),
-    ef_search=int(CFG.get("faiss", {}).get("ef_search", 64)),
-    faiss_threads=CFG.get("faiss", {}).get("threads"),
-    cache_index_vectors=CFG.get("faiss", {}).get("cache_index_vectors", None),
-    vector_cache_mode=CFG.get("faiss", {}).get("vector_cache_mode", None),
-    vector_cache_dtype=CFG.get("faiss", {}).get("vector_cache_dtype", "float32"),
-    vector_cache_path=str(VECTOR_CACHE_PATH),
-    allow_npy_fallback=bool(CFG.get("faiss", {}).get("allow_npy_fallback", False)),
-    compile_model=bool(CFG.get("model", {}).get("compile", False)),
-    ocr_search_pipeline=OCR_SEARCH_PIPELINE,
-    asr_search_pipeline=ASR_SEARCH_PIPELINE,
-)
+retrieval_system = build_system(SYSTEM_CONFIG)
+orchestrator = retrieval_system.orchestrator
+clip_index = orchestrator.index
 
 _speech_model: WhisperModel | None = None
 _speech_model_lock = threading.Lock()
@@ -454,10 +412,10 @@ def dict_to_result_FAST(item: dict[str, Any]) -> dict[str, Any]:
 
 def find_metadata_row(video_id: str, keyframe_id: int) -> pd.Series:
     """Fetch a specific metadata row using the pre-computed hash map."""
-    row_idx = retrieval_system._row_by_video_frame.get((str(video_id), int(keyframe_id)))
+    row_idx = clip_index._row_by_video_frame.get((str(video_id), int(keyframe_id)))
     if row_idx is None:
         raise HTTPException(status_code=404, detail=f"Frame not found: {video_id}/{keyframe_id}")
-    return retrieval_system.metadata.iloc[int(row_idx)]
+    return clip_index.metadata.iloc[int(row_idx)]
 
 DRES_HEADERS = {"ngrok-skip-browser-warning": "true"}
 
@@ -507,7 +465,7 @@ def health():
         "status": "ok", "backend_dir": str(BACKEND_DIR), "config_path": str(CONFIG_PATH),
         "faiss_index_path": str(FAISS_INDEX_PATH), "metadata_path": str(METADATA_PATH),
         "vector_cache_path": str(VECTOR_CACHE_PATH), "vector_cache_exists": VECTOR_CACHE_PATH.exists(),
-        "vector_cache": retrieval_system.cache_info,
+        "vector_cache": clip_index.cache_info,
         "keyframes_root": str(KEYFRAMES_ROOT), "videos_root": str(VIDEOS_ROOT),
         "map_keyframe_path": str(MAP_KEYFRAME_ROOT),
         "keyframes_root_exists": KEYFRAMES_ROOT.exists(), "videos_root_exists": VIDEOS_ROOT.exists(),
@@ -516,11 +474,11 @@ def health():
         "model": CFG["model"],
         "ocr": {
             "config_path": str(OCR_CONFIG_PATH),
-            "available": retrieval_system.ocr_search_pipeline is not None,
+            "available": orchestrator.ocr_search_pipeline is not None,
         },
         "asr": {
             "config_path": str(ASR_CONFIG_PATH),
-            "available": retrieval_system.asr_search_pipeline is not None,
+            "available": orchestrator.asr_search_pipeline is not None,
         },
     }
 
@@ -555,14 +513,14 @@ def get_public_config():
             "vector_cache_mode": CFG.get("faiss", {}).get("vector_cache_mode", None),
             "vector_cache_dtype": CFG.get("faiss", {}).get("vector_cache_dtype", "float32"),
             "vector_cache_path": str(VECTOR_CACHE_PATH),
-            "vector_cache_available": retrieval_system.cache_info.get("available", False),
+            "vector_cache_available": clip_index.cache_info.get("available", False),
             "allow_npy_fallback": bool(CFG.get("faiss", {}).get("allow_npy_fallback", False)),
         },
         "ocr": {
-            "available": retrieval_system.ocr_search_pipeline is not None,
+            "available": orchestrator.ocr_search_pipeline is not None,
         },
         "asr": {
-            "available": retrieval_system.asr_search_pipeline is not None,
+            "available": orchestrator.asr_search_pipeline is not None,
         },
     }
 
@@ -690,7 +648,7 @@ async def search_api(payload: SearchRequest):
 
     try:
         results_df, query_plan = await run_in_threadpool(
-            retrieval_system.run_search, query=search_query, mode=mode, use_split=use_split,
+            orchestrator.run_search, query=search_query, mode=mode, use_split=use_split,
             top_k=top_k, candidate_multiplier=candidate_multiplier, duration_limit=duration_limit,
         )
     except NotImplementedError as exc:
@@ -741,11 +699,11 @@ async def search_api(payload: SearchRequest):
 async def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 10):
     """Retrieve a sequence of frames surrounding a target keyframe."""
     def _fetch_surround():
-        metadata_df = retrieval_system.metadata
+        metadata_df = clip_index.metadata
         radius_val = max(1, min(int(radius), 50))
         target_keyframe_id = int(keyframe_id)
 
-        row_ids = retrieval_system._rows_by_video.get(str(video_id))
+        row_ids = clip_index._rows_by_video.get(str(video_id))
         if row_ids is None or len(row_ids) == 0:
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
 
@@ -800,7 +758,7 @@ async def similarity_search_api(payload: SimilaritySearchRequest):
         source_dict = row.to_dict()
         image_path = resolve_keyframe_path_from_dict(source_dict)
 
-        results_df = retrieval_system.similarity_search_by_image(image_path=Path(image_path), top_k=top_k)
+        results_df = orchestrator.semantic_search.similarity_search_by_image(image_path=Path(image_path), top_k=top_k)
         return source_dict, results_df
 
     start = time.perf_counter()

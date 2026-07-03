@@ -4,8 +4,8 @@ import argparse
 from pathlib import Path
 import yaml
 
-from src.retrieval.pipelines.build_faiss import BuildFaissIndexPipeline
-from src.retrieval.pipelines.build_vector_cache import build_vector_cache
+from src.retrieval.indexer.faiss.build_pipeline import BuildFaissIndexPipeline
+from src.retrieval.indexer.faiss.vector_cache import build_vector_cache, normalize_dtype
 
 
 def load_yaml(path: Path) -> dict[str, object]:
@@ -47,7 +47,7 @@ def main() -> None:
         else backend_dir / Path(faiss_cfg.get("vector_cache_path", "data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp16.npy"))
     )
     dtype_name = args.dtype or faiss_cfg.get("vector_cache_dtype", "float16")
-    dtype = build_vector_cache.__globals__["normalize_dtype"](dtype_name)  # reuse helper from imported module
+    dtype = normalize_dtype(dtype_name)
     normalize = bool(model_cfg.get("normalize", True)) and not args.no_normalize
 
     build_vector_cache(

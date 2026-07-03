@@ -5,7 +5,8 @@ from pathlib import Path
 
 import yaml
 
-from src.retrieval.models.retrieval_system import FaissRetrievalSystem
+from src.retrieval.index.clip_faiss_index import ClipFaissIndex
+from src.retrieval.retriever.semantic_search.pipeline.search import SearchPipeline
 
 
 def load_yaml(path: Path) -> dict[str, object]:
@@ -30,7 +31,7 @@ def main() -> None:
     cfg = load_yaml(cfg_path)
     index_dir = Path(cfg["index"]["output_dir"])
 
-    system = FaissRetrievalSystem(
+    index = ClipFaissIndex(
         index_path=index_dir / cfg["index"]["index_name"],
         metadata_path=index_dir / cfg["index"]["metadata_name"],
         model_name=cfg["model"]["name"],
@@ -39,8 +40,9 @@ def main() -> None:
         precision=cfg["model"].get("precision", "fp32"),
         normalize=cfg["model"].get("normalize", True),
     )
+    pipeline = SearchPipeline(index)
 
-    results = system.search(args.query, top_k=args.top_k)
+    results = pipeline.multi_query_search([args.query], top_k=args.top_k)
 
     print(results[[
         "rank",

@@ -4,9 +4,9 @@ from pathlib import Path
 
 import yaml
 
-from src.asr.pipelines.search import SearchPipeline
-from src.asr.pipelines.repository import ASRRepository
-from src.asr.services.elastic_search import ElasticsearchService
+from src.retrieval.retriever.asr_search.pipeline.search import SearchPipeline
+from src.retrieval.indexer.elasticsearch.asr.repository import ASRRepository
+from src.retrieval.indexer.elasticsearch.client import ElasticsearchService
 
 
 def load_config():
