@@ -13,6 +13,7 @@ export default function GroupedResults({
   onPlay,
   onSimilaritySearch,
   onSurroundingImages,
+  query,
 }) {
   const groups = useMemo(() => groupByVideoSorted(results), [results]);
   const [pageByVideo, setPageByVideo] = useState({});
@@ -99,6 +100,7 @@ export default function GroupedResults({
                               onPlay={onPlay}
                               onSimilaritySearch={onSimilaritySearch}
                               onSurroundingImages={onSurroundingImages}
+                              query={query}
                             />
                           ))}
                         </div>
@@ -178,6 +180,7 @@ export default function GroupedResults({
                             onSubmit={onSubmit}
                             onSimilaritySearch={onSimilaritySearch}
                             onSurroundingImages={onSurroundingImages}
+                            query={query}
                           />
                         ))}
                       </div>

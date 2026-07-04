@@ -719,6 +719,7 @@ export default function App() {
                         onPlay={handlePlayResult}
                         onSimilaritySearch={handleSimilaritySearch}
                         onSurroundingImages={handleOpenSurroundingImages}
+                        query={lastQuery}
                       />
                     ) : (
                       <ResultGrid
@@ -730,6 +731,7 @@ export default function App() {
                         onPlay={handlePlayResult}
                         onSimilaritySearch={handleSimilaritySearch}
                         onSurroundingImages={handleOpenSurroundingImages}
+                        query={lastQuery}
                       />
                     )}
                   </div>

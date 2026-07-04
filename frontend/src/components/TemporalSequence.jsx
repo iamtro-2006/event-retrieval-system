@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Images, Play, Search, Send } from "lucide-react";
+import HighlightedSnippet from "./HighlightedSnippet";
 
 function makeFrameResult(result, frame, idx) {
   const frameId = Number(frame.frame_id ?? frame.keyframe_id ?? frame.keyframe_id_int ?? idx);
@@ -30,6 +31,7 @@ const TemporalSequence = memo(function TemporalSequence({
   onPlay,
   onSimilaritySearch,
   onSurroundingImages,
+  query,
 }) {
   const sequence = Array.isArray(result?.matched_sequence) ? result.matched_sequence : [];
   // ASR hits share ONE transcript across every frame in the sequence (see
@@ -131,8 +133,13 @@ const TemporalSequence = memo(function TemporalSequence({
       </div>
 
       {hasSharedSegmentText && (
-        <div className="temporal-sequence-transcript" title={result.matched_texts.join(" ")}>
-          &ldquo;{result.matched_texts.join(" ")}&rdquo;
+        <div className="temporal-sequence-transcript">
+          <HighlightedSnippet
+            text={result.matched_texts.join(" ")}
+            query={query}
+            maxLength={200}
+            quoted
+          />
         </div>
       )}
 
@@ -179,7 +186,9 @@ const TemporalSequence = memo(function TemporalSequence({
                   </button>
                 </div>
                 {!hasSharedSegmentText && frame.sub_query && (
-                  <div className="temporal-frame-query" title={frame.sub_query}>{frame.sub_query}</div>
+                  <div className="temporal-frame-query">
+                    <HighlightedSnippet text={frame.sub_query} query={query} maxLength={90} />
+                  </div>
                 )}
               </article>
             );

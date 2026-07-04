@@ -663,7 +663,10 @@ img {
 .play-button:hover { background: var(--accent); }
 .play-button:active { transform: scale(0.88); }
 
-/* OCR-only: matched on-screen text snippet, shown between the thumbnail and footer */
+/* OCR-only: matched on-screen text snippet, shown between the thumbnail and footer.
+   Bounded to a fixed number of lines (never dumps raw/unbounded OCR text),
+   justified so the block reads evenly, with query-keyword matches highlighted
+   via .match-highlight instead of being clipped away by a hard char limit. */
 .ocr-matched-text {
   padding: 5px 8px;
   background: var(--bg-card);
@@ -671,10 +674,30 @@ img {
   font-size: 10.5px;
   font-weight: 600;
   font-family: var(--font-sans);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  text-align: justify;
+  text-align-last: left;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  word-break: break-word;
+}
+
+/* Shared highlight style for query-keyword matches inside OCR/ASR snippets. */
+.match-highlight {
+  background: #ffd43b;
+  color: #1a1400;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 800;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.snippet-ellipsis {
+  opacity: 0.55;
 }
 
 /* Card footer — unified */
@@ -945,8 +968,13 @@ img {
   font-size: 11px;
   font-style: italic;
   line-height: 1.35;
-  white-space: normal;
   overflow-wrap: anywhere;
+  text-align: justify;
+  text-align-last: left;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .temporal-sequence-header button {
@@ -1192,9 +1220,12 @@ img {
   font-weight: 700;
   font-family: var(--font-sans);
 
-  white-space: nowrap;
+  text-align: justify;
+  text-align-last: left;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* ===============================

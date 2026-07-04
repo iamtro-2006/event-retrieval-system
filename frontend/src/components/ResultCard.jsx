@@ -1,5 +1,6 @@
 import { memo, useCallback } from "react";
 import { Play, ThumbsDown, ThumbsUp, Send, Search, Images } from "lucide-react";
+import HighlightedSnippet from "./HighlightedSnippet";
 
 const ResultCard = memo(function ResultCard({
   result,
@@ -9,6 +10,7 @@ const ResultCard = memo(function ResultCard({
   onSubmit,
   onSimilaritySearch,
   onSurroundingImages,
+  query,
 }) {
   const score    = (result.similarity * 100).toFixed(1);
   const label    = `${result.video_id}/${String(result.frame_id).padStart(6, "0")}`;
@@ -81,8 +83,12 @@ const ResultCard = memo(function ResultCard({
       </div>
 
       {matchedTexts.length > 0 && (
-        <div className="ocr-matched-text" title={matchedTexts.join(" · ")}>
-          {matchedTexts.join(" · ")}
+        <div className="ocr-matched-text">
+          <HighlightedSnippet
+            text={matchedTexts.join(" · ")}
+            query={query}
+            maxLength={140}
+          />
         </div>
       )}
 
