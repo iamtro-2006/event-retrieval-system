@@ -9,8 +9,6 @@ class ASRDocument(BaseModel):
 
     video_id: str = Field(...)
 
-    segment_id: str = Field(...)
-
     start_time: float = Field(...)
 
     end_time: float = Field(...)

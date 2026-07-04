@@ -1,0 +1,21 @@
+"""
+Common interface every translation backend (HyMT2, LibreTranslate, ...)
+must implement, so `main.py` can swap agents purely via config.
+"""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+
+class BaseTranslator(ABC):
+    """Minimal translator contract shared by all backends."""
+
+    @abstractmethod
+    def translate(self, text: str, source: str = "vi", target: str = "en") -> str:
+        """Translate `text` from `source` language to `target` language.
+
+        Implementations should return the original `text` unchanged when it
+        is empty/whitespace-only, mirroring deep_translator's behaviour.
+        """
+        raise NotImplementedError

@@ -24,13 +24,17 @@ class IndexPipeline:
         self,
         json_path: str | Path,
     ):
-        """Index one video's transcript file.
+        """Index one video's transcript file (extract_asr output).
 
-        Expected JSON shape (list of segments, sorted by time):
+        video_id is taken from the filename (json_path.stem), same convention
+        as the OCR pipeline. The "video_id" field inside each segment is
+        redundant/ignored.
+
+        Expected JSON shape (list of segments, sorted by time, no segment_id):
 
             [
-                {"segment_id": "000000", "start_time": 0.0, "end_time": 4.2, "text": "..."},
-                {"segment_id": "000001", "start_time": 4.2, "end_time": 9.8, "text": "..."},
+                {"video_id": "L21_V001", "start": 4.43, "end": 37.94, "transcript": "..."},
+                {"video_id": "L21_V001", "start": 37.94, "end": 69.39, "transcript": "..."},
                 ...
             ]
         """
@@ -61,13 +65,11 @@ class IndexPipeline:
 
                     video_id=video_id,
 
-                    segment_id=str(segment["segment_id"]),
+                    start_time=float(segment["start"]),
 
-                    start_time=float(segment["start_time"]),
+                    end_time=float(segment["end"]),
 
-                    end_time=float(segment["end_time"]),
-
-                    text=str(segment.get("text", "")),
+                    text=str(segment.get("transcript", "")),
 
                 )
 

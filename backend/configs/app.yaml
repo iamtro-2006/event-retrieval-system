@@ -30,11 +30,22 @@ ui:
   surrounding_radius: 5
   max_surrounding_radius: 10
 
-translate:
-  enabled_default: false
-  source: vi
+translate_agent: libre  # "hymt2" (local GGUF model) or "libre" (LibreTranslate server)
 
+translate:
+  enabled_default: true
+  source: vi
   target: en
+
+  hymt2:
+    model_path: models/Hy-MT2-1.8B-2Bit.gguf  # overridable via HY_MT2_MODEL_PATH env var
+    n_gpu_layers: 0                             # overridable via HY_MT2_N_GPU_LAYERS env var; 0 = CPU only
+
+  libre:
+    base_url: http://localhost:5000  # overridable via LIBRE_TRANSLATE_URL env var
+    api_key: null                     # overridable via LIBRE_TRANSLATE_API_KEY env var
+    format: text                      # "text" or "html"
+    timeout: 15
 
 speech:
   model_size: base

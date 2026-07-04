@@ -13,7 +13,6 @@ class ASRHit(TypedDict):
     score: float
     dataset: str
     video_id: str
-    segment_id: str
     start_time: float
     end_time: float
     text: str
@@ -50,7 +49,6 @@ class SearchPipeline:
                     score=float(hit["_score"]),
                     dataset=source["dataset"],
                     video_id=source["video_id"],
-                    segment_id=source["segment_id"],
                     start_time=float(source.get("start_time", 0.0)),
                     end_time=float(source.get("end_time", 0.0)),
                     text=str(source.get("text", "")),

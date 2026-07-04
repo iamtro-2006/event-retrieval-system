@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import requests
 import yaml
-from deep_translator import GoogleTranslator
+from src.translation import get_translator
 from dotenv import load_dotenv
 from faster_whisper import WhisperModel
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
@@ -35,9 +35,8 @@ if HF_TOKEN:
 
 BACKEND_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BACKEND_DIR / "configs" / "app.yaml"
-OCR_CONFIG_PATH = BACKEND_DIR / "configs" / "ocr.yaml"
-ASR_CONFIG_PATH = BACKEND_DIR / "configs" / "asr.yaml"
-
+OCR_CONFIG_PATH = BACKEND_DIR / "configs" / "ocr_extraction.yaml"
+ASR_CONFIG_PATH = BACKEND_DIR / "configs" / "asr_extraction.yaml"
 
 def load_yaml(path: Path) -> dict[str, Any]:
     """Load and parse a YAML configuration file.
@@ -291,12 +290,13 @@ def find_video_path_from_dict(item: dict[str, Any]) -> str:
     return f"data/processed/videos/{video_id}.mp4"
 
 def translate_query_if_needed(query: str, use_translate: bool) -> str:
-    """Translate query text using Google Translate if enabled."""
+    """Translate query text using the configured translate agent (HyMT2 or LibreTranslate)."""
     if not use_translate: return query
     translate_cfg = CFG.get("translate", {})
     source = translate_cfg.get("source", "vi")
     target = translate_cfg.get("target", "en")
-    return GoogleTranslator(source=source, target=target).translate(query)
+    translator = get_translator(CFG, BACKEND_DIR)
+    return translator.translate(query, source=source, target=target)
 
 def serialize_matched_sequence(sequence: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Serialize a list of matched temporal sequence frames."""
@@ -501,6 +501,7 @@ def get_public_config():
             "enabled_default": bool(CFG.get("translate", {}).get("enabled_default", False)),
             "source": CFG.get("translate", {}).get("source", "vi"),
             "target": CFG.get("translate", {}).get("target", "en"),
+            "agent": str(CFG.get("translate_agent", "hymt2")),
         },
         "model": {
             "name": CFG["model"]["name"], "pretrained": CFG["model"]["pretrained"],

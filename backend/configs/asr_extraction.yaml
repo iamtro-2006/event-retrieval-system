@@ -2,10 +2,10 @@ elasticsearch:
   host: "192.168.1.15"
   port: 9200
   scheme: "http"
-  index: "asr"
+  index: "asr_db"
 
 dataset:
-  root: "data/mock/asr"
+  root: "data/processed/asr"
 
 mock:
   datasets:

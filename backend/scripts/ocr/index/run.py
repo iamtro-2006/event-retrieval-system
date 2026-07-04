@@ -11,7 +11,7 @@ from src.retrieval.indexer.elasticsearch.client import ElasticsearchService
 
 def load_config():
 
-    config_path = Path("configs/ocr.yaml")
+    config_path = Path("configs/ocr_extraction.yaml")
 
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)

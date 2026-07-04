@@ -277,7 +277,6 @@ class Orchestrator:
                 avg_score=normalized_score,
                 video_score=normalized_score,
                 matched_texts=[transcript_text],
-                segment_id=hit["segment_id"],
                 temporal_start_time=hit["start_time"],
                 temporal_end_time=hit["end_time"],
                 temporal_duration_sec=max(0.0, float(hit["end_time"]) - float(hit["start_time"])),
@@ -319,9 +318,11 @@ class Orchestrator:
             A DataFrame with one row per matched speech segment, shaped like a
             `temporal_search` hit: the same display columns as semantic search,
             plus `matched_texts` (the segment's transcript), `asr_score` (raw
-            BM25 score), `segment_id`, and `matched_sequence` (every keyframe
-            inside the segment's time window, so the frontend renders it as a
-            temporal-sequence strip).
+            BM25 score), and `matched_sequence` (every keyframe inside the
+            segment's time window, so the frontend renders it as a
+            temporal-sequence strip). Row ordering/sequence number comes from
+            `display_rank`/`rank`, same as temporal search — no separate
+            `segment_id` is needed or used.
 
         Raises:
             RuntimeError: If no ASR backend was injected at construction time.

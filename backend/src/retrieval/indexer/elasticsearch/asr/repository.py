@@ -23,7 +23,6 @@ class ASRRepository:
             "properties": {
                 "dataset": {"type": "keyword"},
                 "video_id": {"type": "keyword"},
-                "segment_id": {"type": "keyword"},
                 "start_time": {"type": "float"},
                 "end_time": {"type": "float"},
                 "text": {"type": "text"},

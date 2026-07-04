@@ -1,0 +1,65 @@
+# =========================================================
+# Elasticsearch indexing (used by scripts/ocr/index/run.py)
+# =========================================================
+elasticsearch:
+  host: "192.168.1.15"
+  port: 9200
+  scheme: "http"
+  index: "ocr_db"
+
+# Root folder of per-video OCR json files: <root>/<dataset>/<video_id>.json
+dataset:
+  root: "data/processed/ocr"
+
+# =========================================================
+# Mock data generation (used by scripts/ocr/mock_data.py)
+# =========================================================
+mock:
+  datasets:
+    - L21
+    - L22
+  videos_per_dataset: 5
+  keyframes_per_video: 100
+  min_texts_per_frame: 1
+  max_texts_per_frame: 15
+  seed: 42
+
+# =========================================================
+# Real OCR extraction (used by scripts/ocr_extraction/run.py)
+# =========================================================
+extraction:
+  input_keyframes_root: "data/processed/keyframes"
+  output_root: "data/processed/ocr"
+
+  visualize_dir: "data/processed/ocr_visuals"
+  visualized: false
+
+  batch_size: 24
+  num_workers: 0
+  skip_existing: true
+
+  # "paddleocr" -> use PaddleOCR's own recognizer (fast, but NOT reliable
+  #                for Vietnamese diacritics).
+  # "vietocr"   -> PaddleOCR is used ONLY to detect text-region boxes;
+  #                each crop is recognized by VietOCR instead (supports
+  #                Vietnamese). Slower (no native batching in vietocr).
+  recognizer: "vietocr"
+
+  # PaddleOCR: text DETECTION model (and detector-only usage when
+  # recognizer == "vietocr"; text_recognition_model_name is still loaded
+  # because PaddleOCR() is a single combined pipeline, but its rec output
+  # is discarded in that mode).
+  model:
+    ocr_version: "PP-OCRv6"
+    text_detection_model_name: "PP-OCRv6_small_det"
+    text_recognition_model_name: "PP-OCRv6_medium_rec"
+    use_doc_orientation_classify: false
+    use_doc_unwarping: false
+    use_textline_orientation: false
+    device: "gpu"
+
+  # VietOCR: text RECOGNITION model, only used when recognizer == "vietocr".
+  vietocr:
+    base_config: "vgg_seq2seq"       # or "vgg_seq2seq"
+    device: "cuda"
+    weights_path: null               # set to a fine-tuned .pth to override defaults
