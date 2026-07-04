@@ -4,6 +4,14 @@ Backend FastAPI cho hệ thống truy vấn/retrieval keyframe video theo nội 
 (semantic/CLIP), theo trình tự thời gian (temporal), theo chữ viết trên màn
 hình (OCR) và theo lời thoại (ASR).
 
+> 📘 **Tài liệu này là bản tóm tắt.** Bản đầy đủ — tech stack chi tiết, sơ đồ
+> luồng dữ liệu end-to-end, mã giả thuật toán cho từng pipeline (keyframe
+> extraction, embedding, temporal DP, OCR/ASR enrich...), danh sách đầy đủ
+> endpoint, nợ kỹ thuật đã biết, và hướng dẫn handover cho team kế tiếp —
+> nằm ở [`ARCHITECTURE.md`](./ARCHITECTURE.md). Đọc file này để có bức tranh
+> tổng quan, rồi sang `ARCHITECTURE.md` khi cần đi sâu vào 1 phần cụ thể
+> hoặc trước khi thêm 1 search block mới.
+
 ---
 
 ## 1. Cây thư mục thực tế
@@ -12,7 +20,7 @@ hình (OCR) và theo lời thoại (ASR).
 backend/
 ├── main.py                     # FastAPI app — entrypoint DUY NHẤT của API
 ├── mock_api.py                 # server mock để FE dev không cần backend thật
-├── requirements.txt
+├── requirements.txt             # ⚠ không có trong bản zip hiện tại — xem ARCHITECTURE.md mục 1.1
 ├── configs/                    # 1 file YAML config / 1 subsystem
 │   ├── app.yaml                 # config chính: model, faiss, search, ui, paths...
 │   ├── ocr.yaml                 # config Elasticsearch cho OCR
@@ -33,9 +41,19 @@ backend/
     │   ├── models/               # detector, clustering, selector (thuật toán thuần)
     │   └── pipeline/             # extract_keyframes.py — điều phối models/
     │
-    ├── embedding_extraction/    # keyframe -> embedding (CLIP/SigLIP...)
+    ├── embedding_extraction/    # keyframe -> embedding (OpenCLIP/SigLIP...)
     │   ├── models/               # embedder, encoder, frame_loader
     │   └── pipeline/             # extract_embeddings.py — điều phối models/
+    │
+    ├── ocr_extraction/          # keyframe -> text (PaddleOCR detect + VietOCR nhận dạng)
+    │   ├── models/               # dataset, engine (PaddleOCR), vietocr_engine
+    │   └── pipeline/             # extract_ocr.py — điều phối models/
+    │
+    ├── translation/              # dịch query VI->EN trước khi encode CLIP
+    │   ├── base_translator.py    # interface BaseTranslator
+    │   ├── libre_translator.py   # backend: LibreTranslate server (HTTP)
+    │   ├── hy_mt2_translator.py  # backend: model GGUF local (llama_cpp)
+    │   └── factory.py            # get_translator(cfg) chọn theo `translate_agent`
     │
     ├── retrieval/                # lõi retrieval — xem chi tiết mục 3
     │   ├── system.py             # FACADE DUY NHẤT giữa api/ và retriever/*
@@ -59,8 +77,11 @@ backend/
 > Ghi chú: một vài README con trong repo (`src/README.md`, `src/utils/README.md`)
 > mô tả tên thư mục cũ (`embeddings/`, `keyframes/`, `logic/`) — tên thật hiện tại
 > là `embedding_extraction/`, `keyframe_extraction/`, và phần "logic" nằm trong
-> `retrieval/retriever/common/`. File này (README gốc ở root backend) mô tả đúng
-> cấu trúc hiện hành, nên ưu tiên đọc file này trước.
+> `retrieval/retriever/common/`. File này (README gốc ở root backend) và
+> `ARCHITECTURE.md` mô tả đúng cấu trúc hiện hành, nên ưu tiên đọc 2 file này
+> trước. `src/ocr_extraction/` và `src/translation/` là 2 module tồn tại thật
+> trong code nhưng chưa được README con nào nhắc tới trước đây — chi tiết ở
+> `ARCHITECTURE.md` mục 3.3 và mục 8.
 
 ---
 
@@ -193,6 +214,15 @@ retriever/<ten>_search/
   DRES (`/api/dres/login`, `/api/dres/submit`). Toàn bộ logic serialize
   DataFrame -> JSON response (`dict_to_result_FAST`, `serialize_matched_sequence`…)
   nằm ở đây, không nằm trong `src/`.
+- **`src/ocr_extraction/`**: pipeline offline trích chữ trên khung hình —
+  PaddleOCR để phát hiện vùng chữ (`models/engine.py`), VietOCR để nhận dạng
+  ký tự tiếng Việt trên từng vùng đã crop (`models/vietocr_engine.py`), điều
+  phối bởi `ExtractOCRPipeline`. Output được `indexer/elasticsearch/ocr`
+  bulk-index — xem `ARCHITECTURE.md` mục 3.3.
+- **`src/translation/`**: dịch câu query tiếng Việt sang tiếng Anh trước khi
+  encode CLIP (model CLIP train chủ yếu trên tiếng Anh), 2 backend hoán đổi
+  được qua config (`LibreTranslate` server hoặc model GGUF local `Hy-MT2`
+  qua `llama_cpp`) — xem `ARCHITECTURE.md` mục 8.
 - **`src/utils/`**: các tiện ích nền tảng dùng chung
   (`config.py`, `logger.py`, `device.py`, `seed.py`, `video_io.py`) — module
   ổn định, các module khác phụ thuộc vào nó nên hạn chế thay đổi breaking.
@@ -207,3 +237,12 @@ retriever/<ten>_search/
 - `system.py` là ranh giới duy nhất giữa `api` (main.py) và toàn bộ `retrieval/`.
 - Mọi thuật toán nên là hàm thuần, class chỉ đóng vai trò điều phối/entrypoint.
 - Config tách theo file YAML riêng cho từng subsystem trong `configs/`.
+
+---
+
+## 6. Đọc tiếp
+
+Đây là bản tóm tắt cấu trúc + quy tắc. Để hiểu **vì sao** hệ thống được thiết
+kế như vậy, **thuật toán chạy cụ thể ra sao** (temporal DP, aggregate đa
+query, enrich OCR/ASR...), danh sách đầy đủ endpoint/schema, và những vấn đề
+đã biết cần lưu ý khi tiếp quản dự án, xem **[`ARCHITECTURE.md`](./ARCHITECTURE.md)**.
