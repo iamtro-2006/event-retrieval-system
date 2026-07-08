@@ -77,11 +77,114 @@ class ElasticsearchService:
         response = self.client.search(
             index=self.index_name,
             query={
-                "match": {
-                    self.search_field: {
-                        "query": query,
-                        "fuzziness": "AUTO",
-                    }
+                "bool": {
+                    # =========================================================
+                    # TẦNG 1 — RECALL FILTER (bắt buộc)
+                    # Chỉ cần khớp 50% số token là lọt vào tập kết quả.
+                    # KHÔNG dùng operator="and" ở đây vì nó sẽ vô hiệu hoá
+                    # minimum_should_match hoàn toàn (ES rule: minimum_should_match
+                    # chỉ có tác dụng khi operator mặc định là "or").
+                    # =========================================================
+                    "must": {
+                        "match": {
+                            self.search_field: {
+                                "query": query,
+                                "operator": "or",
+                                "minimum_should_match": "50%",
+                            }
+                        }
+                    },
+
+                    # =========================================================
+                    # TẦNG 2 — RERANK theo nhiều "trường hợp", mỗi case là 1
+                    # should clause độc lập, không loại kết quả, chỉ cộng điểm.
+                    # Xếp theo độ ưu tiên giảm dần qua boost.
+                    # =========================================================
+                    "should": [
+
+                        # --- Case A: khớp CỤM chính xác, ĐÚNG THỨ TỰ tuyệt đối ---
+                        # Ưu tiên cao nhất — user gõ đúng y hệt cụm trong document.
+                        {
+                            "match_phrase": {
+                                self.search_field: {
+                                    "query": query,
+                                    "slop": 0,
+                                    "boost": 10.0,
+                                }
+                            }
+                        },
+
+                        # --- Case B: khớp CỤM gần đúng thứ tự (cho phép lệch nhẹ) ---
+                        # Bắt các biến thể: chèn thêm từ ở giữa, đảo nhẹ vị trí.
+                        # slop=3 nghĩa là tối đa 3 bước dịch chuyển để khớp lại thứ tự.
+                        {
+                            "match_phrase": {
+                                self.search_field: {
+                                    "query": query,
+                                    "slop": 3,
+                                    "boost": 6.0,
+                                }
+                            }
+                        },
+
+                        # --- Case C: khớp ĐỦ 100% token, KHÔNG cần đúng thứ tự ---
+                        # Document chứa hết các từ khóa nhưng nằm rải rác.
+                        {
+                            "match": {
+                                self.search_field: {
+                                    "query": query,
+                                    "operator": "and",
+                                    "boost": 4.0,
+                                }
+                            }
+                        },
+
+                        # --- Case D: khớp chính xác >=85% token (siết hơn tầng recall) ---
+                        # Cầu nối giữa "khớp hết" (case C) và "khớp 50%" (must).
+                        {
+                            "match": {
+                                self.search_field: {
+                                    "query": query,
+                                    "operator": "or",
+                                    "minimum_should_match": "85%",
+                                    "boost": 2.5,
+                                }
+                            }
+                        },
+
+                        # --- Case E: FUZZY — bắt lỗi chính tả / dấu / OCR nhiễu ---
+                        # Đặt boost thấp vì đây là fallback, không phải tín hiệu mạnh.
+                        # prefix_length=2 để tránh fuzzy phá vỡ ký tự đầu của từ
+                        # (giảm false-positive, vd. "chó" fuzzy không nên khớp "cho").
+                        {
+                            "match": {
+                                self.search_field: {
+                                    "query": query,
+                                    "operator": "or",
+                                    "fuzziness": "AUTO",
+                                    "prefix_length": 2,
+                                    "max_expansions": 20,
+                                    "boost": 1.5,
+                                }
+                            }
+                        },
+
+                        # --- Case F: PROXIMITY — các từ khóa gần nhau trong văn bản ---
+                        # Không yêu cầu đúng cụm, chỉ cần các token nằm gần nhau
+                        # (khoảng cách <= slop). Hữu ích khi câu bị OCR/ASR cắt rời.
+                        {
+                            "match_phrase": {
+                                self.search_field: {
+                                    "query": query,
+                                    "slop": 10,
+                                    "boost": 1.0,
+                                }
+                            }
+                        },
+                    ],
+
+                    # Không bắt buộc should nào phải match — chúng chỉ cộng điểm.
+                    "minimum_should_match": 0,
                 }
             },
             size=size,
