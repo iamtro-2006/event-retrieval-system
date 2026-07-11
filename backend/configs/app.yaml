@@ -1,14 +1,14 @@
-faiss:
-  index_path: data/database/faiss_hnsw_clip_vitl16_siglip_256/keyframes.faiss
-  metadata_path: data/database/faiss_hnsw_clip_vitl16_siglip_256/metadata.csv
-  ef_search: 256
-  threads: 8
+faiss: # database
+  index_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/keyframes.faiss
+  metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/metadata.csv
+  ef_search: 512 # accuracy-speed tradeoff 
+  threads: 8 
   vector_cache_mode: memmap
   vector_cache_dtype: float32
-  vector_cache_path: data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp32.npy
+  vector_cache_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp32.npy
   allow_npy_fallback: false
 
-model:
+model: # model 
   name: ViT-L-16-SigLIP-256
   pretrained: webli
   device: auto
@@ -17,9 +17,9 @@ model:
   compile: false
 
 paths:
-  keyframes_root: data/processed/keyframes
-  videos_root: data/raw/videos
-  map_keyframe_path: data/processed/map_keyframes
+  keyframes_root: D:/event-retrieval-system/data/keyframes
+  videos_root: D:/event-retrieval-system/data/videos
+  map_keyframe_path: D:/event-retrieval-system/data/map_keyframes
 
 search:
   candidate_multiplier: 3
@@ -54,4 +54,4 @@ speech:
   lazy_load: true
 
 debug: 
-  profile: False
+  profile: False # default: False

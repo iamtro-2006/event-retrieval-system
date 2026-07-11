@@ -262,18 +262,34 @@ def format_keyframe_id_from_dict(item: dict[str, Any]) -> str:
     return "000000"
 
 def resolve_keyframe_path_from_dict(item: dict[str, Any]) -> str:
-    """Resolve the relative path for a keyframe image."""
-    keyframe_path = str(item.get("keyframe_path", "") or "")
-    if keyframe_path:
-        return keyframe_path.replace("\\", "/")
+    """Resolve the absolute path for a keyframe image.
 
+    Always prefer rebuilding the path from the *current* KEYFRAMES_ROOT using
+    dataset/video_id/frame_id. The `keyframe_path` column in metadata.csv can
+    contain a stale absolute path baked in at index-build time (e.g. pointing
+    at an old data location before a folder move), so it is only used as a
+    last-resort fallback when dataset/video_id are missing.
+    """
     dataset = str(item.get("dataset", "") or "")
     video_id = str(item.get("video_id", "") or "")
     frame_id_text = format_keyframe_id_from_dict(item)
 
     if dataset and video_id:
-        return f"data/processed/keyframes/{dataset}/{video_id}/{frame_id_text}.jpg"
-    return f"data/processed/keyframes/{video_id}/{frame_id_text}.jpg"
+        return str(KEYFRAMES_ROOT / dataset / video_id / f"{frame_id_text}.jpg")
+    if video_id:
+        return str(KEYFRAMES_ROOT / video_id / f"{frame_id_text}.jpg")
+
+    keyframe_path = str(item.get("keyframe_path", "") or "")
+    if keyframe_path:
+        keyframe_path = keyframe_path.replace("\\", "/")
+        resolved = resolve_backend_path(keyframe_path)
+        if resolved.exists():
+            return str(resolved)
+        # Stale absolute path from an old data location: retry against the
+        # current keyframes root using just the filename tail.
+        return str(KEYFRAMES_ROOT / Path(keyframe_path).name)
+
+    return ""
 
 def find_video_path_from_dict(item: dict[str, Any]) -> str:
     """Resolve the relative path for a video file."""
