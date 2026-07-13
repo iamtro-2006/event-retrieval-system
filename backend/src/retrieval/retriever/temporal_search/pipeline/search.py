@@ -6,9 +6,25 @@ from threading import RLock
 
 import numpy as np
 import pandas as pd
-from numba import njit
 
 from src.retrieval.retriever.semantic_search.pipeline.search import multi_query_search
+
+try:
+    from src.ui.temporal_dp_numba import (
+        run_dp_on_window as _numba_run_dp,
+        has_near_tied_suffix_choices,
+        window_temporal_candidates,
+        suffix_temporal_candidates,
+        select_non_overlapping,
+    )
+    _HAS_NUMBA = True
+except Exception:
+    _HAS_NUMBA = False
+
+try:
+    from src.ui.embedding_memmap import EmbeddingMemmapStore
+except ImportError:
+    EmbeddingMemmapStore = None
 
 
 @dataclass(slots=True)
@@ -47,67 +63,58 @@ def _clean_row(row: dict) -> dict:
     return {str(k): _python(v) for k, v in row.items()}
 
 
-# =====================================================================
-# TỐI ƯU C-LEVEL 1: Thuật toán DP Dịch bằng Numba JIT (Siêu Tốc Độ)
-# Bỏ qua GIL, không cấp phát mảng trung gian gây tốn RAM.
-# =====================================================================
-@njit(fastmath=True, nogil=True, cache=True)
-def _run_dp_on_window_numba(S: np.ndarray) -> tuple[float, np.ndarray]:
-    """O(m*n) strict-order DP using compiled C-loop for maximum speed."""
+# ---------------------------------------------------------------------------
+# Pure-Python fallback (used when Numba is unavailable)
+# ---------------------------------------------------------------------------
+def _run_dp_on_window_python(S: np.ndarray) -> tuple[float, list[int]]:
+    """O(m*n) strict-order DP — pure Python fallback when Numba is unavailable."""
     m, n = S.shape
     if m == 0 or n < m:
-        return -np.inf, np.empty(0, dtype=np.int32)
+        return -np.inf, []
 
-    dp_prev = S[0].copy()
-    parents = np.full((m, n), -1, dtype=np.int32)
+    dp = np.full((m, n), -np.inf, dtype=np.float32)
+    parent = np.full((m, n), -1, dtype=np.int32)
+    dp[0] = S[0]
 
     for qi in range(1, m):
-        dp_cur = np.full(n, -np.inf, dtype=np.float32)
-        current_max_val = -np.inf
-        current_max_idx = -1
-        
-        for j in range(n):
-            # Tính max cộng dồn từ các frame trước đó
-            if j > 0:
-                prev_j = j - 1
-                if dp_prev[prev_j] > current_max_val:
-                    current_max_val = dp_prev[prev_j]
-                    current_max_idx = prev_j
-            
-            # Nếu có chuỗi hợp lệ thì cộng điểm
-            if current_max_idx != -1:
-                dp_cur[j] = current_max_val + S[qi, j]
-                parents[qi, j] = current_max_idx
-                
-        dp_prev = dp_cur
+        best_prev_score = -np.inf
+        best_prev_idx = -1
+        for fj in range(n):
+            if fj > 0:
+                prev_val = dp[qi - 1, fj - 1]
+                if prev_val > best_prev_score:
+                    best_prev_score = prev_val
+                    best_prev_idx = fj - 1
+            if best_prev_idx >= 0 and np.isfinite(best_prev_score):
+                dp[qi, fj] = best_prev_score + S[qi, fj]
+                parent[qi, fj] = best_prev_idx
 
-    # Tìm điểm kết thúc chuỗi có score cao nhất
     best_score = -np.inf
     last = -1
     for j in range(n):
-        if dp_prev[j] > best_score:
-            best_score = dp_prev[j]
+        if dp[m - 1, j] > best_score:
+            best_score = dp[m - 1, j]
             last = j
 
     if last == -1 or not np.isfinite(best_score):
-        return -np.inf, np.empty(0, dtype=np.int32)
+        return -np.inf, []
 
-    # Backtrack tìm đường đi ngược
-    path = np.empty(m, dtype=np.int32)
+    path = [0] * m
     path[m - 1] = last
     for qi in range(m - 1, 0, -1):
-        last = parents[qi, last]
+        last = parent[qi, last]
         if last < 0:
-            return -np.inf, np.empty(0, dtype=np.int32)
+            return -np.inf, []
         path[qi - 1] = last
 
     return float(best_score), path
 
 
-# Wrapper kết nối Numba Core với code Python
 def _run_dp_on_window(S: np.ndarray) -> tuple[float, list[int]]:
-    score, path_array = _run_dp_on_window_numba(S)
-    return score, path_array.tolist() if path_array.size > 0 else []
+    if _HAS_NUMBA:
+        score, path_arr, path_len = _numba_run_dp(S)
+        return float(score), path_arr[:path_len].tolist() if path_len > 0 else []
+    return _run_dp_on_window_python(S)
 
 
 def _time_iou(a0: float, a1: float, b0: float, b1: float) -> float:
@@ -131,6 +138,34 @@ def _temporal_topk_dp(
     if n < m:
         return []
 
+    if _HAS_NUMBA:
+        # Use full Numba kernel pipeline: window or suffix DP + vectorized NMS
+        use_window = duration_limit >= 0 or not has_near_tied_suffix_choices(S)
+        if use_window:
+            scores, paths_flat, path_offsets, start_times, end_times, path_len = window_temporal_candidates(
+                S, timestamps, float(duration_limit)
+            )
+        else:
+            scores, paths_flat, path_offsets, start_times, end_times, path_len = suffix_temporal_candidates(
+                S, timestamps
+            )
+
+        if len(scores) == 0:
+            return []
+
+        sel_indices = select_non_overlapping(
+            scores, paths_flat, path_offsets, start_times, end_times,
+            path_len, max_sequences, overlap_threshold
+        )
+
+        results = []
+        for idx in sel_indices:
+            offset = path_offsets[idx]
+            path = paths_flat[offset: offset + path_len].tolist()
+            results.append((float(scores[idx]), path))
+        return results
+
+    # Pure-Python fallback
     if duration_limit < 0:
         work = S.copy()
         candidates = []
@@ -190,6 +225,7 @@ def temporal_search_from_candidates(
     overlap_threshold: float = 0.6,
     embedding_matrix: np.ndarray | np.memmap | None = None,
     allow_npy_fallback: bool = False,
+    memmap_store=None,
 ) -> pd.DataFrame:
     required = {"video_id", "timestamp_sec"}
     if not required.issubset(candidate_df.columns):
@@ -215,7 +251,8 @@ def temporal_search_from_candidates(
     faiss_ids = candidate_df[faiss_id_col].to_numpy(dtype=np.int64)
     timestamps_all = pd.to_numeric(candidate_df["timestamp_sec"], errors="coerce").fillna(0).to_numpy(np.float32)
     
-    emb_paths_all = candidate_df["embedding_path"].to_numpy() if (allow_npy_fallback and "embedding_path" in candidate_df.columns) else None
+    has_emb_paths = "embedding_path" in candidate_df.columns
+    emb_paths_all = candidate_df["embedding_path"].to_numpy() if has_emb_paths and (memmap_store is not None or allow_npy_fallback) else None
 
     for video_id in unique_vids:
         # Lấy Index của video này bằng Array Mask (O(1) Memory)
@@ -237,8 +274,11 @@ def temporal_search_from_candidates(
         sub_faiss_final = faiss_ids[idx_for_vid]
         sub_times_final = timestamps_all[idx_for_vid]
 
-        # 3. Tra cứu Vector
-        if embedding_matrix is not None:
+        # 3. Tra cứu Vector (memmap_store > embedding_matrix > npy fallback)
+        if memmap_store is not None and emb_paths_all is not None:
+            paths_for_vid = [emb_paths_all[i] for i in idx_for_vid]
+            frame_embeddings = memmap_store.get_batch(paths_for_vid)
+        elif embedding_matrix is not None:
             if np.any(sub_faiss_final < 0) or np.any(sub_faiss_final >= len(embedding_matrix)):
                 raise IndexError(f"Invalid FAISS ID in temporal candidates for video_id={video_id}")
             frame_embeddings = np.asarray(embedding_matrix[sub_faiss_final], dtype=np.float32)
