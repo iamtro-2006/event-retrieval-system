@@ -1,7 +1,7 @@
 faiss: # database
   index_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/keyframes.faiss
   metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/metadata.csv
-  ef_search: 512 # accuracy-speed tradeoff 
+  ef_search: 289 # accuracy-speed tradeoff 
   threads: 8 
   vector_cache_mode: memmap
   vector_cache_dtype: float32
@@ -30,22 +30,31 @@ ui:
   surrounding_radius: 5
   max_surrounding_radius: 10
 
-translate_agent: libre  # "hymt2" (local GGUF model) or "libre" (LibreTranslate server)
+translate_agent: envit5  # "envit5" (local GPU model, fastest) or "llm" (remote API via CKEY.VN, more personalized)
 
 translate:
   enabled_default: true
   source: vi
   target: en
 
-  hymt2:
-    model_path: models/Hy-MT2-1.8B-2Bit.gguf  # overridable via HY_MT2_MODEL_PATH env var
-    n_gpu_layers: 0                             # overridable via HY_MT2_N_GPU_LAYERS env var; 0 = CPU only
+  envit5:
+    model_name: VietAI/envit5-translation  # overridable via ENVIT5_MODEL_NAME env var
+    device: auto                            # overridable via ENVIT5_DEVICE env var ("cpu" / "cuda" / "auto")
+    max_length: 512                         # overridable via ENVIT5_MAX_LENGTH env var
+    num_beams: 1                            # overridable via ENVIT5_NUM_BEAMS env var; 1 = greedy (fastest), 4 = old default
+    dtype: auto                             # overridable via ENVIT5_DTYPE env var ("auto"/"fp16"/"bf16"/"fp32"); auto = fp16/bf16 on GPU
+    max_new_tokens: 96                      # overridable via ENVIT5_MAX_NEW_TOKENS; ceiling on OUTPUT length only (search queries are short) — separate from max_length above, which caps input truncation
 
-  libre:
-    base_url: http://localhost:5000  # overridable via LIBRE_TRANSLATE_URL env var
-    api_key: null                     # overridable via LIBRE_TRANSLATE_API_KEY env var
-    format: text                      # "text" or "html"
-    timeout: 15
+  llm:
+    api_key: null                           # overridable via LLM_TRANSLATE_API_KEY or CKEY_API_KEY env var — DO NOT commit a real key here, use the env var
+    base_url: https://api.xah.io/v1         # CKEY.VN OpenAI-compatible endpoint — overridable via LLM_TRANSLATE_BASE_URL
+    model: deepseek-v4-flash                # overridable via LLM_TRANSLATE_MODEL; fast/cheap model recommended for short query translation (alt: deepseek-v4-flash)
+    timeout: 15                             # seconds per request
+    max_workers: 8                          # concurrent HTTP requests for translate_batch() — the API-backend equivalent of GPU batching
+    temperature: 0.2                        # deterministic output for search queries
+    max_output_tokens: 256                  # ceiling on OUTPUT length only (search queries are short) — separate from max_input_tokens below, which caps input truncation  
+    persona: "Dịch ngắn gọn, kiểu keyword."  # free-text block injected into the system prompt for personalization, e.g. a domain glossary or tone instruction
+    cache_size: 2048                        # in-process LRU cache size (avoids re-paying for repeated identical queries)
 
 speech:
   model_size: base

@@ -306,7 +306,7 @@ def find_video_path_from_dict(item: dict[str, Any]) -> str:
     return f"data/processed/videos/{video_id}.mp4"
 
 def translate_query_if_needed(query: str, use_translate: bool) -> str:
-    """Translate query text using the configured translate agent (HyMT2 or LibreTranslate)."""
+    """Translate query text using the configured translate agent (local EnviT5 or remote LLM API)."""
     if not use_translate: return query
     translate_cfg = CFG.get("translate", {})
     source = translate_cfg.get("source", "vi")
@@ -517,7 +517,7 @@ def get_public_config():
             "enabled_default": bool(CFG.get("translate", {}).get("enabled_default", False)),
             "source": CFG.get("translate", {}).get("source", "vi"),
             "target": CFG.get("translate", {}).get("target", "en"),
-            "agent": str(CFG.get("translate_agent", "hymt2")),
+            "agent": str(CFG.get("translate_agent", "envit5")),
         },
         "model": {
             "name": CFG["model"]["name"], "pretrained": CFG["model"]["pretrained"],

@@ -23,7 +23,8 @@ class ElasticsearchService:
     ) -> None:
         self.index_name = index_name
         self.search_field = search_field
-        self.client = Elasticsearch(f"{scheme}://{host}:{port}")
+        self.client = Elasticsearch(f"{scheme}://{host}:{port}") # offline cân port 
+        # self.client = Elasticsearch(f"{scheme}://{host}") # online kh cần port vd elastic-search.tku.life
 
     # ------------------------------------------------------------------
     # Connection

@@ -1,6 +1,6 @@
 """
-Common interface every translation backend (HyMT2, LibreTranslate, ...)
-must implement, so `main.py` can swap agents purely via config.
+Common interface the translation backend must implement, so `main.py`
+can call `translate()` without depending on the concrete implementation.
 """
 
 from __future__ import annotations
@@ -16,6 +16,6 @@ class BaseTranslator(ABC):
         """Translate `text` from `source` language to `target` language.
 
         Implementations should return the original `text` unchanged when it
-        is empty/whitespace-only, mirroring deep_translator's behaviour.
+        is empty/whitespace-only.
         """
         raise NotImplementedError

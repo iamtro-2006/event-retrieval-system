@@ -2,7 +2,8 @@
 # Elasticsearch indexing (used by scripts/ocr/index/run.py)
 # =========================================================
 elasticsearch:
-  host: "192.168.1.15"
+  host: "192.168.1.15" # host 
+  # host: "elastic-search.tku.life"
   port: 9200
   scheme: "http"
   index: "ocr_db"
@@ -28,10 +29,10 @@ mock:
 # Real OCR extraction (used by scripts/ocr_extraction/run.py)
 # =========================================================
 extraction:
-  input_keyframes_root: "data/processed/keyframes"
-  output_root: "data/processed/ocr"
+  input_keyframes_root: "D:/event-retrieval-system/data/processed/keyframes"
+  output_root: "D:/event-retrieval-system/data/processed/ocr"
 
-  visualize_dir: "data/processed/ocr_visuals"
+  visualize_dir: "D:/event-retrieval-system/data/processed/ocr_visuals"
   visualized: false
 
   batch_size: 24
