@@ -14,8 +14,46 @@ keyframe:
 - `legacy_lmske`: giữ pipeline LMSKE cũ và encoder
   `ViT-L-16-SigLIP-256/webli`.
 
-Input mặc định nằm tại `../data/raw/videos`, output được ghi trực tiếp vào
-`../data/processed`. Weight TransNetV2 phải có tại
+### Luồng chạy P3 và trách nhiệm của từng file
+
+```text
+scripts/keyframe_extraction/run.py
+  → src/utils/config.py
+  → src/keyframe_extraction/pipeline/extract_keyframes.py
+      → models/detector.py             (TransNetV2: phát hiện và sửa scene)
+      → models/candidate_sampler.py    (lấy candidate thích nghi theo thời gian/hình ảnh)
+      → models/quality_filter.py       (loại frame mờ, tối/sáng quá mức, ít thông tin)
+      → embedding_extraction/models/encoder.py
+                                        (MobileCLIP2: encode candidate theo batch)
+      → models/clustering.py           (K-medoids/AUCC trong từng shot)
+      → models/p3_selector.py          (common anchor, unique frame, global MMR)
+      → models/deduplicator.py         (loại keyframe gần nhau và gần trùng)
+      → models/selector.py             (ghi ảnh JPG và CSV mapping)
+```
+
+1. `run.py` chỉ đọc tham số `--config`, `--groups`, `--video-ids`, sau đó gọi
+   `KeyframeExtractionPipeline`; file này không chứa thuật toán.
+2. `config.py` đọc `configs/kf_extraction.yaml`, chuẩn hóa đường dẫn tương đối
+   theo thư mục `backend/` và tạo các object cấu hình.
+3. `extract_keyframes.py` tìm video, lọc theo group/video ID, load TransNetV2 và
+   MobileCLIP2 một lần, rồi điều phối toàn bộ các bước P3 cho từng video.
+4. Scene, selection embedding, manifest và diagnostics là dữ liệu trung gian,
+   được lưu dưới `.cache/keyframe_extraction`. Chúng có thể được tái sử dụng khi
+   chạy lại và không được commit lên Git.
+5. Kết quả dùng cho các pipeline sau chỉ gồm ảnh trong `keyframes/` và metadata
+   trong `map_keyframes/`.
+
+Hai bộ lọc CLI được kết hợp theo phép giao: nếu truyền cả `--groups` và
+`--video-ids`, chỉ những video có ID được yêu cầu và nằm trong các group được
+chọn mới chạy. Không truyền `--video-ids` nghĩa là chạy toàn bộ video trong các
+group đã chọn. `skip_existing: true` cho phép bỏ qua video đã có mapping đúng
+strategy trong lần chạy tiếp theo.
+
+### Chuẩn bị và chạy local
+
+Input mặc định nằm tại `../data/raw/videos`, output chính được ghi vào
+`../data/processed`, còn scene/embedding/diagnostics trung gian nằm trong
+`../.cache/keyframe_extraction`. Weight TransNetV2 phải có tại
 `weights/transnetv2-pytorch-weights.pth`; OpenCLIP sẽ tải/cache model trong lần
 chạy đầu nếu máy chưa có.
 
@@ -24,25 +62,53 @@ cd backend
 python scripts\keyframe_extraction\run.py --config configs\kf_extraction.yaml
 ```
 
-Chạy thử một nhóm video mà không cần sao chép dữ liệu hoặc đổi config:
+Chạy đúng một số video mà không cần sao chép dữ liệu hoặc đổi config:
 
 ```powershell
 python scripts\keyframe_extraction\run.py --config configs\kf_extraction.yaml --video-ids L21_V001 L21_V002 L22_V001 L22_V002
 ```
 
+Chạy theo một hoặc nhiều thư mục cấp cao, dùng chung trên local và Kaggle:
+
+```powershell
+python scripts\keyframe_extraction\run.py --config configs\kf_extraction.yaml --groups Videos_L21_a Videos_L22_a
+```
+
+Lệnh trên chạy **toàn bộ** video của L21 và L22. Nếu không truyền cả
+`--groups` lẫn `--video-ids`, pipeline sẽ duyệt toàn bộ video dưới
+`paths.input_dir`; chỉ nên dùng cách đó khi thực sự muốn chạy full dataset.
+
 Output tương thích với embedding/OCR/retrieval:
 
 ```text
 data/processed/
-├── keyframes/<group>/<video_id>/000000.jpg
-├── map_keyframes/<group>/<video_id>.csv
-└── diagnostics/<group>/<video_id>/
-    ├── candidates.csv
-    ├── shots.csv
-    ├── selected_keyframes.csv
-    ├── dedup_dropped.csv
-    ├── metrics.json
-    └── run_config.json
+├── keyframes/<relative_video_folder>/<video_id>/000000.jpg
+└── map_keyframes/<relative_video_folder>/<video_id>.csv
+```
+
+Pipeline giữ nguyên đường dẫn tương đối dưới `paths.input_dir`. Ví dụ video nằm ở
+`Videos_L21_a/video/L21_V001.mp4` sẽ tạo output dưới
+`Videos_L21_a/video/L21_V001/`.
+
+`map_keyframes` là metadata tối thiểu bắt buộc để embedding/OCR/retrieval ánh
+xạ ảnh về frame và timestamp gốc. Bật `keyframe.write_diagnostics: true` chỉ
+khi debug; diagnostics vẫn được ghi vào cache, không làm bẩn output chính.
+
+### Kaggle
+
+Trước khi chạy notebook, bật **GPU** và **Internet** trong Kaggle Settings, đồng
+thời bảo đảm branch `UpdateKeyframeP3` chứa thay đổi mới nhất đã được push.
+
+Upload [`../kaggle/keyframe_p3.ipynb`](../kaggle/keyframe_p3.ipynb), bật GPU,
+attach dataset chứa các thư mục `Videos_*` và weight TransNetV2. Chỉnh `GROUPS`
+hoặc `VIDEO_IDS` ở cell cấu hình. Notebook chỉ clone branch rồi gọi cùng CLI
+ở trên; thuật toán không bị sao chép thành một bản riêng cho Kaggle.
+
+Notebook mặc định hiện chạy toàn bộ hai group:
+
+```python
+GROUPS = ["Videos_L21_a", "Videos_L22_a"]
+VIDEO_IDS = []
 ```
 
 Chạy unit test:

@@ -16,6 +16,7 @@ class ProjectConfig:
 class PathConfig:
     input_dir: Path
     output_dir: Path
+    cache_dir: Path
 
 
 @dataclass
@@ -124,6 +125,7 @@ class KeyframeConfig:
     image_quality: int = 95
     save_images: bool = True
     skip_existing: bool = True
+    write_diagnostics: bool = False
     selection_embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
     scene: SceneConfig = field(default_factory=SceneConfig)
     candidate: CandidateConfig = field(default_factory=CandidateConfig)
@@ -187,6 +189,7 @@ def load_config(config_path: str | Path) -> AppConfig:
         paths=PathConfig(
             input_dir=_resolve(root, paths["input_dir"]),
             output_dir=_resolve(root, paths["output_dir"]),
+            cache_dir=_resolve(root, paths.get("cache_dir", "../.cache/keyframe_extraction")),
         ),
         logging=LoggingConfig(
             level=str(logging.get("level", "INFO")),
@@ -226,6 +229,7 @@ def load_config(config_path: str | Path) -> AppConfig:
             image_quality=int(keyframe.get("image_quality", 95)),
             save_images=_as_bool(keyframe.get("save_images", True), True),
             skip_existing=_as_bool(keyframe.get("skip_existing", True), True),
+            write_diagnostics=_as_bool(keyframe.get("write_diagnostics", False), False),
             selection_embedding=EmbeddingConfig(
                 model_name=str(selection_embedding.get("model_name", "MobileCLIP2-S4")),
                 pretrained=str(selection_embedding.get("pretrained", "dfndr2b")),

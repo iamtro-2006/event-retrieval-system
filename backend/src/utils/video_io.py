@@ -28,6 +28,50 @@ def decode_for_transnet(video_path: Path, width: int = 48, height: int = 27) -> 
     return arr.reshape([-1, height, width, 3]).copy()
 
 
+def iter_resized_video_frames(video_path: Path, max_width: int = 320):
+    """Yield sequential BGR frames from FFmpeg with deterministic resize settings."""
+    cap = cv2.VideoCapture(str(video_path))
+    source_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    source_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+    if source_width <= 0 or source_height <= 0:
+        raise RuntimeError(f"Could not read video dimensions: {video_path}")
+
+    scale = min(1.0, max_width / source_width)
+    width = max(1, int(round(source_width * scale)))
+    height = max(1, int(round(source_height * scale)))
+    command = (
+        ffmpeg.input(str(video_path))
+        .output("pipe:", format="rawvideo", pix_fmt="bgr24", s=f"{width}x{height}")
+        .global_args("-loglevel", "error")
+        .compile()
+    )
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if process.stdout is None:
+        raise RuntimeError(f"Could not open FFmpeg output pipe: {video_path}")
+    frame_size = width * height * 3
+    frame_idx = 0
+    try:
+        while True:
+            raw = process.stdout.read(frame_size)
+            if not raw:
+                break
+            if len(raw) != frame_size:
+                raise RuntimeError(f"FFmpeg returned a partial frame for {video_path}")
+            yield frame_idx, np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 3).copy()
+            frame_idx += 1
+    finally:
+        if process.stdout is not None:
+            process.stdout.close()
+        return_code = process.wait()
+        if return_code != 0:
+            raise RuntimeError(f"FFmpeg candidate decode failed ({return_code}): {video_path}")
+
+
 def get_video_fps(video_path: Path) -> float:
     cap = cv2.VideoCapture(str(video_path))
     fps = float(cap.get(cv2.CAP_PROP_FPS))

@@ -10,7 +10,6 @@ import time
 import numpy as np
 import pandas as pd
 import torch
-import cv2
 from PIL import Image
 
 from src.embedding_extraction.models.encoder import encode_video_frames, load_clip_model, load_embeddings
@@ -18,13 +17,17 @@ from src.keyframe_extraction.models.candidate_sampler import sample_candidates
 from src.keyframe_extraction.models.deduplicator import deduplicate
 from src.keyframe_extraction.models.detector import detect_scenes, load_transnet, repair_and_split_scenes
 from src.keyframe_extraction.models.p3_selector import select_p3
-from src.keyframe_extraction.models.quality_filter import evaluate_quality, valid_with_shot_fallback
-from src.keyframe_extraction.models.selector import extract_keyframe_indexes, save_keyframe_images, save_keyframe_map
+from src.keyframe_extraction.models.quality_filter import evaluate_quality
+from src.keyframe_extraction.models.selector import (
+    extract_keyframe_indexes,
+    save_keyframe_images,
+    save_keyframe_map,
+)
 from src.keyframe_extraction.schemas import Candidate, DedupRecord
 from src.utils.config import AppConfig
 from src.utils.logger import setup_logger
 from src.utils.seed import seed_everything
-from src.utils.video_io import ensure_h264, get_video_fps, list_videos
+from src.utils.video_io import ensure_h264, get_video_fps, iter_resized_video_frames, list_videos
 
 
 class KeyframeExtractionPipeline:
@@ -40,12 +43,14 @@ class KeyframeExtractionPipeline:
             cfg.logging.filename,
         )
         self.output_dir = cfg.paths.output_dir
-        self.scenes_dir = self.output_dir / "scenes"
-        self.features_dir = self.output_dir / "embeddings"
-        self.selection_features_dir = self.output_dir / "selection_embeddings"
+        self.cache_dir = cfg.paths.cache_dir
+        self.scenes_dir = self.cache_dir / "scenes"
+        self.features_dir = self.cache_dir / "legacy_embeddings"
+        self.selection_features_dir = self.cache_dir / "selection_embeddings"
+        self.manifests_dir = self.cache_dir / "manifests"
         self.maps_dir = self.output_dir / "map_keyframes"
         self.images_dir = self.output_dir / "keyframes"
-        self.diagnostics_dir = self.output_dir / "diagnostics"
+        self.diagnostics_dir = self.cache_dir / "diagnostics"
         if cfg.keyframe.strategy not in self.STRATEGIES:
             raise ValueError(
                 f"Unsupported keyframe strategy {cfg.keyframe.strategy!r}; expected one of {sorted(self.STRATEGIES)}"
@@ -61,8 +66,11 @@ class KeyframeExtractionPipeline:
     def _diagnostic_directory(self, group: Path, video_stem: str) -> Path:
         return self.diagnostics_dir / group / video_stem
 
-    def _existing_strategy(self, diagnostic_directory: Path) -> str | None:
-        config_path = diagnostic_directory / "run_config.json"
+    def _manifest_path(self, group: Path, video_stem: str) -> Path:
+        return self.manifests_dir / group / f"{video_stem}.json"
+
+    def _existing_strategy(self, manifest_path: Path) -> str | None:
+        config_path = manifest_path
         if not config_path.exists():
             return None
         try:
@@ -70,19 +78,19 @@ class KeyframeExtractionPipeline:
         except (OSError, ValueError, TypeError):
             return None
 
-    def _should_skip_existing(self, map_path: Path, diagnostic_directory: Path) -> bool:
+    def _should_skip_existing(self, map_path: Path, manifest_path: Path) -> bool:
         if not map_path.exists() or not self.cfg.keyframe.skip_existing:
             return False
-        existing_strategy = self._existing_strategy(diagnostic_directory)
+        existing_strategy = self._existing_strategy(manifest_path)
         if self.cfg.keyframe.strategy == "p3":
             return existing_strategy == "p3"
         return existing_strategy in {None, "legacy_lmske"}
 
     @staticmethod
-    def _write_legacy_marker(diagnostic_directory: Path) -> None:
-        diagnostic_directory.mkdir(parents=True, exist_ok=True)
-        (diagnostic_directory / "run_config.json").write_text(
-            json.dumps({"strategy": "legacy_lmske"}, ensure_ascii=False, indent=2), encoding="utf-8"
+    def _write_strategy_manifest(manifest_path: Path, strategy: str) -> None:
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps({"strategy": strategy}, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
     @staticmethod
@@ -136,24 +144,10 @@ class KeyframeExtractionPipeline:
             self.logger,
         )
 
-    @staticmethod
-    def _iter_video_frames(video: Path):
-        cap = cv2.VideoCapture(str(video))
-        frame_idx = 0
-        try:
-            while True:
-                ok, bgr = cap.read()
-                if not ok:
-                    break
-                yield frame_idx, bgr
-                frame_idx += 1
-        finally:
-            cap.release()
-
     def _encode_candidates(
         self,
-        video: Path,
         candidates: list[Candidate],
+        images: dict[int, np.ndarray],
         cache_path: Path,
         clip_bundle,
     ) -> None:
@@ -174,20 +168,11 @@ class KeyframeExtractionPipeline:
         ):
             for start in range(0, len(missing), batch_size):
                 chunk = missing[start : start + batch_size]
-                cap = cv2.VideoCapture(str(video))
-                rgb_images: list[np.ndarray] = []
-                readable: list[Candidate] = []
-                for candidate in chunk:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, candidate.frame_idx)
-                    ok, bgr = cap.read()
-                    if ok:
-                        readable.append(candidate)
-                        rgb_images.append(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
-                cap.release()
+                readable = [candidate for candidate in chunk if candidate.frame_idx in images]
                 if not readable:
                     continue
                 batch = torch.stack(
-                    [preprocess(Image.fromarray(rgb)) for rgb in rgb_images]
+                    [preprocess(Image.fromarray(images[candidate.frame_idx])) for candidate in readable]
                 ).to(device, non_blocking=True)
                 features = model.encode_image(batch)
                 features = features / features.norm(dim=-1, keepdim=True).clamp_min(1e-12)
@@ -322,23 +307,23 @@ class KeyframeExtractionPipeline:
         fps = get_video_fps(video)
         scenes = repair_and_split_scenes(raw_scenes, fps, self.cfg.keyframe.scene.max_duration_sec)
         sampled_at = time.perf_counter()
+        candidate_images: dict[int, np.ndarray] = {}
         candidates = sample_candidates(
-            self._iter_video_frames(video),
+            iter_resized_video_frames(video),
             scenes,
             fps,
             self.cfg.keyframe.candidate,
             observer=lambda candidate, rgb: evaluate_quality(candidate, rgb, self.cfg.keyframe.quality),
+            image_cache=candidate_images,
         )
         sample_elapsed = time.perf_counter() - sampled_at
 
-        encode_candidates, fallback_shots = valid_with_shot_fallback(candidates)
-
         embedding_path = self.selection_features_dir / group / f"{video.stem}.npz"
         encoded_at = time.perf_counter()
-        self._encode_candidates(video, encode_candidates, embedding_path, clip_bundle)
+        self._encode_candidates(candidates, candidate_images, embedding_path, clip_bundle)
         embedding_elapsed = time.perf_counter() - encoded_at
         by_shot: dict[int, list[Candidate]] = {}
-        for candidate in encode_candidates:
+        for candidate in candidates:
             if candidate.feature is not None:
                 by_shot.setdefault(candidate.shot_id, []).append(candidate)
         if not by_shot:
@@ -351,14 +336,11 @@ class KeyframeExtractionPipeline:
             self.cfg.keyframe.selector,
             self.cfg.keyframe.dedup,
         )
-        selected_images: dict[int, np.ndarray] = {}
-        cap = cv2.VideoCapture(str(video))
-        for candidate in primary:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, candidate.frame_idx)
-            ok, bgr = cap.read()
-            if ok:
-                selected_images[candidate.frame_idx] = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        cap.release()
+        selected_images = {
+            candidate.frame_idx: candidate_images[candidate.frame_idx]
+            for candidate in primary
+            if candidate.frame_idx in candidate_images
+        }
         primary = [candidate for candidate in primary if candidate.frame_idx in selected_images]
         selected, dropped = deduplicate(primary, selected_images, self.cfg.keyframe.dedup)
         selection_elapsed = time.perf_counter() - selection_at
@@ -370,7 +352,7 @@ class KeyframeExtractionPipeline:
             "total_candidates": len(candidates),
             "valid_candidates": sum(candidate.valid for candidate in candidates),
             "filtered_candidates": sum(not candidate.valid for candidate in candidates),
-            "fallback_shots": fallback_shots,
+            "fallback_shots": 0,
             "common_anchors": sum(candidate.selection_source == "shot_common_anchor" for candidate in primary),
             "before_dedup": len(primary),
             "dedup_dropped": len(dropped),
@@ -381,17 +363,18 @@ class KeyframeExtractionPipeline:
             "total_elapsed_sec": time.perf_counter() - started,
             **selection_metrics,
         }
-        self._write_diagnostics(
-            self._diagnostic_directory(group, video.stem),
-            video,
-            fps,
-            scenes,
-            candidates,
-            selected,
-            dropped,
-            shot_diagnostics,
-            metrics,
-        )
+        if self.cfg.keyframe.write_diagnostics:
+            self._write_diagnostics(
+                self._diagnostic_directory(group, video.stem),
+                video,
+                fps,
+                scenes,
+                candidates,
+                selected,
+                dropped,
+                shot_diagnostics,
+                metrics,
+            )
         self.logger.info(
             "P3 %s raw_scenes=%d repaired_shots=%d candidates=%d valid=%d filtered=%d "
             "common=%d before_dedup=%d dropped=%d final=%d",
@@ -409,24 +392,44 @@ class KeyframeExtractionPipeline:
         return [candidate.frame_idx for candidate in selected]
 
     @staticmethod
-    def _filter_videos(videos: list[Path], video_ids: list[str] | None) -> list[Path]:
-        if not video_ids:
-            return videos
+    def _filter_videos(
+        videos: list[Path],
+        input_dir: Path,
+        video_ids: list[str] | None,
+        groups: list[str] | None,
+    ) -> list[Path]:
+        selected = videos
+        if groups:
+            requested_groups = {group.casefold(): group for group in groups}
 
-        requested = {video_id.casefold(): video_id for video_id in video_ids}
-        selected = [video for video in videos if video.stem.casefold() in requested]
-        found = {video.stem.casefold() for video in selected}
-        missing = [original for normalized, original in requested.items() if normalized not in found]
-        if missing:
-            raise FileNotFoundError(f"Requested video ID(s) not found: {', '.join(missing)}")
+            def group_name(video: Path) -> str:
+                relative = video.relative_to(input_dir)
+                return relative.parts[0] if len(relative.parts) > 1 else "root"
+
+            selected = [video for video in selected if group_name(video).casefold() in requested_groups]
+            found_groups = {group_name(video).casefold() for video in selected}
+            missing_groups = [
+                original for normalized, original in requested_groups.items() if normalized not in found_groups
+            ]
+            if missing_groups:
+                raise FileNotFoundError(f"Requested group(s) not found: {', '.join(missing_groups)}")
+        if video_ids:
+            requested_ids = {video_id.casefold(): video_id for video_id in video_ids}
+            selected = [video for video in selected if video.stem.casefold() in requested_ids]
+            found_ids = {video.stem.casefold() for video in selected}
+            missing_ids = [
+                original for normalized, original in requested_ids.items() if normalized not in found_ids
+            ]
+            if missing_ids:
+                raise FileNotFoundError(f"Requested video ID(s) not found: {', '.join(missing_ids)}")
         return selected
 
-    def run(self, video_ids: list[str] | None = None) -> None:
+    def run(self, video_ids: list[str] | None = None, groups: list[str] | None = None) -> None:
         seed_everything(self.cfg.project.seed)
         videos = list_videos(self.cfg.paths.input_dir)
         if not videos:
             raise FileNotFoundError(f"No videos found in {self.cfg.paths.input_dir}")
-        videos = self._filter_videos(videos, video_ids)
+        videos = self._filter_videos(videos, self.cfg.paths.input_dir, video_ids, groups)
         self.logger.info("Strategy: %s", self.cfg.keyframe.strategy)
         self.logger.info("Input directory: %s", self.cfg.paths.input_dir)
         self.logger.info("Output directory: %s", self.cfg.paths.output_dir)
@@ -461,16 +464,16 @@ class KeyframeExtractionPipeline:
             scene_path = self.scenes_dir / group / f"{video.stem}{scene_suffix}"
             map_path = self.maps_dir / group / f"{video.stem}.csv"
             image_dir = self.images_dir / group / video.stem
-            diagnostic_directory = self._diagnostic_directory(group, video.stem)
+            manifest_path = self._manifest_path(group, video.stem)
             scenes = self._load_or_detect_scenes(video, scene_path, transnet_model, transnet_device)
             if self.cfg.keyframe.strategy == "legacy_lmske":
                 features = self._load_legacy_features(video, group, clip_bundle)
-                if self._should_skip_existing(map_path, diagnostic_directory):
+                if self._should_skip_existing(map_path, manifest_path):
                     self.logger.info("Skip existing keyframe map: %s", map_path)
                     continue
                 indexes = self._select_legacy(video, scenes, features)
             else:
-                if self._should_skip_existing(map_path, diagnostic_directory):
+                if self._should_skip_existing(map_path, manifest_path):
                     self.logger.info("Skip existing keyframe map: %s", map_path)
                     continue
                 indexes = self._run_p3(video, scenes, group, clip_bundle)
@@ -479,8 +482,7 @@ class KeyframeExtractionPipeline:
             if self.cfg.keyframe.save_images:
                 save_keyframe_images(indexes, video, image_dir, self.cfg.keyframe.image_quality)
                 self.logger.info("Saved keyframe images: %s", image_dir)
-            if self.cfg.keyframe.strategy == "legacy_lmske":
-                self._write_legacy_marker(diagnostic_directory)
+            self._write_strategy_manifest(manifest_path, self.cfg.keyframe.strategy)
             self.logger.info("Finished %s in %.2fs", raw_video.name, time.time() - video_started)
             gc.collect()
             if torch.cuda.is_available():

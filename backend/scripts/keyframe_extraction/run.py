@@ -21,6 +21,12 @@ def parse_args() -> argparse.Namespace:
         metavar="VIDEO_ID",
         help="Process only the requested video stems (for example L21_V001 L21_V002).",
     )
+    parser.add_argument(
+        "--groups",
+        nargs="+",
+        metavar="GROUP",
+        help="Process only top-level input groups (for example Videos_L21_a Videos_L22_a).",
+    )
     return parser.parse_args()
 
 
@@ -32,7 +38,7 @@ def main() -> None:
 
     cfg = load_config(cfg_path)
     pipeline = KeyframeExtractionPipeline(cfg)
-    pipeline.run(video_ids=args.video_ids)
+    pipeline.run(video_ids=args.video_ids, groups=args.groups)
 
 
 if __name__ == "__main__":

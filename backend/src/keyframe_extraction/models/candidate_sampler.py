@@ -29,8 +29,14 @@ def sample_candidates(
     fps: float,
     cfg: CandidateConfig,
     observer: Callable[[Candidate, np.ndarray], None] | None = None,
+    image_cache: dict[int, np.ndarray] | None = None,
 ) -> list[Candidate]:
-    """Sequential content-adaptive scan that retains metadata, not full-resolution frames."""
+    """Sequential adaptive scan matching the P3 notebook candidate gate.
+
+    The observer evaluates a prospective candidate before it can update the
+    sampler state. Rejected frames therefore cannot postpone the next valid
+    candidate. Only accepted, resized RGB images are retained when requested.
+    """
     ranges = np.asarray(scenes, dtype=np.int32).reshape(-1, 2)
     protected: set[int] = set()
     for start, end in ranges:
@@ -74,8 +80,13 @@ def sample_candidates(
         if keep:
             source = "protected" if frame_idx in protected else ("max_gap" if gap >= max_gap else "content_change")
             candidate = Candidate(shot_id, frame_idx, frame_idx / fps, source)
+            rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
             if observer is not None:
-                observer(candidate, cv2.cvtColor(small, cv2.COLOR_BGR2RGB))
+                observer(candidate, rgb)
+            if not candidate.valid:
+                continue
             candidates.append(candidate)
+            if image_cache is not None:
+                image_cache[frame_idx] = rgb
             last_idx, last_thumb, last_hash = frame_idx, thumb, current_hash
     return candidates

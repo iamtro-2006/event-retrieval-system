@@ -47,29 +47,3 @@ def evaluate_quality(candidate: Candidate, rgb: np.ndarray, cfg: QualityConfig) 
     )
     return candidate
 
-
-def filter_candidates(
-    candidates: list[Candidate], images: dict[int, np.ndarray], cfg: QualityConfig
-) -> list[Candidate]:
-    return [evaluate_quality(candidate, images[candidate.frame_idx], cfg) for candidate in candidates]
-
-
-def valid_with_shot_fallback(candidates: list[Candidate]) -> tuple[list[Candidate], int]:
-    """Keep valid candidates, or the best-quality candidate when a shot has none."""
-    by_shot: dict[int, list[Candidate]] = {}
-    for candidate in candidates:
-        by_shot.setdefault(candidate.shot_id, []).append(candidate)
-    selected: list[Candidate] = []
-    fallback_shots = 0
-    for items in by_shot.values():
-        valid = [candidate for candidate in items if candidate.valid]
-        if valid:
-            selected.extend(valid)
-            continue
-        fallback = max(items, key=lambda candidate: candidate.quality)
-        fallback.source = f"{fallback.source}+quality_fallback"
-        selected.append(fallback)
-        fallback_shots += 1
-    return selected, fallback_shots
-
-

@@ -12,7 +12,7 @@ from src.keyframe_extraction.models.candidate_sampler import phash_hamming, samp
 from src.keyframe_extraction.models.deduplicator import deduplicate, dense_cosine
 from src.keyframe_extraction.models.detector import repair_and_split_scenes
 from src.keyframe_extraction.models.p3_selector import select_common_anchor, select_p3, unique_gate
-from src.keyframe_extraction.models.quality_filter import evaluate_quality, valid_with_shot_fallback
+from src.keyframe_extraction.models.quality_filter import evaluate_quality
 from src.keyframe_extraction.models.selector import save_keyframe_map
 from src.keyframe_extraction.pipeline.extract_keyframes import KeyframeExtractionPipeline
 from src.keyframe_extraction.schemas import Candidate
@@ -36,25 +36,24 @@ class P3AlgorithmTests(unittest.TestCase):
     def test_video_id_filter_is_case_insensitive_and_reports_missing(self):
         videos = [Path("group/L21_V001.mp4"), Path("group/L22_V001.mp4")]
         self.assertEqual(
-            KeyframeExtractionPipeline._filter_videos(videos, ["l21_v001"]),
+            KeyframeExtractionPipeline._filter_videos(videos, Path("."), ["l21_v001"], None),
             [videos[0]],
         )
         with self.assertRaisesRegex(FileNotFoundError, "L99_V999"):
-            KeyframeExtractionPipeline._filter_videos(videos, ["L99_V999"])
+            KeyframeExtractionPipeline._filter_videos(videos, Path("."), ["L99_V999"], None)
+
+    def test_group_filter_preserves_input_root(self):
+        videos = [Path("Videos_L21_a/video/L21_V001.mp4"), Path("Videos_L22_a/video/L22_V001.mp4")]
+        self.assertEqual(
+            KeyframeExtractionPipeline._filter_videos(videos, Path("."), None, ["videos_l22_a"]),
+            [videos[1]],
+        )
 
     def test_quality_filter_rejects_black_frame(self):
         item = Candidate(0, 0, 0.0, "test")
         evaluate_quality(item, np.zeros((32, 32, 3), dtype=np.uint8), QualityConfig())
         self.assertFalse(item.valid)
         self.assertEqual(item.rejection_reason, "severe_blur")
-
-    def test_all_filtered_shot_uses_best_quality_fallback(self):
-        low = Candidate(0, 0, 0.0, "test", quality=0.1, valid=False)
-        best = Candidate(0, 1, 1.0, "test", quality=0.8, valid=False)
-        selected, fallback_shots = valid_with_shot_fallback([low, best])
-        self.assertEqual(selected, [best])
-        self.assertEqual(fallback_shots, 1)
-        self.assertIn("quality_fallback", best.source)
 
     def test_scene_repair_splits_long_inclusive_range(self):
         repaired = repair_and_split_scenes(np.asarray([[0, 99]]), fps=10.0, max_duration_sec=3.0)
@@ -72,6 +71,30 @@ class P3AlgorithmTests(unittest.TestCase):
             cfg=CandidateConfig(min_gap_sec=0.25, max_gap_sec=0.5, boundary_margin_sec=0.0),
         )
         self.assertEqual([item.frame_idx for item in sampled], [0, 2, 4])
+
+    def test_rejected_candidate_does_not_advance_sampler_state(self):
+        frames = [(index, np.full((16, 16, 3), index, dtype=np.uint8)) for index in range(5)]
+        images: dict[int, np.ndarray] = {}
+
+        def reject_frame_two(item: Candidate, _rgb: np.ndarray) -> None:
+            item.valid = item.frame_idx != 2
+
+        sampled = sample_candidates(
+            frames,
+            np.asarray([[0, 4]], dtype=np.int32),
+            fps=2.0,
+            cfg=CandidateConfig(
+                min_gap_sec=0.5,
+                max_gap_sec=1.0,
+                phash_min_distance=65,
+                pixel_change_threshold=2.0,
+                boundary_margin_sec=0.0,
+            ),
+            observer=reject_frame_two,
+            image_cache=images,
+        )
+        self.assertEqual([item.frame_idx for item in sampled], [0, 3, 4])
+        self.assertEqual(sorted(images), [0, 3, 4])
 
     def test_dense_cosine_normalizes_inputs(self):
         self.assertAlmostEqual(dense_cosine(np.asarray([2.0, 0.0]), np.asarray([5.0, 0.0])), 1.0)

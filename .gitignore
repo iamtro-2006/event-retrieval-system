@@ -3,6 +3,7 @@
 # -----------------------------------------------------------------------------
 # Never commit videos, extracted frames, embeddings, indexes, or diagnostics.
 /data/**
+/.cache/
 
 # Allow lightweight documentation/placeholders when needed.
 !/data/**/
