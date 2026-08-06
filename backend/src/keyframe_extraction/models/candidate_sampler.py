@@ -30,6 +30,7 @@ def sample_candidates(
     cfg: CandidateConfig,
     observer: Callable[[Candidate, np.ndarray], None] | None = None,
     image_cache: dict[int, np.ndarray] | None = None,
+    rejected_candidates: list[Candidate] | None = None,
 ) -> list[Candidate]:
     """Sequential adaptive scan matching the P3 notebook candidate gate.
 
@@ -45,6 +46,8 @@ def sample_candidates(
     min_gap = max(1, int(round(cfg.min_gap_sec * fps)))
     max_gap = max(min_gap, int(round(cfg.max_gap_sec * fps)))
     candidates: list[Candidate] = []
+    accepted_shots: set[int] = set()
+    best_rejected: dict[int, tuple[Candidate, np.ndarray]] = {}
     shot_id = 0
     last_idx = -10**9
     last_thumb: np.ndarray | None = None
@@ -84,9 +87,27 @@ def sample_candidates(
             if observer is not None:
                 observer(candidate, rgb)
             if not candidate.valid:
+                if rejected_candidates is not None:
+                    rejected_candidates.append(candidate)
+                previous = best_rejected.get(shot_id)
+                if previous is None or candidate.quality > previous[0].quality:
+                    best_rejected[shot_id] = (candidate, rgb)
                 continue
             candidates.append(candidate)
+            accepted_shots.add(shot_id)
             if image_cache is not None:
                 image_cache[frame_idx] = rgb
             last_idx, last_thumb, last_hash = frame_idx, thumb, current_hash
-    return candidates
+
+    # P3 requires one selectable candidate per repaired shot. If every
+    # prospective candidate failed the hard quality gate, retain only the
+    # highest-quality rejected frame as an explicit fallback. It remains
+    # marked invalid so diagnostics still report the hard-filter decision.
+    for fallback_shot, (candidate, rgb) in best_rejected.items():
+        if fallback_shot in accepted_shots:
+            continue
+        candidate.source = "quality_fallback"
+        candidates.append(candidate)
+        if image_cache is not None:
+            image_cache[candidate.frame_idx] = rgb
+    return sorted(candidates, key=lambda candidate: candidate.frame_idx)

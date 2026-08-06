@@ -96,6 +96,31 @@ class P3AlgorithmTests(unittest.TestCase):
         self.assertEqual([item.frame_idx for item in sampled], [0, 3, 4])
         self.assertEqual(sorted(images), [0, 3, 4])
 
+    def test_empty_shot_uses_best_quality_rejected_candidate_as_fallback(self):
+        frames = [(index, np.full((16, 16, 3), index, dtype=np.uint8)) for index in range(3)]
+        images: dict[int, np.ndarray] = {}
+        rejected: list[Candidate] = []
+
+        def reject_all(item: Candidate, _rgb: np.ndarray) -> None:
+            item.valid = False
+            item.quality = float(item.frame_idx)
+            item.rejection_reason = "test_rejection"
+
+        sampled = sample_candidates(
+            frames,
+            np.asarray([[0, 2]], dtype=np.int32),
+            fps=1.0,
+            cfg=CandidateConfig(min_gap_sec=1.0, max_gap_sec=1.0),
+            observer=reject_all,
+            image_cache=images,
+            rejected_candidates=rejected,
+        )
+        self.assertEqual(len(rejected), 3)
+        self.assertEqual([item.frame_idx for item in sampled], [2])
+        self.assertEqual(sampled[0].source, "quality_fallback")
+        self.assertFalse(sampled[0].valid)
+        self.assertEqual(sorted(images), [2])
+
     def test_dense_cosine_normalizes_inputs(self):
         self.assertAlmostEqual(dense_cosine(np.asarray([2.0, 0.0]), np.asarray([5.0, 0.0])), 1.0)
 

@@ -308,6 +308,7 @@ class KeyframeExtractionPipeline:
         scenes = repair_and_split_scenes(raw_scenes, fps, self.cfg.keyframe.scene.max_duration_sec)
         sampled_at = time.perf_counter()
         candidate_images: dict[int, np.ndarray] = {}
+        rejected_candidates: list[Candidate] = []
         candidates = sample_candidates(
             iter_resized_video_frames(video),
             scenes,
@@ -315,6 +316,7 @@ class KeyframeExtractionPipeline:
             self.cfg.keyframe.candidate,
             observer=lambda candidate, rgb: evaluate_quality(candidate, rgb, self.cfg.keyframe.quality),
             image_cache=candidate_images,
+            rejected_candidates=rejected_candidates,
         )
         sample_elapsed = time.perf_counter() - sampled_at
 
@@ -344,15 +346,16 @@ class KeyframeExtractionPipeline:
         primary = [candidate for candidate in primary if candidate.frame_idx in selected_images]
         selected, dropped = deduplicate(primary, selected_images, self.cfg.keyframe.dedup)
         selection_elapsed = time.perf_counter() - selection_at
+        fallback_shots = sum(candidate.source == "quality_fallback" for candidate in candidates)
         metrics: dict[str, object] = {
             "video_id": video.stem,
             "strategy": "p3",
             "raw_scenes": len(raw_scenes),
             "repaired_shots": len(scenes),
-            "total_candidates": len(candidates),
+            "total_candidates": len(candidates) + len(rejected_candidates) - fallback_shots,
             "valid_candidates": sum(candidate.valid for candidate in candidates),
-            "filtered_candidates": sum(not candidate.valid for candidate in candidates),
-            "fallback_shots": 0,
+            "filtered_candidates": len(rejected_candidates),
+            "fallback_shots": fallback_shots,
             "common_anchors": sum(candidate.selection_source == "shot_common_anchor" for candidate in primary),
             "before_dedup": len(primary),
             "dedup_dropped": len(dropped),
@@ -369,7 +372,11 @@ class KeyframeExtractionPipeline:
                 video,
                 fps,
                 scenes,
-                candidates,
+                sorted(
+                    candidates
+                    + [candidate for candidate in rejected_candidates if candidate.source != "quality_fallback"],
+                    key=lambda candidate: candidate.frame_idx,
+                ),
                 selected,
                 dropped,
                 shot_diagnostics,
@@ -377,13 +384,14 @@ class KeyframeExtractionPipeline:
             )
         self.logger.info(
             "P3 %s raw_scenes=%d repaired_shots=%d candidates=%d valid=%d filtered=%d "
-            "common=%d before_dedup=%d dropped=%d final=%d",
+            "fallback=%d common=%d before_dedup=%d dropped=%d final=%d",
             video.name,
             metrics["raw_scenes"],
             metrics["repaired_shots"],
             metrics["total_candidates"],
             metrics["valid_candidates"],
             metrics["filtered_candidates"],
+            metrics["fallback_shots"],
             metrics["common_anchors"],
             metrics["before_dedup"],
             metrics["dedup_dropped"],

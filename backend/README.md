@@ -43,6 +43,12 @@ scripts/keyframe_extraction/run.py
 5. Kết quả dùng cho các pipeline sau chỉ gồm ảnh trong `keyframes/` và metadata
    trong `map_keyframes/`.
 
+Nếu toàn bộ candidate được xét trong một repaired shot đều không qua hard
+quality filter, sampler giữ candidate có quality score cao nhất của shot với
+`source=quality_fallback`. Candidate này vẫn mang `valid=false` và lý do bị lọc
+trong diagnostics, nhưng được encode/chọn làm common anchor để không làm mất
+hoàn toàn một shot khỏi output.
+
 Hai bộ lọc CLI được kết hợp theo phép giao: nếu truyền cả `--groups` và
 `--video-ids`, chỉ những video có ID được yêu cầu và nằm trong các group được
 chọn mới chạy. Không truyền `--video-ids` nghĩa là chạy toàn bộ video trong các
@@ -110,6 +116,13 @@ Notebook mặc định hiện chạy toàn bộ hai group:
 GROUPS = ["Videos_L21_a", "Videos_L22_a"]
 VIDEO_IDS = []
 ```
+
+Notebook tìm từng group trên toàn bộ `/kaggle/input`, vì vậy L21 và L22 có thể
+nằm trong hai Kaggle Dataset attach khác nhau. Nó tạo một input view nhẹ bằng
+symlink file dưới `/kaggle/working/p3_video_input` rồi gọi backend CLI. Nếu có
+nhiều folder trùng tên, khai báo đường dẫn chính xác bằng `GROUP_PATHS`; nếu có
+nhiều file weight, khai báo `TRANSNET_WEIGHTS_PATH`. Cell preflight kiểm tra
+strategy, model và các module P3 trước khi bắt đầu xử lý video.
 
 Chạy unit test:
 
