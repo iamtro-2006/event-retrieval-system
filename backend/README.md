@@ -1,5 +1,56 @@
 # Backend — Event Retrieval System
 
+## Chạy keyframe extraction
+
+Pipeline hỗ trợ hai strategy trong `configs/kf_extraction.yaml`:
+
+```yaml
+keyframe:
+  strategy: p3  # hoặc legacy_lmske
+```
+
+- `p3`: TransNetV2 → adaptive candidate sampling → quality filter →
+  `MobileCLIP2-S4/dfndr2b` → K-medoids/AUCC → common/unique/global MMR → dedup.
+- `legacy_lmske`: giữ pipeline LMSKE cũ và encoder
+  `ViT-L-16-SigLIP-256/webli`.
+
+Input mặc định nằm tại `../data/raw/videos`, output được ghi trực tiếp vào
+`../data/processed`. Weight TransNetV2 phải có tại
+`weights/transnetv2-pytorch-weights.pth`; OpenCLIP sẽ tải/cache model trong lần
+chạy đầu nếu máy chưa có.
+
+```powershell
+cd backend
+python scripts\keyframe_extraction\run.py --config configs\kf_extraction.yaml
+```
+
+Chạy thử một nhóm video mà không cần sao chép dữ liệu hoặc đổi config:
+
+```powershell
+python scripts\keyframe_extraction\run.py --config configs\kf_extraction.yaml --video-ids L21_V001 L21_V002 L22_V001 L22_V002
+```
+
+Output tương thích với embedding/OCR/retrieval:
+
+```text
+data/processed/
+├── keyframes/<group>/<video_id>/000000.jpg
+├── map_keyframes/<group>/<video_id>.csv
+└── diagnostics/<group>/<video_id>/
+    ├── candidates.csv
+    ├── shots.csv
+    ├── selected_keyframes.csv
+    ├── dedup_dropped.csv
+    ├── metrics.json
+    └── run_config.json
+```
+
+Chạy unit test:
+
+```powershell
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
 Backend FastAPI cho hệ thống truy vấn/retrieval keyframe video theo nội dung
 (semantic/CLIP), theo trình tự thời gian (temporal), theo chữ viết trên màn
 hình (OCR) và theo lời thoại (ASR).

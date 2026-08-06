@@ -3,8 +3,8 @@ project:
   seed: 42
 
 paths:
-  input_dir: data/raw/videos
-  output_dir: data/processed/test
+  input_dir: ../data/raw/videos
+  output_dir: ../data/processed
 
 logging:
   level: INFO
@@ -36,6 +36,7 @@ embedding:
   skip_existing: true
 
 keyframe:
+  strategy: p3
   min_scene_frames: 3
   max_scene_gap_frames: 5000
   hist_threshold: 0.95
@@ -43,3 +44,58 @@ keyframe:
   image_quality: 95
   save_images: true
   skip_existing: true
+
+  selection_embedding:
+    model_name: MobileCLIP2-S4
+    pretrained: dfndr2b
+    batch_size: 16
+    device: auto
+    precision: fp16
+    skip_existing: true
+
+  scene:
+    max_duration_sec: 20.0
+
+  candidate:
+    min_gap_sec: 0.25
+    max_gap_sec: 1.0
+    phash_min_distance: 6
+    pixel_change_threshold: 0.035
+    boundary_margin_sec: 0.30
+
+  quality:
+    blur_min: 20.0
+    brightness_min: 10.0
+    brightness_max: 245.0
+    entropy_min: 1.2
+    edge_density_min: 0.002
+    clipped_fraction_max: 0.60
+
+  clustering:
+    max_clusters_per_shot: 5
+    min_cluster_size: 2
+    min_spread: 0.025
+    aucc_complexity_penalty: 0.035
+    kmeans_n_init: 10
+    kmedoids_max_iter: 50
+
+  selector:
+    common_lambda: 0.70
+    local_neighbor_radius: 2
+    unique_alpha: 0.50
+    min_unique_quality: 0.35
+    max_common_cosine: 0.90
+    min_shot_spread: 0.025
+    min_volatility_range: 0.02
+    min_unique_volatility: 0.60
+    min_unique_atypicality: 0.50
+    unique_boundary_margin_sec: 0.30
+    mmr_lambda: 0.60
+    min_temporal_gap_sec: 1.0
+    global_novelty_cosine: 0.90
+    max_extras_per_shot: 2
+
+  dedup:
+    phash_hamming_threshold: 5
+    dense_cosine_threshold: 0.97
+    temporal_window_sec: 4.0

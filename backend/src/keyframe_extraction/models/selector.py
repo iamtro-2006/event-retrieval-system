@@ -102,6 +102,10 @@ def save_keyframe_map(indexes: list[int], video_path: Path, csv_path: Path) -> N
 def save_keyframe_images(indexes: list[int], video_path: Path, output_dir: Path, image_quality: int) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("keyframe_pipeline")
+    expected_names = {f"{keyframe_id:06d}.jpg" for keyframe_id in range(len(indexes))}
+    for stale in output_dir.glob("*.jpg"):
+        if stale.name not in expected_names:
+            stale.unlink()
 
     for keyframe_id, frame_idx in enumerate(indexes):
         frame = read_frame(video_path, frame_idx)

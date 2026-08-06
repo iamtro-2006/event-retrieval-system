@@ -25,7 +25,7 @@ def decode_for_transnet(video_path: Path, width: int = 48, height: int = 27) -> 
     arr = np.frombuffer(stream, np.uint8)
     if arr.size == 0:
         raise RuntimeError(f"FFmpeg decoded no frames from {video_path}")
-    return arr.reshape([-1, height, width, 3])
+    return arr.reshape([-1, height, width, 3]).copy()
 
 
 def get_video_fps(video_path: Path) -> float:
@@ -94,15 +94,5 @@ def read_frame(video_path: Path, frame_idx: int) -> np.ndarray | None:
     cap.set(cv2.CAP_PROP_POS_FRAMES, int(frame_idx))
     ok, frame = cap.read()
     cap.release()
-
-    if ok:
-        print(
-            f"[READ_FRAME] idx={frame_idx} "
-            f"shape={frame.shape} dtype={frame.dtype} "
-            f"min={frame.min()} max={frame.max()}",
-            flush=True,
-        )
-    else:
-        print(f"[READ_FRAME_FAIL] idx={frame_idx}", flush=True)
 
     return frame if ok else None
