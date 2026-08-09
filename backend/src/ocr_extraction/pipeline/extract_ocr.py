@@ -4,27 +4,36 @@ import json
 import logging
 from pathlib import Path
 
+import cv2
+from PIL import Image
 from tqdm import tqdm
 
 from src.ocr_extraction.models.dataset import build_loader
-from src.ocr_extraction.models.engine import load_ocr_model
-from src.ocr_extraction.models.vietocr_engine import (
-    crop_box,
-    load_vietocr_model,
-    recognize_crops,
-)
+from src.ocr_extraction.models.qwen_engine import extract_text_lines, load_qwen_model
 
 
 class ExtractOCRPipeline:
-    """Runs text DETECTION with PaddleOCR and text RECOGNITION with either
-    PaddleOCR's own recognizer or VietOCR (extraction.recognizer: "vietocr"),
-    then writes one JSON file per video in the shape consumed by
+    """Runs OCR extraction with one of two engines (extraction.engine):
+
+        "qwen"           -> full-frame OCR via Qwen3-VL-4B-Instruct (VLM).
+                             Default. Falls back to "paddle_vietocr" at
+                             runtime if the Qwen model fails to load.
+        "paddle_vietocr" -> text DETECTION with PaddleOCR, text RECOGNITION
+                             with either PaddleOCR's own recognizer or
+                             VietOCR (extraction.recognizer: "vietocr").
+
+    Writes one JSON file per video in the shape consumed by
     src.retrieval.indexer.elasticsearch.ocr.indexing_pipeline.IndexPipeline:
 
         {
           "<keyframe_id>": [ [[x1,y1,x2,y2], ...], ["text1", "text2", ...] ],
           ...
         }
+
+    (The "qwen" engine has no native bounding boxes, so it emits a
+    [0.0, 0.0, 0.0, 0.0] placeholder box per detected text line -- only
+    `texts` is indexed/searched downstream, so this keeps the output shape
+    compatible without changing the indexer.)
 
     Input layout:
         <input_keyframes_root>/<dataset>/<video_id>/<keyframe>.jpg
@@ -49,29 +58,59 @@ class ExtractOCRPipeline:
 
         # "paddleocr" (default rec model, no Vietnamese support) or
         # "vietocr" (crops from PaddleOCR detection, recognized by VietOCR).
+        # Only used when engine == "paddle_vietocr".
         self.recognizer = str(extraction_cfg.get("recognizer", "paddleocr")).lower()
 
-        model_cfg = extraction_cfg["model"]
-        self.model = load_ocr_model(
-            ocr_version=model_cfg["ocr_version"],
-            text_detection_model_name=model_cfg["text_detection_model_name"],
-            text_recognition_model_name=model_cfg["text_recognition_model_name"],
-            use_doc_orientation_classify=model_cfg.get("use_doc_orientation_classify", False),
-            use_doc_unwarping=model_cfg.get("use_doc_unwarping", False),
-            use_textline_orientation=model_cfg.get("use_textline_orientation", False),
-            device=model_cfg.get("device", "cpu"),
-            logger=self.logger,
-        )
+        self.engine = str(extraction_cfg.get("engine", "qwen")).lower()
 
+        self.qwen_model = None
+        self.qwen_processor = None
+        self.qwen_cfg: dict = {}
+
+        if self.engine == "qwen":
+            qwen_cfg = extraction_cfg.get("qwen", {}) or {}
+            self.qwen_cfg = qwen_cfg
+            try:
+                self.qwen_model, self.qwen_processor = load_qwen_model(
+                    model_id=qwen_cfg.get("model_id", "Qwen/Qwen3-VL-4B-Instruct"),
+                    device=qwen_cfg.get("device", "cuda"),
+                    dtype=qwen_cfg.get("dtype", "bfloat16"),
+                    logger=self.logger,
+                )
+            except Exception as e:
+                self.logger.warning(
+                    "Qwen load failed (%s: %s) - falling back to paddle_vietocr", type(e).__name__, e
+                )
+                self.engine = "paddle_vietocr"
+
+        self.model = None
         self.vietocr_predictor = None
-        if self.recognizer == "vietocr":
-            vietocr_cfg = extraction_cfg.get("vietocr", {})
-            self.vietocr_predictor = load_vietocr_model(
-                base_config=vietocr_cfg.get("base_config", "vgg_transformer"),
-                device=vietocr_cfg.get("device", model_cfg.get("device", "cpu")),
-                weights_path=vietocr_cfg.get("weights_path"),
+
+        if self.engine == "paddle_vietocr":
+            from src.ocr_extraction.models.engine import load_ocr_model
+
+            model_cfg = extraction_cfg["model"]
+            self.model = load_ocr_model(
+                ocr_version=model_cfg["ocr_version"],
+                text_detection_model_name=model_cfg["text_detection_model_name"],
+                text_recognition_model_name=model_cfg["text_recognition_model_name"],
+                use_doc_orientation_classify=model_cfg.get("use_doc_orientation_classify", False),
+                use_doc_unwarping=model_cfg.get("use_doc_unwarping", False),
+                use_textline_orientation=model_cfg.get("use_textline_orientation", False),
+                device=model_cfg.get("device", "cpu"),
                 logger=self.logger,
             )
+
+            if self.recognizer == "vietocr":
+                from src.ocr_extraction.models.vietocr_engine import load_vietocr_model
+
+                vietocr_cfg = extraction_cfg.get("vietocr", {})
+                self.vietocr_predictor = load_vietocr_model(
+                    base_config=vietocr_cfg.get("base_config", "vgg_transformer"),
+                    device=vietocr_cfg.get("device", model_cfg.get("device", "cpu")),
+                    weights_path=vietocr_cfg.get("weights_path"),
+                    logger=self.logger,
+                )
 
     # ------------------------------------------------------------------
     # Discovery
@@ -104,6 +143,8 @@ class ExtractOCRPipeline:
         according to self.recognizer."""
         if self.recognizer != "vietocr":
             return paddle_texts
+
+        from src.ocr_extraction.models.vietocr_engine import crop_box, recognize_crops
 
         crops = []
         keep_idx = []
@@ -147,6 +188,23 @@ class ExtractOCRPipeline:
                 continue
 
             paths, imgs = zip(*batch)
+
+            if self.engine == "qwen":
+                for path, img in zip(paths, imgs):
+                    keyframe_id = Path(path).stem
+                    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                    texts = extract_text_lines(
+                        self.qwen_model,
+                        self.qwen_processor,
+                        pil_img,
+                        max_new_tokens=int(self.qwen_cfg.get("max_new_tokens", 512)),
+                        prompt=self.qwen_cfg.get("prompt"),
+                        logger=self.logger,
+                    )
+                    boxes = [[0.0, 0.0, 0.0, 0.0] for _ in texts]
+                    data[keyframe_id] = [boxes, texts]
+                continue
+
             results = self.model.predict(list(imgs))
 
             if results is None:
