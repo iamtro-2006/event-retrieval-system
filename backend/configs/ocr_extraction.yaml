@@ -2,14 +2,14 @@
 # Elasticsearch indexing (used by scripts/ocr/index/run.py)
 # =========================================================
 elasticsearch:
-  host: "192.168.1.15"
+  host: "localhost"
   port: 9200
   scheme: "http"
   index: "ocr_db"
 
 # Root folder of per-video OCR json files: <root>/<dataset>/<video_id>.json
 dataset:
-  root: "data/processed/ocr"
+  root: "../data/ocr"
 
 # =========================================================
 # Mock data generation (used by scripts/ocr/mock_data.py)
@@ -25,7 +25,7 @@ mock:
   seed: 42
 
 # =========================================================
-# Real OCR extraction (used by scripts/ocr_extraction/run.py)
+# OCR Extraction (used by scripts/ocr/extract/run.py)
 # =========================================================
 extraction:
   input_keyframes_root: "data/processed/keyframes"
@@ -38,6 +38,14 @@ extraction:
   num_workers: 0
   skip_existing: true
 
+  # "qwen"           -> full-frame OCR via Qwen3-VL-4B-Instruct (VLM). Default.
+  #                     On load/inference failure, automatically falls back to
+  #                     "paddle_vietocr" below (no config change needed).
+  # "paddle_vietocr" -> PaddleOCR detection + PaddleOCR/VietOCR recognition
+  #                     (see recognizer: below), the original pipeline.
+  engine: "qwen"
+
+  # Only used when engine == "paddle_vietocr":
   # "paddleocr" -> use PaddleOCR's own recognizer (fast, but NOT reliable
   #                for Vietnamese diacritics).
   # "vietocr"   -> PaddleOCR is used ONLY to detect text-region boxes;
@@ -48,7 +56,7 @@ extraction:
   # PaddleOCR: text DETECTION model (and detector-only usage when
   # recognizer == "vietocr"; text_recognition_model_name is still loaded
   # because PaddleOCR() is a single combined pipeline, but its rec output
-  # is discarded in that mode).
+  # is discarded in that mode). Only loaded when engine == "paddle_vietocr".
   model:
     ocr_version: "PP-OCRv6"
     text_detection_model_name: "PP-OCRv6_small_det"
@@ -63,3 +71,13 @@ extraction:
     base_config: "vgg_seq2seq"       # or "vgg_seq2seq"
     device: "cuda"
     weights_path: null               # set to a fine-tuned .pth to override defaults
+
+  # Qwen3-VL: full-frame VLM OCR, only loaded when engine == "qwen". Emits
+  # placeholder [0,0,0,0] boxes per text line (VLM output has no native
+  # bounding boxes; only `texts` is indexed/searched downstream).
+  qwen:
+    model_id: "Qwen/Qwen3-VL-4B-Instruct"
+    device: "cuda"
+    dtype: "bfloat16"
+    max_new_tokens: 512
+    prompt: null      # null -> use built-in default OCR prompt
