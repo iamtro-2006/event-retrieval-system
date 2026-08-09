@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import logging
 
+import torch
 from PIL import Image
+from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
 
-_DEFAULT_PROMPT = (
-    "Extract all visible text in this image, in reading order, one line of "
-    "text per output line. Output only the extracted text, no commentary, "
-    "no numbering, no markdown. If there is no visible text, output nothing."
+DEFAULT_OCR_PROMPT = (
+    "Extract all text visible in this image exactly as written. "
+    "Output each line or text block on its own line. "
+    "Do not number lines, do not use markdown, do not translate, "
+    "do not describe the image, preserve Vietnamese diacritics exactly. "
+    "If there is no text in the image, output exactly: NO_TEXT"
 )
 
 
@@ -16,26 +20,22 @@ def load_qwen_model(
     device: str = "cuda",
     dtype: str = "bfloat16",
     logger: logging.Logger | None = None,
-):
-    """Load a Qwen3-VL model + processor for full-frame OCR.
-
-    Returns:
-        (model, processor) tuple.
-    """
-    import torch
-    from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
-
+) -> tuple:
     if logger:
-        logger.info("Loading Qwen3-VL model: model_id=%s device=%s dtype=%s", model_id, device, dtype)
+        logger.info(
+            "Loading Qwen3-VL model: model_id=%s device=%s dtype=%s",
+            model_id,
+            device,
+            dtype,
+        )
 
-    torch_dtype = getattr(torch, str(dtype), torch.bfloat16)
-    model = Qwen3VLForConditionalGeneration.from_pretrained(
-        model_id,
-        torch_dtype=torch_dtype,
-        device_map=device,
-    ).eval()
+    torch_dtype = getattr(torch, dtype, torch.bfloat16)
+    model = (
+        Qwen3VLForConditionalGeneration.from_pretrained(model_id, torch_dtype=torch_dtype)
+        .to(device)
+        .eval()
+    )
     processor = AutoProcessor.from_pretrained(model_id)
-
     return model, processor
 
 
@@ -47,10 +47,7 @@ def extract_text_lines(
     prompt: str | None = None,
     logger: logging.Logger | None = None,
 ) -> list[str]:
-    """Run Qwen3-VL OCR on a single PIL image, returning non-empty text lines."""
-    import torch
-
-    prompt = prompt or _DEFAULT_PROMPT
+    prompt = prompt or DEFAULT_OCR_PROMPT
 
     messages = [
         {
@@ -62,26 +59,27 @@ def extract_text_lines(
         }
     ]
 
-    try:
-        inputs = processor.apply_chat_template(
-            messages,
-            tokenize=True,
-            add_generation_prompt=True,
-            return_dict=True,
-            return_tensors="pt",
-        ).to(model.device)
+    text = processor.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+    inputs = processor(text=[text], images=[image], return_tensors="pt").to(model.device)
 
-        with torch.inference_mode():
-            output_ids = model.generate(**inputs, max_new_tokens=max_new_tokens)
+    with torch.inference_mode():
+        output_ids = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+        )
 
-        generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
-        decoded = processor.batch_decode(
-            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
-        )[0]
-    except Exception as e:
-        if logger:
-            logger.warning("Qwen3-VL inference failed on one image: %s", e)
+    new_ids = output_ids[:, inputs["input_ids"].shape[1]:]
+    decoded = processor.batch_decode(
+        new_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+    )[0].strip()
+
+    if not decoded or decoded == "NO_TEXT":
         return []
 
-    lines = [line.strip() for line in decoded.splitlines()]
+    lines = [line.strip() for line in decoded.split("\n")]
     return [line for line in lines if line]
