@@ -1,0 +1,31 @@
+# Minimal dependencies to run backend/scripts/ocr/extract/run.py
+# (ExtractOCRPipeline: engine="qwen" GGUF via llama.cpp, or engine="paddle_vietocr"
+# fallback via PaddleOCR + VietOCR). Versions match backend/../requirements.txt
+# (the full project requirements file) -- install from there instead if you
+# already set up that environment; this file is just the OCR-only subset.
+
+# --- shared / pipeline plumbing ---
+PyYAML==6.0.3
+tqdm==4.67.3
+pillow==12.3.0
+opencv-python==4.13.0.92
+torch==2.12.0+cu130
+
+# --- engine: "qwen" (default) -----------------------------------------
+# Qwen3-VL-4B-Instruct-Uncensored GGUF quant, run locally through
+# llama.cpp's multimodal (mtmd) support -- NOT loaded via `transformers`.
+huggingface_hub==1.22.0
+llama_cpp_python==0.3.32
+# NOTE: engine="qwen" needs `Qwen3VLChatHandler` from
+# `llama_cpp.llama_chat_format`. Verify it's present before running:
+#   python -c "from llama_cpp.llama_chat_format import Qwen3VLChatHandler"
+# If that raises ImportError, this pinned llama_cpp_python build predates
+# Qwen3-VL support -- install a build that has it instead, e.g. from
+# https://github.com/JamePeng/llama-cpp-python (prebuilt wheels per
+# CUDA/OS in its Releases page), then re-pin the version above.
+
+# --- engine: "paddle_vietocr" (fallback if Qwen fails to load) --------
+paddleocr==3.7.0
+paddlepaddle-gpu==3.2.0
+paddlex==3.7.2
+vietocr==0.3.12
