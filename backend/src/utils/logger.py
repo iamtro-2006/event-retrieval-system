@@ -29,3 +29,4 @@ def setup_logger(name: str, level: str = "INFO", log_dir: Path | None = None, lo
         logger.addHandler(file_handler)
 
     return logger
+
