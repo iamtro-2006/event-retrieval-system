@@ -97,7 +97,6 @@ class ExtractOCRPipeline:
                 )
                 self.engine = "paddle_vietocr"
 
-        self.model = None
         self.vietocr_predictor = None
 
         if self.engine == "paddle_vietocr":
