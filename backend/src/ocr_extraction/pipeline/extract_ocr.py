@@ -9,18 +9,19 @@ from PIL import Image
 from tqdm import tqdm
 
 from src.ocr_extraction.models.dataset import build_loader
-from src.ocr_extraction.models.qwen_engine import extract_text_lines, load_qwen_model
 from src.ocr_extraction.models.engine import load_ocr_model
+from src.ocr_extraction.models.qwen_engine import extract_text_lines, load_qwen_model
+
 
 class ExtractOCRPipeline:
     """Runs OCR extraction with one of two engines (extraction.engine):
 
         "qwen"           -> full-frame OCR via Qwen3-VL-4B-Instruct (VLM).
-                             Default. Falls back to "paddle_vietocr" at
-                             runtime if the Qwen model fails to load.
+                            Default. Falls back to "paddle_vietocr" at
+                            runtime if the Qwen model fails to load.
         "paddle_vietocr" -> text DETECTION with PaddleOCR, text RECOGNITION
-                             with either PaddleOCR's own recognizer or
-                             VietOCR (extraction.recognizer: "vietocr").
+                            with either PaddleOCR's own recognizer or
+                            VietOCR (extraction.recognizer: "vietocr").
 
     Writes one JSON file per video in the shape consumed by
     src.retrieval.indexer.elasticsearch.ocr.indexing_pipeline.IndexPipeline:
@@ -56,16 +57,13 @@ class ExtractOCRPipeline:
         self.skip_existing = bool(extraction_cfg.get("skip_existing", True))
         self.visualized = bool(extraction_cfg.get("visualized", False))
 
-        # "paddleocr" (default rec model, no Vietnamese support) or
-        # "vietocr" (crops from PaddleOCR detection, recognized by VietOCR).
-        # Only used when engine == "paddle_vietocr".
         self.recognizer = str(extraction_cfg.get("recognizer", "paddleocr")).lower()
-
         self.engine = str(extraction_cfg.get("engine", "qwen")).lower()
 
         self.qwen_model = None
         self.qwen_processor = None
         self.qwen_cfg: dict = {}
+        self.vietocr_predictor = None
 
         if self.engine == "qwen":
             qwen_cfg = extraction_cfg.get("qwen", {}) or {}
@@ -90,17 +88,13 @@ class ExtractOCRPipeline:
                     dtype=qwen_cfg.get("dtype", "bfloat16"),
                     logger=self.logger,
                 )
-                
             except Exception as e:
                 self.logger.warning(
                     "Qwen load failed (%s: %s) - falling back to paddle_vietocr", type(e).__name__, e
                 )
                 self.engine = "paddle_vietocr"
 
-        self.vietocr_predictor = None
-
         if self.engine == "paddle_vietocr":
-
             model_cfg = extraction_cfg["model"]
             self.model = load_ocr_model(
                 ocr_version=model_cfg["ocr_version"],
@@ -124,10 +118,6 @@ class ExtractOCRPipeline:
                     logger=self.logger,
                 )
 
-    # ------------------------------------------------------------------
-    # Discovery
-    # ------------------------------------------------------------------
-
     def scan_video_dirs(self) -> list[Path]:
         if not self.input_root.exists():
             raise FileNotFoundError(f"Keyframes root not found: {self.input_root}")
@@ -146,13 +136,7 @@ class ExtractOCRPipeline:
         video_id = video_dir.name
         return self.output_root / dataset / f"{video_id}.json"
 
-    # ------------------------------------------------------------------
-    # Core processing
-    # ------------------------------------------------------------------
-
     def _recognize(self, img, boxes: list[list[float]], paddle_texts: list[str]) -> list[str]:
-        """Return the final texts list for one image's detected boxes,
-        according to self.recognizer."""
         if self.recognizer != "vietocr":
             return paddle_texts
 
@@ -206,11 +190,11 @@ class ExtractOCRPipeline:
             if results is None:
                 continue
 
-
             for path, img, res in zip(paths, imgs, results):
                 keyframe_id = Path(path).stem
                 boxes: list[list[float]] = []
                 paddle_texts: list[str] = []
+                texts: list[str] = []  # Luôn khởi tạo texts mặc định ở đây
 
                 if res:
                     raw_boxes = res.get("rec_boxes", [])
@@ -228,7 +212,7 @@ class ExtractOCRPipeline:
                 elif self.engine == "qwen": 
                     if len(boxes) > 0: 
                         pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-                        self.logger.info("Detected %d boxes", len(boxes))
+                        self.logger.debug("Detected %d boxes, running Qwen...", len(boxes))
                         texts = extract_text_lines(
                             self.qwen_model,
                             self.qwen_processor,
@@ -238,6 +222,10 @@ class ExtractOCRPipeline:
                             logger=self.logger,
                         )
                         boxes = [[0.0, 0.0, 0.0, 0.0] for _ in texts]
+                    else:
+                        # Trường hợp không phát hiện ra box nào, gán rỗng để tránh lỗi
+                        texts = []
+                        boxes = []
                 else:
                     self.logger.info("Skip frame id %s", keyframe_id)
                     continue
