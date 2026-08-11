@@ -229,6 +229,7 @@ class ExtractOCRPipeline:
                 elif self.engine == "qwen": 
                     if len(boxes) > 0: 
                         pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                        self.logger.info("Detected %d boxes", len(boxes))
                         texts = extract_text_lines(
                             self.qwen_model,
                             self.qwen_processor,
