@@ -215,7 +215,7 @@ class ExtractOCRPipeline:
                 elif self.engine == "qwen": 
                     if len(boxes) > 0: 
                         pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-                        self.logger.debug("Detected %d boxes, running Qwen...", len(boxes))
+                        print(f"Detected {len(boxes)} boxes, running Qwen...")
                         texts = extract_text_lines(
                             self.qwen_model,
                             self.qwen_processor,
@@ -230,7 +230,7 @@ class ExtractOCRPipeline:
                         texts = []
                         boxes = []
                 else:
-                    self.logger.info("Skip frame id %s", keyframe_id)
+                    print(f"Skip frame id {keyframe_id}", )
                     continue
 
                 data[keyframe_id] = [boxes, texts]
