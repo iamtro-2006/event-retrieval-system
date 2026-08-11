@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from src.ocr_extraction.models.dataset import build_loader
 from src.ocr_extraction.models.qwen_engine import extract_text_lines, load_qwen_model
-
+from src.ocr_extraction.models.engine import load_ocr_model
 
 class ExtractOCRPipeline:
     """Runs OCR extraction with one of two engines (extraction.engine):
@@ -70,6 +70,19 @@ class ExtractOCRPipeline:
         if self.engine == "qwen":
             qwen_cfg = extraction_cfg.get("qwen", {}) or {}
             self.qwen_cfg = qwen_cfg
+
+            model_cfg = extraction_cfg["model"]
+            self.model = load_ocr_model(
+                ocr_version=model_cfg["ocr_version"],
+                text_detection_model_name=model_cfg["text_detection_model_name"],
+                text_recognition_model_name=None,
+                use_doc_orientation_classify=model_cfg.get("use_doc_orientation_classify", False),
+                use_doc_unwarping=model_cfg.get("use_doc_unwarping", False),
+                use_textline_orientation=model_cfg.get("use_textline_orientation", False),
+                device=model_cfg.get("device", "cpu"),
+                logger=self.logger,
+            )
+
             try:
                 self.qwen_model, self.qwen_processor = load_qwen_model(
                     model_id=qwen_cfg.get("model_id", "Qwen/Qwen3-VL-4B-Instruct"),
@@ -77,6 +90,7 @@ class ExtractOCRPipeline:
                     dtype=qwen_cfg.get("dtype", "bfloat16"),
                     logger=self.logger,
                 )
+                
             except Exception as e:
                 self.logger.warning(
                     "Qwen load failed (%s: %s) - falling back to paddle_vietocr", type(e).__name__, e
@@ -87,7 +101,6 @@ class ExtractOCRPipeline:
         self.vietocr_predictor = None
 
         if self.engine == "paddle_vietocr":
-            from src.ocr_extraction.models.engine import load_ocr_model
 
             model_cfg = extraction_cfg["model"]
             self.model = load_ocr_model(
@@ -189,26 +202,11 @@ class ExtractOCRPipeline:
 
             paths, imgs = zip(*batch)
 
-            if self.engine == "qwen":
-                for path, img in zip(paths, imgs):
-                    keyframe_id = Path(path).stem
-                    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-                    texts = extract_text_lines(
-                        self.qwen_model,
-                        self.qwen_processor,
-                        pil_img,
-                        max_new_tokens=int(self.qwen_cfg.get("max_new_tokens", 512)),
-                        prompt=self.qwen_cfg.get("prompt"),
-                        logger=self.logger,
-                    )
-                    boxes = [[0.0, 0.0, 0.0, 0.0] for _ in texts]
-                    data[keyframe_id] = [boxes, texts]
-                continue
-
             results = self.model.predict(list(imgs))
-
+            
             if results is None:
                 continue
+
 
             for path, img, res in zip(paths, imgs, results):
                 keyframe_id = Path(path).stem
@@ -225,7 +223,25 @@ class ExtractOCRPipeline:
                         vis_path.parent.mkdir(parents=True, exist_ok=True)
                         res.save_to_img(str(vis_path))
 
-                texts = self._recognize(img, boxes, paddle_texts)
+                if self.engine == "paddle_vietocr":
+                    texts = self._recognize(img, boxes, paddle_texts)
+
+                elif self.engine == "qwen": 
+                    if len(boxes) > 0: 
+                        pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                        texts = extract_text_lines(
+                            self.qwen_model,
+                            self.qwen_processor,
+                            pil_img,
+                            max_new_tokens=int(self.qwen_cfg.get("max_new_tokens", 512)),
+                            prompt=self.qwen_cfg.get("prompt"),
+                            logger=self.logger,
+                        )
+                        boxes = [[0.0, 0.0, 0.0, 0.0] for _ in texts]
+                else:
+                    self.logger.info("Skip frame id %s", keyframe_id)
+                    continue
+
                 data[keyframe_id] = [boxes, texts]
 
         output_file.parent.mkdir(parents=True, exist_ok=True)

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from src.pipeline.extract_ocr import ExtractOCRPipeline
+from src.ocr_extraction.pipeline import ExtractOCRPipeline
 from src.utils.logger import setup_logger
 
 
