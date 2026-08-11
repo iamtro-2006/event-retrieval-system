@@ -83,9 +83,12 @@ class ExtractOCRPipeline:
 
             try:
                 self.qwen_model, self.qwen_processor = load_qwen_model(
-                    model_id=qwen_cfg.get("model_id", "Qwen/Qwen3-VL-4B-Instruct"),
-                    device=qwen_cfg.get("device", "cuda"),
-                    dtype=qwen_cfg.get("dtype", "bfloat16"),
+                    repo_id=qwen_cfg.get("repo_id", "mradermacher/Qwen3-VL-4B-Instruct-Uncensored-GGUF"),
+                    filename=qwen_cfg.get("filename"),
+                    mmproj_filename=qwen_cfg.get("mmproj_filename"),
+                    local_dir=qwen_cfg.get("local_dir"),
+                    n_ctx=int(qwen_cfg.get("n_ctx", 4096)),
+                    n_gpu_layers=int(qwen_cfg.get("n_gpu_layers", -1)),
                     logger=self.logger,
                 )
             except Exception as e:
