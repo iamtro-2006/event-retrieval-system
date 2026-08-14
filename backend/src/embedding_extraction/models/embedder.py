@@ -6,47 +6,43 @@ import logging
 
 import cv2
 import numpy as np
-import open_clip
 import torch
 from PIL import Image
 from tqdm import tqdm
 
-from src.utils.device import resolve_device
+from src.embedding_extraction.models.backends.base import LoadedModel
+from src.embedding_extraction.models.registry import load_model as _load_model
 
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
-def load_clip_model(
+def load_embedding_model(
 	model_name: str,
-	pretrained: str,
+	pretrained: str | None,
 	precision: str,
 	device_name: str,
+	backend: str | None = None,
 	logger: logging.Logger | None = None,
-):
-	device = resolve_device(device_name)
+	**extra,
+) -> tuple:
+	"""Load any supported embedding model (open_clip, hf_clip, blip2, beit3, ...).
 
-	if device.type == "cpu" and precision in {"fp16", "amp"}:
-		precision = "fp32"
-
-	if logger:
-		logger.info(
-			"Loading embedding model: %s / %s on %s precision=%s",
-			model_name,
-			pretrained,
-			device,
-			precision,
-		)
-
-	model, _, preprocess = open_clip.create_model_and_transforms(
-		model_name,
+	Kept as `load_clip_model` / returning the same 4-tuple shape for backward
+	compatibility with existing callers - dispatch now goes through
+	`src.embedding_extraction.models.registry.load_model`, which picks the
+	right backend based on `backend` (or a preset keyed by `model_name`).
+	"""
+	loaded: LoadedModel = _load_model(
+		model_name=model_name,
+		backend=backend,
 		pretrained=pretrained,
 		precision=precision,
+		device_name=device_name,
+		logger=logger,
+		**extra,
 	)
-
-	model = model.to(device).eval()
-
-	return model, preprocess, device, precision
+	return loaded.model, loaded.preprocess, loaded.device, loaded.precision
 
 
 def list_image_paths(image_dir: Path) -> list[Path]:

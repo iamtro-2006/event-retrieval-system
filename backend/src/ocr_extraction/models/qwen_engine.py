@@ -103,7 +103,7 @@ def load_qwen_model(
             n_gpu_layers,
         )
 
-    chat_handler = Qwen3VLChatHandler(clip_model_path=mmproj_path)
+    chat_handler = Qwen3VLChatHandler(clip_model_path=mmproj_path, verbose=False)
     llm = Llama(
         model_path=model_path,
         chat_handler=chat_handler,

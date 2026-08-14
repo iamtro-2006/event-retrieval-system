@@ -7,23 +7,27 @@ import logging
 import pickle
 
 import numpy as np
-import open_clip
 import torch
 from tqdm import tqdm
 from src.utils.config import FrameLoaderConfig
 from src.embedding_extraction.models.frame_loader import build_frame_loader, iter_frame_batches
-from src.utils.device import resolve_device
+from src.embedding_extraction.models.registry import load_model as _load_model
 
-def load_clip_model(model_name: str, pretrained: str, precision: str, device_name: str, logger: logging.Logger | None = None):
-	device = resolve_device(device_name)
-	if logger:
-		logger.info("Loading embedding model: %s / %s on %s", model_name, pretrained, device)
-	model, _, preprocess = open_clip.create_model_and_transforms(
-		model_name,
+def load_clip_model(model_name: str, pretrained: str | None, precision: str = "fp32", device_name: str = "auto", backend: str | None = None, logger: logging.Logger | None = None, **extra):
+	"""Same dispatch as embedder.py's load_clip_model, kept here too so the
+	video-frame encoding path (encode_video_frames below) can also load any
+	registered backend (open_clip / hf_clip / blip2 / beit3), not just open_clip.
+	"""
+	loaded = _load_model(
+		model_name=model_name,
+		backend=backend,
 		pretrained=pretrained,
+		precision=precision,
+		device_name=device_name,
+		logger=logger,
+		**extra,
 	)
-	model = model.to(device).eval()
-	return model, preprocess, device
+	return loaded.model, loaded.preprocess, loaded.device
 
 def encode_video_frames(
 	model,

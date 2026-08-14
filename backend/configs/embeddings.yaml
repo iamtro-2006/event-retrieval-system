@@ -1,17 +1,64 @@
-input_keyframes_root: data/processed/keyframes_test
-output_embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256_test
+input_keyframes_root: D:/event-retrieval-system/data/keyframes
+output_embeddings_root: D:/event-retrieval-system/data
 
 image:
   extensions: [".jpg", ".jpeg", ".png", ".webp"]
 
-model:
-  name: ViT-L-16-SigLIP-256 
-  pretrained: webli
-  device: auto
-  precision: fp32
-  batch_size: 32
-  normalize: true
-
 save:
   overwrite: false
   extension: ".npy"
+
+# Each entry is one embedding model. `enabled: false` lets you keep a model
+# defined in the config without running it (handy if its deps/checkpoint
+# aren't installed on this machine yet). Every model writes to its own
+# subfolder: <output_embeddings_root>/<key>/<dataset>/<video>/<frame>.npy
+models:
+
+  # ViT-SO400M-16-SigLIP2-384
+  - key: siglip2_so400m_384
+    enabled: true
+    backend: open_clip
+    name: ViT-SO400M-16-SigLIP2-384
+    pretrained: webli          # -> resolves to hf-hub:timm/ViT-SO400M-16-SigLIP2-384
+    device: auto
+    precision: fp32
+    batch_size: 32
+    normalize: true
+
+  # ViT-H-14-378-quickgelu
+  - key: dfn_vit_h14_378
+    enabled: true
+    backend: open_clip
+    name: ViT-H-14-378-quickgelu
+    pretrained: dfn5b          # -> resolves to hf-hub:apple/DFN5B-CLIP-ViT-H-14-378
+    device: auto
+    precision: fp32
+    batch_size: 16
+    normalize: true
+
+  # BLIP2
+  - key: blip2_itm_vitg
+    enabled: true
+    backend: blip2
+    name: BLIP2-ViT-G
+    pretrained: Salesforce/blip2-itm-vit-g
+    device: auto
+    precision: fp32
+    batch_size: 16
+    normalize: true
+    pooling: first            # first (default, matches text[:,0,:] later for retrieval) | none (32x256, best recall but needs late-interaction search) | mean
+
+  # --- BEiT-3 (microsoft/unilm, external repo + checkpoint required) ---
+  - key: beit3_large_itc
+    enabled: false            # flip to true once repo + checkpoint are set up
+    backend: beit3
+    name: BEiT3-Large-Retrieval
+    device: auto
+    precision: fp32
+    batch_size: 16
+    normalize: true
+    beit3:
+      repo_path: D:/event-retrieval-system/backend/external\unilm/beit3        # local clone of microsoft/unilm's beit3 folder
+      model_arch: beit3_large_patch16_384_retrieval
+      checkpoint_path: D:/event-retrieval-system/backend/weights/beit3_large_patch16_384_coco_retrieval.pth
+      input_size: 384

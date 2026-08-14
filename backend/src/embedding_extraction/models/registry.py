@@ -21,13 +21,11 @@ from typing import Any
 from src.embedding_extraction.models.backends.base import LoadedModel
 
 BACKEND_OPEN_CLIP = "open_clip"
-BACKEND_HF_CLIP = "hf_clip"
 BACKEND_BLIP2 = "blip2"
 BACKEND_BEIT3 = "beit3"
 
 _BACKEND_MODULES = {
     BACKEND_OPEN_CLIP: "src.embedding_extraction.models.backends.open_clip",
-    BACKEND_HF_CLIP: "src.embedding_extraction.models.backends.hf_clip",
     BACKEND_BLIP2: "src.embedding_extraction.models.backends.blip2",
     BACKEND_BEIT3: "src.embedding_extraction.models.backends.beit3",
 }
@@ -38,7 +36,6 @@ _BACKEND_MODULES = {
 MODEL_PRESETS: dict[str, dict[str, Any]] = {
     "ViT-SO400M-16-SigLIP2-384": dict(backend=BACKEND_OPEN_CLIP, pretrained="webli"),
     "ViT-H-14-378-quickgelu": dict(backend=BACKEND_OPEN_CLIP, pretrained="dfn5b"),
-    "LongCLIP-L": dict(backend=BACKEND_HF_CLIP, pretrained="creative-graphic-design/LongCLIP-L"),
     "BLIP2-ViT-G": dict(backend=BACKEND_BLIP2, pretrained="Salesforce/blip2-itm-vit-g"),
     "BEiT3-Large-Retrieval": dict(backend=BACKEND_BEIT3, pretrained=None),
 }
