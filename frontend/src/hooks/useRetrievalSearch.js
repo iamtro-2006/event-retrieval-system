@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { searchRetrieval, similaritySearch } from "../api/retrievalAPI";
+import { searchRetrieval, searchFusion, similaritySearch } from "../api/retrievalAPI";
 
 export function useRetrievalSearch() {
   const requestIdRef = useRef(0);
@@ -77,6 +77,67 @@ export function useRetrievalSearch() {
     }
   }
 
+  async function searchWithFusion({
+    query,
+    topK = 20,
+    candidateMultiplier,
+    useSplit = true,
+    useTranslate = true,
+    fusionConfig,
+  }) {
+    const cleanQuery = typeof query === "string" ? query.trim() : "";
+
+    if (!cleanQuery) {
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await searchFusion({
+        query: cleanQuery,
+        topK,
+        candidateMultiplier,
+        useSplit,
+        useTranslate,
+        fusionConfig,
+      });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setResults(data.results ?? []);
+      setLatency(data.latencyMs ?? null);
+      setSubQueries([]);
+      setCount(data.count ?? 0);
+      setLastQuery(data.query ?? cleanQuery);
+      setSearchMode("fusion");
+      setDurationLimit(data.durationLimit ?? -1);
+    } catch (err) {
+      if (err.name === "AbortError" || err.name === "StaleSearchError") {
+        return;
+      }
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setResults([]);
+      setLatency(null);
+      setSubQueries([]);
+      setCount(0);
+      setError(err.message || "Fusion search failed");
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
+    }
+  }
+
   async function searchSimilar({
     videoId,
     frameId,
@@ -147,6 +208,7 @@ export function useRetrievalSearch() {
     searchMode,
     durationLimit,
     search,
+    searchWithFusion,
     searchSimilar,
     reset,
   };

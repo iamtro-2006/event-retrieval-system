@@ -60,6 +60,19 @@ export async function getBackendConfig() {
   return response.json();
 }
 
+export async function getAvailableModels() {
+  const response = await fetch(apiUrl("/api/search/models"), {
+    headers: NGROK_HEADER,
+  });
+
+  if (!response.ok) {
+    throw new Error("Cannot load available models");
+  }
+
+  const data = await response.json();
+  return Array.isArray(data.models) ? data.models : [];
+}
+
 export async function searchRetrieval({
   query,
   topK = 20,
@@ -179,6 +192,131 @@ function createStaleSearchError(requestId) {
   const error = new Error(`Stale search ignored: ${requestId}`);
   error.name = "StaleSearchError";
   return error;
+}
+
+export async function searchFusion({
+  query,
+  topK = 20,
+  candidateMultiplier,
+  useSplit = true,
+  useTranslate = true,
+  fusionConfig,
+}) {
+  if (activeSearchController) {
+    activeSearchController.abort();
+  }
+
+  const controller = new AbortController();
+  activeSearchController = controller;
+
+  const requestId = ++activeSearchRequestId;
+
+  const semanticModels = (fusionConfig?.semanticModels ?? []).map((m) => m.key);
+  const weights = {};
+  for (const m of fusionConfig?.semanticModels ?? []) {
+    weights[m.key] = Number(m.weight ?? 1);
+  }
+  if (fusionConfig?.temporal) {
+    weights.temporal = Number(fusionConfig.temporalWeight ?? 1);
+  }
+  if (fusionConfig?.useOcr) {
+    weights.ocr = Number(fusionConfig.ocrWeight ?? 1);
+  }
+  if (fusionConfig?.useAsr) {
+    weights.asr = Number(fusionConfig.asrWeight ?? 1);
+  }
+
+  const payload = {
+    query,
+    semantic_models: semanticModels,
+    temporal: Boolean(fusionConfig?.temporal),
+    use_ocr: Boolean(fusionConfig?.useOcr),
+    use_asr: Boolean(fusionConfig?.useAsr),
+    top_k: topK,
+    candidate_multiplier: candidateMultiplier,
+    use_split: useSplit,
+    use_translate: useTranslate,
+    duration_limit: fusionConfig?.temporal ? Number(fusionConfig?.durationLimit ?? -1) : -1,
+    weights,
+  };
+
+  const t0 = performance.now();
+  console.log(`[FUSION SEARCH ${requestId}] payload`, payload);
+
+  try {
+    const response = await fetch(apiUrl("/api/search/fusion"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...NGROK_HEADER,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    const t1 = performance.now();
+
+    if (requestId !== activeSearchRequestId) {
+      throw createStaleSearchError(requestId);
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Fusion search request failed");
+    }
+
+    const data = await response.json();
+    const t2 = performance.now();
+
+    if (requestId !== activeSearchRequestId) {
+      throw createStaleSearchError(requestId);
+    }
+
+    const normalizedResults = normalizeResults(data.results ?? []);
+    const t3 = performance.now();
+
+    if (requestId !== activeSearchRequestId) {
+      throw createStaleSearchError(requestId);
+    }
+
+    const backendMs = Number(data.latency_ms ?? 0);
+
+    console.table({
+      requestId,
+      mode: "fusion",
+      backendMs,
+      fetchMs: Number((t1 - t0).toFixed(2)),
+      jsonMs: Number((t2 - t1).toFixed(2)),
+      normalizeMs: Number((t3 - t2).toFixed(2)),
+      apiTotalMs: Number((t3 - t0).toFixed(2)),
+      resultCount: normalizedResults.length,
+    });
+
+    return {
+      query: data.query,
+      originalQuery: data.original_query,
+      translatedQuery: data.translated_query,
+      useTranslate: data.use_translate,
+      useSplit: data.use_split,
+      latencyMs: data.latency_ms ?? null,
+      count: data.count ?? 0,
+      searchMode: "fusion",
+      durationLimit: data.duration_limit ?? -1,
+      results: normalizedResults,
+    };
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.log(`[FUSION SEARCH ${requestId}] aborted`);
+    } else if (error.name === "StaleSearchError") {
+      console.log(`[FUSION SEARCH ${requestId}] stale ignored`);
+    }
+
+    throw error;
+  } finally {
+    if (activeSearchController === controller) {
+      activeSearchController = null;
+    }
+  }
 }
 
 function normalizeResults(results) {

@@ -23,6 +23,7 @@ import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
 import {
   checkBackendHealth,
   getBackendConfig,
+  getAvailableModels,
   getSurroundingFrames,
   similaritySearch,
   rerankResults,
@@ -70,9 +71,21 @@ export default function App() {
 
   // ── UI state ──────────────────────────────────────────
   const [theme, setTheme] = useState("dark");
-  const [model, setModel] = useState("ViT-B-16-quickgelu");
+  const [model, setModel] = useState("siglip2-so400m");
+  const [availableModels, setAvailableModels] = useState([]);
   const [mode, setMode] = useState("text");
   const [durationLimit, setDurationLimit] = useState(-1);
+  const [fusionConfig, setFusionConfig] = useState({
+    semanticModels: [],
+    temporal: false,
+    temporalWeight: 1,
+    durationLimit: -1,
+    useOcr: false,
+    ocrWeight: 1,
+    useAsr: false,
+    asrWeight: 1,
+    hasConfig: false,
+  });
   const [columns, setColumns] = useState(4);
   const [grouped, setGrouped] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -126,6 +139,7 @@ export default function App() {
     loading,
     error,
     search,
+    searchWithFusion,
     reset,
   } = useRetrievalSearch();
 
@@ -158,12 +172,15 @@ export default function App() {
       disabled: !backendReady,
       durationLimit,
       rerankEnabled,
+      availableModels,
+      fusionConfig,
       onModelChange: setModel,
       onModeChange: setMode,
       onDurationLimitChange: setDurationLimit,
       onRerankToggle: setRerankEnabled,
+      onFusionConfigChange: setFusionConfig,
     }),
-    [model, mode, loading, backendReady, durationLimit, rerankEnabled]
+    [model, mode, loading, backendReady, durationLimit, rerankEnabled, availableModels, fusionConfig]
   );
 
   // ── Bootstrap ────────────────────────────────────────
@@ -187,6 +204,16 @@ export default function App() {
 
         if (config.model?.name) {
           setModel(config.model.name);
+        }
+
+        try {
+          const models = await getAvailableModels();
+          if (alive && Array.isArray(models) && models.length > 0) {
+            setAvailableModels(models);
+            setModel((prev) => (models.includes(prev) ? prev : models[0]));
+          }
+        } catch (modelsErr) {
+          console.warn("[bootstrap] getAvailableModels failed:", modelsErr);
         }
 
         setBackendReady(true);
@@ -317,15 +344,31 @@ export default function App() {
       });
 
       try {
-        await search({
-          query: cleanQuery,
-          topK: settings.topK,
-          candidateMultiplier: settings.candidateMultiplier,
-          useSplit: settings.useSplit,
-          useTranslate: settings.useTranslate,
-          searchMode,
-          durationLimit: nextDurationLimit,
-        });
+        if (searchMode === "fusion") {
+          const cfg = (typeof payload === "object" && payload?.fusionConfig) || fusionConfig;
+          if (!cfg?.hasConfig) {
+            pushToast("warning", "Fusion chưa được cấu hình", "Bấm nút cài đặt để chọn model/method trước khi search.");
+            return;
+          }
+          await searchWithFusion({
+            query: cleanQuery,
+            topK: settings.topK,
+            candidateMultiplier: settings.candidateMultiplier,
+            useSplit: settings.useSplit,
+            useTranslate: settings.useTranslate,
+            fusionConfig: cfg,
+          });
+        } else {
+          await search({
+            query: cleanQuery,
+            topK: settings.topK,
+            candidateMultiplier: settings.candidateMultiplier,
+            useSplit: settings.useSplit,
+            useTranslate: settings.useTranslate,
+            searchMode,
+            durationLimit: nextDurationLimit,
+          });
+        }
       } catch (err) {
         if (err?.name === "AbortError" || err?.name === "StaleSearchError") {
           return;
@@ -335,12 +378,12 @@ export default function App() {
         pushToast("warning", "Search failed", getErrorMessage(err));
       }
     },
-    [backendReady, durationLimit, loading, pushToast, resolvedMode, search, settings]
+    [backendReady, durationLimit, fusionConfig, loading, pushToast, resolvedMode, search, searchWithFusion, settings]
   );
 
   // Auto-rerank tối ưu hơn: debounce + chống stale update
   useEffect(() => {
-    if (!rerankEnabled || rawResults.length === 0 || loading || !lastQuery) return;
+    if (!rerankEnabled || mode === "fusion" || rawResults.length === 0 || loading || !lastQuery) return;
 
     const runId = ++rerankRunRef.current;
     let cancelled = false;
@@ -385,6 +428,7 @@ export default function App() {
     loading,
     lastQuery,
     resolvedMode,
+    mode,
     settings.topK,
     pushToast,
     isHeavyDataset,

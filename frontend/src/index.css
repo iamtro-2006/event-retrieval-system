@@ -352,6 +352,7 @@ img {
   height: 40px;
   min-height: 40px;
   max-height: 40px;
+  min-width: 0;
   overflow-y: hidden;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -364,10 +365,13 @@ img {
 
 .search-chat-footer {
   @apply flex shrink-0 items-center gap-1;
+  min-width: 0;
 }
 
 .search-chat-controls {
   @apply flex items-center gap-1;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 /* Expanded state */
@@ -406,6 +410,12 @@ img {
   color: var(--text-secondary);
   outline: none;
   transition: background var(--t-fast), color var(--t-fast);
+  max-width: 128px;
+  min-width: 0;
+  flex-shrink: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .search-select:hover {
@@ -434,6 +444,8 @@ img {
 
 .search-duration-input {
   width: 76px;
+  min-width: 56px;
+  flex-shrink: 1;
   height: 34px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -2093,6 +2105,311 @@ img {
 .modal-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .modal-close-btn:active { transform: scale(0.88); }
 
+/* =============================================
+   FUSION SEARCH MODAL
+   ============================================= */
+.fusion-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 6, 10, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fade-in var(--t-fast) var(--ease-out) both;
+}
+
+.fusion-modal {
+  width: min(92vw, 620px);
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: scale-up var(--t-normal) var(--spring) both;
+}
+
+.fusion-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-surface);
+}
+
+.fusion-modal-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--accent-light);
+}
+
+.fusion-modal-header-text { flex: 1; min-width: 0; }
+
+.fusion-modal-header-text h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.fusion-modal-header-text p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.fusion-modal-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fusion-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card, var(--bg-input));
+  padding: 14px 16px;
+}
+
+.fusion-card-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.fusion-row-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.fusion-method-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--t-fast);
+}
+
+.fusion-row-list > .fusion-method-row:last-child { border-bottom: none; }
+
+.fusion-method-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fusion-method-toggle .switch-control {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.fusion-method-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fusion-method-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.fusion-method-row.is-checked .fusion-method-icon {
+  background: var(--accent-light);
+  color: var(--accent-text);
+}
+
+.fusion-method-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fusion-method-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fusion-method-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fusion-weight-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.fusion-weight-control input {
+  width: 60px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color var(--t-fast);
+}
+
+.fusion-weight-control input:focus { border-color: var(--accent); }
+
+.fusion-duration-field {
+  display: block;
+  margin: 2px 0 9px;
+  padding: 9px 0 0;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.fusion-duration-field span { display: block; margin-bottom: 5px; font-weight: 600; }
+
+.fusion-duration-field input {
+  width: 100%;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0 10px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.fusion-duration-field input:focus { border-color: var(--accent); }
+
+.fusion-empty-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.fusion-empty-hint--warn {
+  color: #f59e0b;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.fusion-total-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.fusion-total-hint strong { color: var(--accent-text); }
+
+.fusion-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-subtle);
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-surface);
+}
+
+.fusion-cancel-btn,
+.fusion-save-btn {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--t-fast), opacity var(--t-fast), transform var(--t-fast) var(--spring);
+}
+
+.fusion-cancel-btn {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.fusion-cancel-btn:hover { color: var(--text-primary); }
+.fusion-cancel-btn:active { transform: scale(0.96); }
+
+.fusion-save-btn {
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px var(--accent-light);
+}
+
+.fusion-save-btn:hover:not(:disabled) { opacity: 0.92; }
+.fusion-save-btn:active:not(:disabled) { transform: scale(0.96); }
+.fusion-save-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.fusion-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fusion-settings-btn.has-config {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+}
+
+.fusion-settings-btn.has-config:hover { opacity: 0.9; }
+
 .surround-loading {
   padding: 24px;
   text-align: center;
@@ -3705,6 +4022,7 @@ img {
   transition: all 0.18s ease;
   white-space: nowrap;
   line-height: 1;
+  flex-shrink: 0;
 }
 .rerank-tag:hover:not(:disabled) {
   border-color: var(--accent-purple, #a78bfa);
@@ -3896,4 +4214,26 @@ img {
   cursor: not-allowed;
 }
 
+/* =============================================
+   SEARCH BAR — responsive shrink for narrow widths
+   Keeps every control on 1 row instead of overflowing the
+   rounded pill (model/mode selects now use real backend model
+   keys, which are longer than the old placeholder names).
+   ============================================= */
+@media (max-width: 640px) {
+  .search-select {
+    max-width: 84px;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .search-duration-input {
+    width: 56px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .rerank-tag span { display: none; }
+  .rerank-tag { padding: 4px; }
+}
 

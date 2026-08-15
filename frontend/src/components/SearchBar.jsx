@@ -1,5 +1,8 @@
-import { Plus, Search, Mic, Zap } from "lucide-react";
+import { Plus, Search, Mic, Zap, Settings2 } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
+import FusionSettingsModal from "./FusionSettingsModal";
+
+const FALLBACK_MODELS = ["siglip2-so400m", "vitH-378-quickgelu"];
 
 export default function SearchBar({
   model,
@@ -8,14 +11,20 @@ export default function SearchBar({
   disabled = false,
   durationLimit = -1,
   rerankEnabled = false,
+  availableModels = [],
+  fusionConfig,
   onModelChange,
   onModeChange,
   onDurationLimitChange,
   onRerankToggle,
+  onFusionConfigChange,
   onSearch,
 }) {
   const [query, setQuery] = useState("");
   const [recording, setRecording] = useState(false);
+  const [fusionModalOpen, setFusionModalOpen] = useState(false);
+
+  const modelOptions = availableModels.length > 0 ? availableModels : FALLBACK_MODELS;
 
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -24,6 +33,7 @@ export default function SearchBar({
   const isTemporal = mode === "temporal";
   const isOcr = mode === "ocr";
   const isAsr = mode === "asr";
+  const isFusion = mode === "fusion";
   const isExpanded = query.includes("\n") || query.length > 80;
 
   const resizeTextarea = useCallback(() => {
@@ -45,17 +55,19 @@ export default function SearchBar({
   }, []);
 
   function resolveSearchMode() {
-    if (mode === "temporal" || mode === "auto" || mode === "ocr" || mode === "asr") return mode;
+    if (mode === "temporal" || mode === "auto" || mode === "ocr" || mode === "asr" || mode === "fusion") return mode;
     return "semantic";
   }
 
   function runSearch(nextQuery) {
     const cleanQuery = String(nextQuery || "").trim();
     if (!cleanQuery || loading || disabled) return;
+    const searchMode = resolveSearchMode();
     onSearch({
       query: cleanQuery,
-      searchMode: resolveSearchMode(),
-      durationLimit: resolveSearchMode() === "temporal" ? Number(durationLimit) : -1,
+      searchMode,
+      durationLimit: searchMode === "temporal" ? Number(durationLimit) : -1,
+      fusionConfig: searchMode === "fusion" ? fusionConfig : null,
     });
   }
 
@@ -148,7 +160,9 @@ export default function SearchBar({
                   ? "Nhập chữ xuất hiện trên màn hình (biển hiệu, phụ đề...)..."
                   : isAsr
                     ? "Nhập nội dung lời thoại/giọng nói cần tìm..."
-                    : "Nhập truy vấn retrieval..."
+                    : isFusion
+                      ? "Nhập truy vấn — kết quả sẽ được fusion theo cấu hình đã lưu..."
+                      : "Nhập truy vấn retrieval..."
           }
           onChange={(e) => {
             committedTranscriptRef.current = e.target.value;
@@ -163,12 +177,13 @@ export default function SearchBar({
           </button>
 
           <div className="search-chat-controls">
-            <select className="search-select" value={model} onChange={(e) => onModelChange(e.target.value)}>
-              <option value="OpenCLIP">OpenCLIP</option>
-              <option value="SigLIP">SigLIP</option>
-              <option value="DINOv3">DINOv3</option>
-              <option value="Hybrid">Hybrid</option>
-            </select>
+            {!isFusion && (
+              <select className="search-select" value={model} onChange={(e) => onModelChange(e.target.value)}>
+                {modelOptions.map((modelKey) => (
+                  <option key={modelKey} value={modelKey}>{modelKey}</option>
+                ))}
+              </select>
+            )}
 
             <select className="search-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
               <option value="text">Semantic</option>
@@ -176,6 +191,7 @@ export default function SearchBar({
               <option value="auto">Auto</option>
               <option value="ocr">OCR (on-screen text)</option>
               <option value="asr">ASR (speech)</option>
+              <option value="fusion">Fusion</option>
             </select>
 
             {isTemporal && (
@@ -191,21 +207,36 @@ export default function SearchBar({
             )}
 
             {/* ── Rerank toggle tag ───────────────────────────────────── */}
-            <button
-              type="button"
-              className={["rerank-tag", rerankEnabled ? "rerank-tag--active" : ""].filter(Boolean).join(" ")}
-              aria-label={rerankEnabled ? "Tắt Auto-Rerank" : "Bật Auto-Rerank (VLM)"}
-              title={
-                rerankEnabled
-                  ? "Auto-Rerank đang BẬT — sau khi search, VLM sẽ tự động chấm lại kết quả"
-                  : "Bật Auto-Rerank — VLM sẽ load ngầm và cập nhật kết quả"
-              }
-              onClick={() => onRerankToggle?.(!rerankEnabled)}
-              disabled={disabled}
-            >
-              <Zap size={13} />
-              <span>Rerank</span>
-            </button>
+            {!isFusion && (
+              <button
+                type="button"
+                className={["rerank-tag", rerankEnabled ? "rerank-tag--active" : ""].filter(Boolean).join(" ")}
+                aria-label={rerankEnabled ? "Tắt Auto-Rerank" : "Bật Auto-Rerank (VLM)"}
+                title={
+                  rerankEnabled
+                    ? "Auto-Rerank đang BẬT — sau khi search, VLM sẽ tự động chấm lại kết quả"
+                    : "Bật Auto-Rerank — VLM sẽ load ngầm và cập nhật kết quả"
+                }
+                onClick={() => onRerankToggle?.(!rerankEnabled)}
+                disabled={disabled}
+              >
+                <Zap size={13} />
+                <span>Rerank</span>
+              </button>
+            )}
+
+            {isFusion && (
+              <button
+                type="button"
+                className={["search-icon-button", "fusion-settings-btn", fusionConfig?.hasConfig ? "has-config" : ""].filter(Boolean).join(" ")}
+                aria-label="Cấu hình Fusion search"
+                title="Cấu hình model, method và weight cho fusion search"
+                onClick={() => setFusionModalOpen(true)}
+                disabled={disabled}
+              >
+                <Settings2 size={18} />
+              </button>
+            )}
 
             <button
               type="button"
@@ -229,6 +260,14 @@ export default function SearchBar({
           </div>
         </div>
       </div>
+
+      <FusionSettingsModal
+        open={fusionModalOpen}
+        models={modelOptions}
+        value={fusionConfig}
+        onClose={() => setFusionModalOpen(false)}
+        onSave={(next) => onFusionConfigChange?.({ ...next, hasConfig: true })}
+      />
     </form>
   );
 }
