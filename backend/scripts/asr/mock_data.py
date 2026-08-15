@@ -6,6 +6,8 @@ from pathlib import Path
 
 import yaml
 
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+
 
 SUBJECTS = [
     "the reporter",
@@ -71,9 +73,9 @@ FILLERS = [
 
 
 def load_config():
-
-    with open("configs/asr.yaml", "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    config_path = BACKEND_DIR / "configs" / "asr_extraction.yaml"
+    with config_path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 
 def random_sentence() -> str:

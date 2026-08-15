@@ -1,19 +1,19 @@
-keyframes_root: data/processed/keyframes_test
-embeddings_root: data/processed/embeddings_clip_vitl16_siglip_256
-map_keyframes_root: data/processed/map_keyframes
+keyframes_root: D:/event-retrieval-system/data/keyframes
+embeddings_root: D:/event-retrieval-system/data/embeddings/embeddings_siglip2_so400m_384
+map_keyframes_root: D:/event-retrieval-system/data/processed/map_keyframes
 
 index:
-  output_dir: data/database/faiss_hnsw_clip_vitl16_siglip_256
+  output_dir: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384
   index_name: keyframes.faiss
   metadata_name: metadata.csv
   type: hnsw
   metric: cosine
   hnsw_m: 32
-  ef_construction: 200
-  ef_search: 64
+  ef_construction: 512
+  ef_search: 300
 
 model:
-  name: ViT-L-16-SigLIP-256
+  name: ViT-SO400M-16-SigLIP2-384
   pretrained: webli
   device: auto
   precision: amp

@@ -59,6 +59,8 @@ models:
     normalize: true
     beit3:
       repo_path: D:/event-retrieval-system/backend/external\unilm/beit3        # local clone of microsoft/unilm's beit3 folder
-      model_arch: beit3_large_patch16_384_retrieval
+      model_arch: beit3_large_patch16_384_retrieval    # must be a task-suffixed arch (see backends/beit3.py) - no bare "beit3_large_patch16_384"
       checkpoint_path: D:/event-retrieval-system/backend/weights/beit3_large_patch16_384_coco_retrieval.pth
       input_size: 384
+      spm_path: D:/event-retrieval-system/backend/weights/beit3.spm            # optional: enables encode_text() / text search for this model. Omit to keep it image-only.
+      max_text_len: 64

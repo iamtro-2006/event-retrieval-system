@@ -26,7 +26,9 @@ def load_config(path: Path) -> dict[str, object]:
 def main() -> None:
     args = parse_args()
     cfg_path = Path(args.config)
-    
+    if not cfg_path.is_absolute():
+        cfg_path = Path(__file__).resolve().parents[3] / cfg_path
+
     cfg = load_config(cfg_path)
     logger = setup_logger(
         name="ocr_extraction",

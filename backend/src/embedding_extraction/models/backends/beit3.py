@@ -9,7 +9,8 @@ Setup required once, outside this codebase:
   2. pip install -r unilm/beit3/requirements.txt   (needs timm==0.4.12, torchscale)
   3. Download an *-itc retrieval checkpoint, e.g. beit3_large_patch16_384_coco_retrieval.pth
      (image-only embedding extraction does not need the beit3.spm sentencepiece
-     model - that's only required for tokenizing text queries at search time)
+     model - that's only required for tokenizing text queries at search time,
+     see `beit3.spm_path` below)
 
 Then point `configs/embeddings.yaml` at it, e.g.:
 
@@ -22,15 +23,25 @@ Then point `configs/embeddings.yaml` at it, e.g.:
       normalize: true
       beit3:
         repo_path: third_party/unilm/beit3
-        model_arch: beit3_large_patch16_384
+        model_arch: beit3_large_patch16_384_retrieval
         checkpoint_path: checkpoints/beit3_large_patch16_384_coco_retrieval.pth
         input_size: 384
+        spm_path: checkpoints/beit3.spm       # optional - omit for image-only search
+        max_text_len: 64                      # optional, default 64
 
 This backend imports `modeling_finetune` from that repo to register the
 `beit3_*` architectures with timm, builds the model, loads the checkpoint,
-and wraps `BEiT3ForRetrieval.forward(image=..., only_infer=True)` so it
-returns the L2-normalized vision_cls embedding - matching the same
-`.encode_image(batch)` contract every other backend uses.
+and wraps `BEiT3ForRetrieval.forward(only_infer=True)` so it returns the
+L2-normalized `vision_cls`/`language_cls` embeddings - matching the same
+`.encode_image(batch)` / `.encode_text(list[str])` contract every other
+backend uses (see `backends/base.py`).
+
+Note on `model_arch`: every architecture `unilm/beit3/modeling_finetune.py`
+registers with `@register_model` has a task suffix (`_retrieval`,
+`_captioning`, `_nlvr2`, ...) - there is no "bare" `beit3_large_patch16_384`.
+`timm.create_model("beit3_large_patch16_384")` raises "unknown model" for
+that bare name, so `model_arch` must always be one of the suffixed names
+(e.g. `beit3_large_patch16_384_retrieval` for image-text retrieval/ITC).
 """
 
 from __future__ import annotations
@@ -43,13 +54,17 @@ import torch
 import torchvision.transforms as T
 from PIL import Image
 
-from src.embedding_extraction.models.backends.base import EncodeImageWrapper, LoadedModel
+from src.embedding_extraction.models.backends.base import EncoderWrapper, LoadedModel
 from src.utils.device import resolve_device
 
 # BEiT-3 was trained with "inception-style" normalization, not the usual
 # ImageNet mean/std. See unilm/beit3/datasets.py -> build_transform().
 _BEIT3_MEAN = (0.5, 0.5, 0.5)
 _BEIT3_STD = (0.5, 0.5, 0.5)
+
+# Default text sequence length used by unilm/beit3's own finetuning/retrieval
+# scripts (see get_started_for_retrieval.md / datasets.py `_get_text_segment`).
+_DEFAULT_MAX_TEXT_LEN = 64
 
 
 def _import_beit3_modeling(repo_path: str):
@@ -86,6 +101,55 @@ def _build_transform(input_size: int):
     ])
 
 
+def _load_tokenizer(spm_path: str, logger: logging.Logger | None = None):
+    """Load the beit3.spm sentencepiece tokenizer via `transformers`'
+    `XLMRobertaTokenizer` - this is the exact loading convention documented
+    in unilm/beit3/README.md and used by every `datasets.py` builder in that
+    repo (retrieval/captioning/vqa)."""
+    from transformers import XLMRobertaTokenizer
+
+    spm_path = str(Path(spm_path).expanduser().resolve())
+    if not Path(spm_path).exists():
+        raise FileNotFoundError(
+            f"BEiT-3 sentencepiece model not found at '{spm_path}'. Point "
+            "'beit3.spm_path' at the 'beit3.spm' file shipped in the unilm "
+            "repo, or omit it to keep this model image-only."
+        )
+    if logger:
+        logger.info("[beit3] loading tokenizer (beit3.spm) from %s", spm_path)
+    return XLMRobertaTokenizer(spm_path)
+
+
+def _tokenize_batch(
+    tokenizer, texts: list[str], max_text_len: int
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Tokenize `texts` the same way unilm/beit3/datasets.py's
+    `_get_text_segment()` does: `[bos] + ids[:max_len-2] + [eos]`, right-padded
+    with `pad_token_id`, with `padding_mask` set at padded positions - the
+    convention `BEiT3ForRetrieval`/the shared `torchscale` encoder expects
+    (same convention the VQA head in the same `modeling_finetune.py` uses).
+    """
+    bos_id = tokenizer.bos_token_id
+    eos_id = tokenizer.eos_token_id
+    pad_id = tokenizer.pad_token_id
+
+    token_ids: list[list[int]] = []
+    for text in texts:
+        ids = tokenizer.encode(str(text or ""), add_special_tokens=False)
+        ids = ids[: max_text_len - 2]
+        ids = [bos_id, *ids, eos_id]
+        token_ids.append(ids)
+
+    max_len = max((len(ids) for ids in token_ids), default=0)
+    padded = torch.full((len(token_ids), max_len), pad_id, dtype=torch.long)
+    padding_mask = torch.ones((len(token_ids), max_len), dtype=torch.long)  # 1 = padded
+    for row, ids in enumerate(token_ids):
+        padded[row, : len(ids)] = torch.tensor(ids, dtype=torch.long)
+        padding_mask[row, : len(ids)] = 0  # 0 = real token
+
+    return padded, padding_mask
+
+
 def load(
     model_name: str,
     pretrained: str | None = None,  # unused, kept for interface parity
@@ -99,9 +163,13 @@ def load(
 
     beit3_cfg = beit3 or {}
     repo_path = beit3_cfg.get("repo_path")
-    model_arch = beit3_cfg.get("model_arch", "beit3_large_patch16_384")
+    # NOTE: must be one of the task-suffixed arches registered by
+    # modeling_finetune.py (e.g. "*_retrieval") - see module docstring.
+    model_arch = beit3_cfg.get("model_arch", "beit3_large_patch16_384_retrieval")
     checkpoint_path = beit3_cfg.get("checkpoint_path")
     input_size = int(beit3_cfg.get("input_size", 384))
+    spm_path = beit3_cfg.get("spm_path")
+    max_text_len = int(beit3_cfg.get("max_text_len", _DEFAULT_MAX_TEXT_LEN))
 
     if not repo_path or not checkpoint_path:
         raise ValueError(
@@ -152,10 +220,51 @@ def load(
 
     embedding_dim = getattr(getattr(model, "vision_head", None), "out_features", None)
 
+    # Text tower: optional, only wired up when `beit3.spm_path` is given in
+    # the model config - a checkpoint can still be used image-only (reverse
+    # image / temporal-continuation search) without it.
+    encode_text_fn = None
+    supports_text = False
+    if spm_path:
+        try:
+            tokenizer = _load_tokenizer(spm_path, logger=logger)
+
+            @torch.inference_mode()
+            def _encode_text(texts: list[str]) -> torch.Tensor:
+                token_ids, padding_mask = _tokenize_batch(tokenizer, list(texts), max_text_len)
+                token_ids = token_ids.to(device, non_blocking=True)
+                padding_mask = padding_mask.to(device, non_blocking=True)
+                # BEiT3ForRetrieval.forward(image=None, text_description=...,
+                # only_infer=True) -> (vision_cls, language_cls); vision_cls
+                # is None here since we only pass text.
+                _, language_cls = model(
+                    image=None,
+                    text_description=token_ids,
+                    padding_mask=padding_mask,
+                    only_infer=True,
+                )
+                return language_cls  # already L2-normalized inside BEiT3ForRetrieval
+
+            encode_text_fn = _encode_text
+            supports_text = True
+        except Exception as exc:
+            if logger:
+                logger.warning(
+                    "[beit3] text tower disabled (spm_path='%s'): %s: %s - "
+                    "this model will only support image-based search.",
+                    spm_path, type(exc).__name__, exc,
+                )
+    elif logger:
+        logger.info(
+            "[beit3] no 'beit3.spm_path' configured - text search disabled "
+            "for this model (image-only: reverse image / temporal continuation)."
+        )
+
     return LoadedModel(
-        model=EncodeImageWrapper(_encode_image),
+        model=EncoderWrapper(_encode_image, encode_text_fn, backend_label="beit3"),
         preprocess=preprocess,
         device=device,
         precision=precision,
         embedding_dim=embedding_dim,
+        supports_text=supports_text,
     )

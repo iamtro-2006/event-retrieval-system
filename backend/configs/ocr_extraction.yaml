@@ -9,7 +9,7 @@ elasticsearch:
 
 # Root folder of per-video OCR json files: <root>/<dataset>/<video_id>.json
 dataset:
-  root: "../data/ocr"
+  root: "data/processed/ocr"
 
 # =========================================================
 # Mock data generation (used by scripts/ocr/mock_data.py)

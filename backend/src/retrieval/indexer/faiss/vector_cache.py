@@ -101,16 +101,27 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    # File is expected at backend/src/pipelines/build_vector_cache.py
-    backend_dir = Path(__file__).resolve().parents[2]
+    backend_dir = Path(__file__).resolve().parents[4]
 
     config_path = Path(args.config)
     if not config_path.is_absolute():
         config_path = backend_dir / config_path
 
     cfg = load_yaml(config_path)
-    faiss_cfg = cfg.get("faiss", {})
-    model_cfg = cfg.get("model", {})
+    if "semantic" in cfg and isinstance(cfg["semantic"], dict):
+        models = [m for m in cfg["semantic"].get("models", []) if m.get("enabled", True)]
+        if not models:
+            raise ValueError("No enabled semantic models found in app config.")
+        selected = models[0]
+        faiss_cfg = {
+            "index_path": selected["index_path"],
+            "vector_cache_path": selected.get("vector_cache_path"),
+            "vector_cache_dtype": selected.get("vector_cache_dtype", "float32"),
+        }
+        model_cfg = {"normalize": selected.get("normalize", True)}
+    else:
+        faiss_cfg = cfg.get("faiss", {})
+        model_cfg = cfg.get("model", {})
 
     index_path = resolve_backend_path(backend_dir, faiss_cfg["index_path"])
 

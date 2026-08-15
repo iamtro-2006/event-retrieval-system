@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
             "ocr_test/ via --config so it never touches the real ocr/ folder)."
         )
     )
-    parser.add_argument("--config", default="configs/ocr_extraction.test.yaml", help="Path to ocr config YAML.")
+    parser.add_argument("--config", default="configs/ocr_extraction.yaml", help="Path to ocr config YAML.")
     parser.add_argument("--dataset", default="L21", help="Dataset folder name, e.g. L21.")
     parser.add_argument("--video", default="L21_V001", help="Video folder name, e.g. L21_V001.")
     return parser.parse_args()
@@ -31,7 +31,10 @@ def load_config(path: Path) -> dict[str, object]:
 
 def main() -> None:
     args = parse_args()
-    cfg = load_config(Path(args.config))
+    cfg_path = Path(args.config)
+    if not cfg_path.is_absolute():
+        cfg_path = Path(__file__).resolve().parents[3] / cfg_path
+    cfg = load_config(cfg_path)
 
     logger = setup_logger(
         name="ocr_bench",
@@ -74,7 +77,7 @@ def main() -> None:
         print(
             "\nNote: 0 frames processed -- either the folder was empty, or "
             "output_file already existed AND skip_existing=true in your config "
-            "(the .test.yaml sets skip_existing=false by default)."
+            "(set extraction.skip_existing=false in your config to force a rerun)."
         )
 
 

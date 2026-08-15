@@ -154,8 +154,21 @@ def multi_query_search(
     Pure search-algorithm entry point: `embeddings` must already be encoded
     (by `SemanticIndex.encode_texts`) and aligned 1:1 with `queries` — this
     function never calls a model itself.
+
+    IMPORTANT: `queries` must already be deduplicated/cleaned (e.g. via
+    `clean_queries()`) by the caller, in the SAME order used to compute
+    `embeddings`. This function deliberately does NOT call `clean_queries()`
+    again here: doing so previously shrank `queries` while `embeddings`
+    (and the `scores`/`indices` derived from it) still had one row per
+    ORIGINAL query, breaking the 1:1 alignment `aggregate_multi_query()`
+    depends on (`np.repeat(np.arange(len(queries)), ...)` sized for the
+    shorter deduped list, boolean-indexed against arrays sized for the
+    longer raw one -> `IndexError`). See
+    `tests_manual/test_multi_query_dedupe.py` for a repro. Every current
+    caller (`SearchPipeline.multi_query_search()`/`.search()`,
+    `build_temporal_candidates()`) already dedupes before encoding, so this
+    is a no-op for them either way.
     """
-    queries = clean_queries(queries)
     if not queries:
         return pd.DataFrame()
     candidate_k = max(int(candidate_k or top_k), int(top_k))
@@ -190,13 +203,17 @@ def image_similarity_search(
 
 
 class SearchPipeline:
-    """Semantic (text/image -> keyframe) search trên một `ClipFaissIndex`.
+    """Semantic (text/image -> keyframe) search trên một hoặc nhiều `FaissIndex`.
 
     Entrypoint duy nhất của `semantic_search/` — build qua
-    `factory.build_semantic_search_pipeline(index)`. Mọi "model call" (encode)
-    đi qua `self.index`; mọi thuật toán FAISS + ranking nằm ở các hàm thuần
-    phía trên trong file này, class này chỉ điều phối 2 bước đó — cùng hình
-    dạng với `ocr_search.pipeline.search.SearchPipeline` /
+    `factory.build_semantic_search_pipeline(index)`, với `index` là 1
+    `FaissIndex` đơn (tương thích ngược) HOẶC 1 `IndexManager` (nhiều
+    model — mỗi method ở đây nhận thêm `model_key` optional để chọn model
+    nào search; bỏ trống thì dùng `IndexManager.default_model_key`). Mọi
+    "model call" (encode) đi qua `FaissIndex` đã resolve; mọi thuật toán
+    FAISS + ranking nằm ở các hàm thuần phía trên trong file này, class này
+    chỉ điều phối 2 bước đó — cùng hình dạng với
+    `ocr_search.pipeline.search.SearchPipeline` /
     `asr_search.pipeline.search.SearchPipeline` để `Orchestrator` gọi thống
     nhất qua `self.semantic_search.search(...)`.
     """
@@ -204,31 +221,65 @@ class SearchPipeline:
     def __init__(self, index) -> None:
         self.index = index
 
+    def _resolve(self, model_key: str | None = None):
+        """Trả về `FaissIndex` thật sự sẽ dùng cho lần search này."""
+        get = getattr(self.index, "get", None)
+        return get(model_key) if callable(get) else self.index
+
     def multi_query_search(
         self,
         queries: list[str],
         top_k: int = 10,
         candidate_k: int | None = None,
         query_embeddings: np.ndarray | None = None,
+        model_key: str | None = None,
     ) -> pd.DataFrame:
-        embeddings = query_embeddings if query_embeddings is not None else self.index.encode_texts(queries)
-        return multi_query_search(
-            self.index.index,
-            self.index.search_lock,
-            self.index.metadata_records,
+        index = self._resolve(model_key)
+        if query_embeddings is not None:
+            # Caller computed these embeddings themselves -> trust they did
+            # so for exactly this `queries` list/order (documented
+            # precondition, see module-level `multi_query_search()`
+            # docstring); don't re-clean underneath them.
+            embeddings = query_embeddings
+        else:
+            # We own the encode step here -> dedupe FIRST so `queries` and
+            # the embeddings we compute stay 1:1 aligned (see
+            # tests_manual/test_multi_query_dedupe.py for what goes wrong
+            # if a duplicate-containing list reaches encode_texts() first).
+            queries = clean_queries(queries)
+            embeddings = index.encode_texts(queries) if queries else np.empty((0, 0), dtype=np.float32)
+        df = multi_query_search(
+            index.index,
+            index.search_lock,
+            index.metadata_records,
             queries,
             embeddings,
             top_k,
             candidate_k,
         )
+        if not df.empty:
+            df["model_key"] = index.model_key
+        return df
 
-    def similarity_search_by_image(self, image_path: str | Path, top_k: int = 20) -> pd.DataFrame:
-        embedding = self.index.encode_image(image_path)
-        return image_similarity_search(
-            self.index.index, self.index.search_lock, self.index.metadata_records, embedding, str(image_path), top_k
+    def similarity_search_by_image(
+        self, image_path: str | Path, top_k: int = 20, model_key: str | None = None
+    ) -> pd.DataFrame:
+        index = self._resolve(model_key)
+        embedding = index.encode_image(image_path)
+        df = image_similarity_search(
+            index.index, index.search_lock, index.metadata_records, embedding, str(image_path), top_k
         )
+        if not df.empty:
+            df["model_key"] = index.model_key
+        return df
 
-    def search(self, events: list[list[str]], top_k: int = 10, candidate_k: int = 500) -> pd.DataFrame:
+    def search(
+        self,
+        events: list[list[str]],
+        top_k: int = 10,
+        candidate_k: int = 500,
+        model_key: str | None = None,
+    ) -> pd.DataFrame:
         """Search theo danh sách event (mỗi event là list sub-query), dùng cho
         `mode="semantic"` của orchestrator.
 
@@ -237,7 +288,11 @@ class SearchPipeline:
                 `Orchestrator.build_query_plan`).
             top_k: Số kết quả trả về.
             candidate_k: Kích thước candidate pool FAISS trước khi aggregate.
+            model_key: Model nào để search (chỉ có ý nghĩa khi pipeline được
+                build trên 1 `IndexManager` nhiều model); bỏ trống = model
+                mặc định.
         """
+        index = self._resolve(model_key)
         queries = clean_queries([query for event in events for query in event])
-        embeddings = self.index.encode_texts(queries)
-        return self.multi_query_search(queries, top_k, candidate_k, embeddings)
+        embeddings = index.encode_texts(queries)
+        return self.multi_query_search(queries, top_k, candidate_k, embeddings, model_key=model_key)

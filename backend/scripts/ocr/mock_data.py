@@ -6,6 +6,8 @@ from pathlib import Path
 
 import yaml
 
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+
 
 VOCABULARY = [
 
@@ -209,9 +211,9 @@ VOCABULARY = [
 
 
 def load_config():
-
-    with open("configs/ocr.yaml", "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    config_path = BACKEND_DIR / "configs" / "ocr_extraction.yaml"
+    with config_path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 
 def random_text():

@@ -18,7 +18,7 @@ def load_ocr_model(
     """Initialize a PaddleOCR (PP-OCR) pipeline instance.
 
     Mirrors the model construction previously done in PaddleOCR/main.py,
-    but reads all parameters from configs/ocr.yaml instead of config.py.
+    but reads all parameters from configs/ocr_extraction.yaml instead of config.py.
 
     NOTE: when extraction.recognizer == "vietocr" (see extract_ocr.py), this
     model is used ONLY as a text-region detector -- res["rec_boxes"] is kept,

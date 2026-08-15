@@ -10,7 +10,7 @@ from src.retrieval.indexer.elasticsearch.asr.indexing_pipeline import IndexPipel
 from src.retrieval.indexer.elasticsearch.asr.repository import ASRRepository
 
 
-def load_asr_config(config_path: str | Path = "configs/asr.yaml") -> dict[str, Any]:
+def load_asr_config(config_path: str | Path = "configs/asr_extraction.yaml") -> dict[str, Any]:
     """Load the ASR configuration YAML file."""
     config_path = Path(config_path)
     with config_path.open("r", encoding="utf-8") as f:
@@ -34,7 +34,7 @@ def build_asr_repository(cfg: dict[str, Any]) -> ASRRepository:
     return ASRRepository(build_elasticsearch_service(cfg))
 
 
-def build_asr_index_pipeline(cfg: dict[str, Any] | None = None, config_path: str | Path = "configs/asr.yaml") -> IndexPipeline:
+def build_asr_index_pipeline(cfg: dict[str, Any] | None = None, config_path: str | Path = "configs/asr_extraction.yaml") -> IndexPipeline:
     """Build a ASR IndexPipeline for offline ingestion jobs."""
     cfg = cfg or load_asr_config(config_path)
     repository = build_asr_repository(cfg)

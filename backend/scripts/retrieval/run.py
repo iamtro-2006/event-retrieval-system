@@ -37,14 +37,32 @@ def main() -> None:
         pipeline.run()
         return
 
-    faiss_cfg = cfg.get("faiss", {})
-    model_cfg = cfg.get("model", {})
     backend_dir = Path(__file__).resolve().parents[2]
-    index_path = backend_dir / Path(faiss_cfg["index_path"]).resolve() if not Path(faiss_cfg["index_path"]).is_absolute() else Path(faiss_cfg["index_path"])
+
+    # `build-index` uses configs/indexing.yaml. `build-vector-cache` may use
+    # either that legacy build config or configs/app.yaml's `semantic.models`
+    # runtime registry.
+    if "semantic" in cfg and isinstance(cfg["semantic"], dict):
+        models = [m for m in cfg["semantic"].get("models", []) if m.get("enabled", True)]
+        if not models:
+            raise ValueError("No enabled semantic models found in app config.")
+        selected = models[0]
+        faiss_cfg = {
+            "index_path": selected["index_path"],
+            "vector_cache_path": selected.get("vector_cache_path"),
+            "vector_cache_dtype": selected.get("vector_cache_dtype", "float32"),
+        }
+        model_cfg = {"normalize": selected.get("normalize", True)}
+    else:
+        faiss_cfg = cfg.get("faiss", {})
+        model_cfg = cfg.get("model", {})
+
+    raw_index_path = Path(str(faiss_cfg["index_path"]).replace("\\", "/"))
+    index_path = raw_index_path if raw_index_path.is_absolute() else backend_dir / raw_index_path
     output_path = (
         Path(args.output)
         if args.output
-        else backend_dir / Path(faiss_cfg.get("vector_cache_path", "data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp16.npy"))
+        else backend_dir / Path(faiss_cfg.get("vector_cache_path") or "data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp16.npy")
     )
     dtype_name = args.dtype or faiss_cfg.get("vector_cache_dtype", "float16")
     dtype = normalize_dtype(dtype_name)

@@ -1,12 +1,11 @@
 elasticsearch:
-  host: "192.168.1.15" 
-  #host: "elastic-search.tku.life"
+  host: "localhost"
   port: 9200
   scheme: "http"
   index: "asr_db"
 
 dataset:
-  root: "D:/event-retrieval-system/data/processed/asr"
+  root: "data/processed/asr"
 
 mock:
   datasets:

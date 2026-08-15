@@ -1,25 +1,89 @@
-faiss: # database
-  index_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/keyframes.faiss
-  metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/metadata.csv
-  ef_search: 289 # accuracy-speed tradeoff 
-  threads: 8 
-  vector_cache_mode: memmap
-  vector_cache_dtype: float32
-  vector_cache_path: D:/event-retrieval-system/data/database/faiss_hnsw_clip_vitl16_siglip_256/vectors_fp32.npy
-  allow_npy_fallback: false
+# Runtime config for the API (`src.api.main` -> `src.retrieval.system.build_system`).
+# Keep this file as the single source of truth for online search.
 
-model: # model 
-  name: ViT-L-16-SigLIP-256
-  pretrained: webli
-  device: auto
-  precision: amp
-  normalize: true
-  compile: false
+semantic:
+  default_model_key: siglip2-so400m
+  models:
+    - model_key: siglip2-so400m
+      enabled: true
+      model_name: siglip2-so400m
+      index_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/keyframes.faiss
+      metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/metadata.csv
+      device: auto
+      precision: amp
+      normalize: true
+      ef_search: 399
+      faiss_threads: 8
+      vector_cache_mode: memmap
+      vector_cache_dtype: float32
+      vector_cache_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/vectors_fp32.npy
+      allow_npy_fallback: false
+
+    - model_key: vitH-378-quickgelu
+      enabled: true
+      model_name: vitH-378-quickgelu
+      index_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/keyframes.faiss
+      metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/metadata.csv
+      device: auto
+      precision: amp
+      normalize: true
+      ef_search: 399
+      faiss_threads: 8
+      vector_cache_mode: memmap
+      vector_cache_dtype: float32
+      vector_cache_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/vectors_fp32.npy
+      allow_npy_fallback: false
+
+    - model_key: BLIP2
+      enabled: false
+      model_name: BLIP2
+      index_path: data/database/embedding_blip2_itm_vitg/keyframes.faiss
+      metadata_path: data/database/embedding_blip2_itm_vitg/metadata.csv
+      device: auto
+      precision: fp32
+      normalize: true
+      ef_search: 399
+      faiss_threads: 8
+      vector_cache_mode: memmap
+      vector_cache_dtype: float32
+      vector_cache_path: data/database/embedding_blip2_itm_vitg/vectors_fp32.npy
+      allow_npy_fallback: false
+      model_extra:
+        pooling: first
+
+    - model_key: BEiT-3
+      enabled: false
+      model_name: BEiT-3
+      index_path: data/database/embedding_beit3_large_itc/keyframes.faiss
+      metadata_path: data/database/embedding_beit3_large_itc/metadata.csv
+      device: auto
+      precision: fp32
+      normalize: true
+      ef_search: 399
+      faiss_threads: 8
+      vector_cache_mode: memmap
+      vector_cache_dtype: float32
+      vector_cache_path: data/database/embedding_beit3_large_itc/vectors_fp32.npy
+      allow_npy_fallback: false
+      model_extra:
+        beit3:
+          repo_path: external/unilm/beit3
+          model_arch: beit3_large_patch16_384_retrieval
+          checkpoint_path: weights/beit3_large_patch16_384_coco_retrieval.pth
+          input_size: 384
+          spm_path: weights/beit3.spm
+          max_text_len: 64
+
+ocr:
+  config_path: configs/ocr_extraction.yaml
+
+asr:
+  config_path: configs/asr_extraction.yaml
 
 paths:
-  keyframes_root: D:/event-retrieval-system/data/keyframes
-  videos_root: D:/event-retrieval-system/data/videos
-  map_keyframe_path: D:/event-retrieval-system/data/map_keyframes
+  keyframes_root: data/keyframes
+  videos_root: data/videos
+  map_keyframe_path: data/map_keyframes
 
 search:
   candidate_multiplier: 3
@@ -30,7 +94,7 @@ ui:
   surrounding_radius: 5
   max_surrounding_radius: 10
 
-translate_agent: envit5  # "envit5" (local GPU model, fastest) or "llm" (remote API via CKEY.VN, more personalized)
+translate_agent: envit5
 
 translate:
   enabled_default: true
@@ -38,23 +102,23 @@ translate:
   target: en
 
   envit5:
-    model_name: VietAI/envit5-translation  # overridable via ENVIT5_MODEL_NAME env var
-    device: auto                            # overridable via ENVIT5_DEVICE env var ("cpu" / "cuda" / "auto")
-    max_length: 512                         # overridable via ENVIT5_MAX_LENGTH env var
-    num_beams: 1                            # overridable via ENVIT5_NUM_BEAMS env var; 1 = greedy (fastest), 4 = old default
-    dtype: auto                             # overridable via ENVIT5_DTYPE env var ("auto"/"fp16"/"bf16"/"fp32"); auto = fp16/bf16 on GPU
-    max_new_tokens: 96                      # overridable via ENVIT5_MAX_NEW_TOKENS; ceiling on OUTPUT length only (search queries are short) — separate from max_length above, which caps input truncation
+    model_name: VietAI/envit5-translation
+    device: auto
+    max_length: 512
+    num_beams: 1
+    dtype: auto
+    max_new_tokens: 96
 
   llm:
-    api_key: null                           # overridable via LLM_TRANSLATE_API_KEY or CKEY_API_KEY env var — DO NOT commit a real key here, use the env var
-    base_url: https://api.xah.io/v1         # CKEY.VN OpenAI-compatible endpoint — overridable via LLM_TRANSLATE_BASE_URL
-    model: deepseek-v4-flash                # overridable via LLM_TRANSLATE_MODEL; fast/cheap model recommended for short query translation (alt: deepseek-v4-flash)
-    timeout: 15                             # seconds per request
-    max_workers: 8                          # concurrent HTTP requests for translate_batch() — the API-backend equivalent of GPU batching
-    temperature: 0.2                        # deterministic output for search queries
-    max_output_tokens: 256                  # ceiling on OUTPUT length only (search queries are short) — separate from max_input_tokens below, which caps input truncation  
-    persona: "Dịch ngắn gọn, kiểu keyword."  # free-text block injected into the system prompt for personalization, e.g. a domain glossary or tone instruction
-    cache_size: 2048                        # in-process LRU cache size (avoids re-paying for repeated identical queries)
+    api_key: null
+    base_url: https://api.xah.io/v1
+    model: deepseek-v4-flash
+    timeout: 15
+    max_workers: 8
+    temperature: 0.2
+    max_output_tokens: 256
+    persona: "Dich ngan gon, kieu keyword."
+    cache_size: 2048
 
 speech:
   model_size: base
@@ -62,5 +126,5 @@ speech:
   compute_type: int8
   lazy_load: true
 
-debug: 
-  profile: False # default: False
+debug:
+  profile: false

@@ -40,9 +40,9 @@ import logging
 
 import torch
 from PIL import Image
-from transformers import AutoProcessor, Blip2VisionModelWithProjection
+from transformers import AutoProcessor, Blip2TextModelWithProjection, Blip2VisionModelWithProjection
 
-from src.embedding_extraction.models.backends.base import EncodeImageWrapper, LoadedModel
+from src.embedding_extraction.models.backends.base import EncoderWrapper, LoadedModel
 from src.utils.device import resolve_device
 
 
@@ -75,33 +75,61 @@ def load(
         pretrained, dtype=dtype
     ).to(device).eval()
 
+    # Text tower: same ITC checkpoint's Q-Former text side, projected into the
+    # same contrastive space as the vision projection above (mirrors LAVIS'
+    # `extract_features(mode="text").text_embeds[:, 0, :]` [CLS]-token
+    # convention referenced in the module docstring). Needed so this backend
+    # can serve `encode_text()` for search, not just offline image extraction.
+    try:
+        text_model = Blip2TextModelWithProjection.from_pretrained(
+            pretrained, dtype=dtype
+        ).to(device).eval()
+    except Exception as exc:  # pragma: no cover - checkpoint without a text tower
+        text_model = None
+        if logger:
+            logger.warning(
+                "[blip2] could not load text tower from '%s' (%s: %s); "
+                "encode_text() will be unavailable for this model.",
+                pretrained, type(exc).__name__, exc,
+            )
+
     processor = AutoProcessor.from_pretrained(pretrained)
 
     def preprocess(image: Image.Image) -> torch.Tensor:
         return processor(images=image, return_tensors="pt")["pixel_values"][0]
 
-    @torch.inference_mode()
-    def _encode_image(batch: torch.Tensor) -> torch.Tensor:
-        batch = batch.to(dtype)
-        out = vision_model(pixel_values=batch)
-        # out.image_embeds: (batch, num_query_tokens, proj_dim), each of the
-        # num_query_tokens vectors already L2-normalized per-token by the
-        # model itself (Blip2VisionModelWithProjection.forward() calls
-        # F.normalize(..., dim=-1) before returning) - this is the same
-        # space LAVIS uses for its max-similarity ITC scoring.
-        embeds = out.image_embeds
+    def _pool(embeds: torch.Tensor) -> torch.Tensor:
+        # embeds: (batch, num_query_tokens, proj_dim), each token already
+        # L2-normalized by the HF projection head. See pooling docstring above.
         if pooling == "first":
             return embeds[:, 0, :]
         if pooling == "none":
             return embeds
         return embeds.mean(dim=1)
 
+    @torch.inference_mode()
+    def _encode_image(batch: torch.Tensor) -> torch.Tensor:
+        batch = batch.to(dtype)
+        out = vision_model(pixel_values=batch)
+        return _pool(out.image_embeds)
+
+    _encode_text_fn = None
+    if text_model is not None:
+        @torch.inference_mode()
+        def _encode_text(texts: list[str]) -> torch.Tensor:
+            inputs = processor(text=list(texts), padding=True, return_tensors="pt").to(device)
+            out = text_model(input_ids=inputs["input_ids"], attention_mask=inputs.get("attention_mask"))
+            return _pool(out.text_embeds)
+
+        _encode_text_fn = _encode_text
+
     embedding_dim = getattr(vision_model.config, "image_text_hidden_size", None)
 
     return LoadedModel(
-        model=EncodeImageWrapper(_encode_image),
+        model=EncoderWrapper(_encode_image, _encode_text_fn, backend_label="blip2"),
         preprocess=preprocess,
         device=device,
         precision=precision,
         embedding_dim=embedding_dim,
+        supports_text=_encode_text_fn is not None,
     )

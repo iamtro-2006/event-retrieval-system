@@ -20,7 +20,9 @@ from typing import Literal, TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from src.retrieval.index.clip_faiss_index import METADATA_DISPLAY_COLUMNS, ClipFaissIndex
+from src.retrieval.index.faiss_index import METADATA_DISPLAY_COLUMNS, FaissIndex
+from src.retrieval.index.index_manager import IndexManager
+from src.retrieval.retriever.common.scoring import reciprocal_rank_fusion
 from src.retrieval.retriever.semantic_search.pipeline.search import clean_queries
 
 if TYPE_CHECKING:
@@ -96,20 +98,23 @@ class Orchestrator:
 
     def __init__(
         self,
-        index: ClipFaissIndex,
+        index: "FaissIndex | IndexManager",
         semantic_search: "SemanticSearchPipeline",
         temporal_search: "TemporalSearchPipeline",
         ocr_search_pipeline: "OCRSearchPipeline | None" = None,
         asr_search_pipeline: "ASRSearchPipeline | None" = None,
     ) -> None:
-        """Compose an orchestrator from an already-built `ClipFaissIndex` +
+        """Compose an orchestrator from an already-built `FaissIndex`/`IndexManager` +
         4 `SearchPipeline` instances (build all via their respective
         `retrieval.index.factory` / `retrieval.retriever.{semantic,temporal,ocr,asr}_search.factory`
         modules — all 4 factories have the same `build_*_search_pipeline(...)` shape).
 
         Args:
-            index: Loaded FAISS + OpenCLIP index, used to resolve FAISS
-                metadata rows when enriching OCR/ASR hits.
+            index: Loaded FAISS index — either a single `FaissIndex` (1
+                model) or an `IndexManager` (many models); used to resolve
+                FAISS metadata rows when enriching OCR/ASR hits (any one
+                model's metadata works, since metadata is model-agnostic —
+                the `IndexManager.default_model_key` one is used).
             semantic_search: Semantic `SearchPipeline` built on `index`, used
                 for `mode="semantic"`. Called uniformly via `.search(...)`.
             temporal_search: Temporal `SearchPipeline` built on `index`, used
@@ -119,7 +124,10 @@ class Orchestrator:
             asr_search_pipeline: Optional ASR `SearchPipeline` (Elasticsearch-backed).
                 When provided, enables `mode="asr"`.
         """
-        self.index = index
+        self.index_manager = index if isinstance(index, IndexManager) else None
+        # `self.index` always resolves to a concrete FaissIndex, used for
+        # metadata lookups (OCR/ASR enrichment) which are model-agnostic.
+        self.index: FaissIndex = index.get() if isinstance(index, IndexManager) else index
         self.semantic_search = semantic_search
         self.temporal_search = temporal_search
         self.ocr_search_pipeline = ocr_search_pipeline
@@ -350,8 +358,16 @@ class Orchestrator:
         top_k: int = 10,
         candidate_multiplier: int = 5,
         duration_limit: float = -1,
+        model_key: str | None = None,
     ) -> tuple[pd.DataFrame, QueryPlan]:
-        """Execute a search based on the specified mode and query plan."""
+        """Execute a search based on the specified mode and query plan.
+
+        Args:
+            model_key: Chỉ áp dụng cho `mode` "semantic"/"temporal"/"auto" —
+                chọn model nào để search (khi `self.index_manager` có nhiều
+                model). Bỏ trống = model mặc định. Không ảnh hưởng OCR/ASR
+                (không dùng embedding model).
+        """
         plan = self.build_query_plan(query, mode, use_split)
         if not plan.events:
             return pd.DataFrame(), plan
@@ -364,9 +380,12 @@ class Orchestrator:
             effective_mode = mode
 
         if effective_mode == "semantic":
-            return self.semantic_search.search(plan.events, top_k, candidate_k), plan
+            return self.semantic_search.search(plan.events, top_k, candidate_k, model_key=model_key), plan
         if effective_mode == "temporal":
-            return self.temporal_search.search(plan.events, top_k, candidate_k, duration_limit), plan
+            return (
+                self.temporal_search.search(plan.events, top_k, candidate_k, duration_limit, model_key=model_key),
+                plan,
+            )
         if effective_mode == "ocr":
             # OCR search operates on the raw query text (Elasticsearch does its own
             # tokenization/fuzzy matching), not the CLIP-oriented temporal/semantic split.
@@ -377,3 +396,124 @@ class Orchestrator:
             return self.asr_search(plan.query, top_k), plan
 
         raise ValueError(f"Unsupported search mode: {effective_mode}")
+
+    def available_semantic_models(self) -> list[str]:
+        """Model keys usable for the `advanced_search` semantic checklist —
+        only ones actually loaded (and, for text queries, that support
+        `encode_text`) show up here."""
+        if self.index_manager is None:
+            return [self.index.model_key]
+        return self.index_manager.text_search_keys()
+
+    def advanced_search(
+        self,
+        query: str,
+        semantic_models: list[str] | None = None,
+        temporal: bool = False,
+        use_ocr: bool = False,
+        use_asr: bool = False,
+        top_k: int = 10,
+        use_split: bool = True,
+        candidate_multiplier: int = 5,
+        duration_limit: float = -1,
+        weights: dict[str, float] | None = None,
+        rrf_k: int = 60,
+    ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
+        """"Advanced search": chạy đồng thời nhiều method (semantic/temporal/
+        ocr/asr), rồi hợp nhất bằng Reciprocal Rank Fusion — tương ứng UI
+        checklist kiểu:
+
+            # semantic (mỗi model chạy riêng, KHÔNG kết hợp embedding)
+            [x] siglip2-so400m   [ ] vitH-378-quickgelu
+            [x] long-clipL       [ ] BEiT-3   [ ] BLIP2
+            # temporal
+            [x] on/off  (dùng CHUNG danh sách model đã tick ở semantic)
+            # ocr
+            [x]
+            # asr
+            [ ]
+
+        Semantic: mỗi model_key trong `semantic_models` ĐƯỢC TÍCH chạy ĐỘC
+        LẬP (không kết hợp embedding — mỗi model vẫn search 1 mình trong
+        không gian embedding của chính nó), kết quả riêng từng model được
+        trả kèm qua `per_source` để debug/hiển thị.
+
+        Temporal: KHÔNG còn checklist model riêng — chỉ 1 công tắc on/off
+        (`temporal`) dùng chung đúng tập `semantic_models` đã tick. Mỗi model
+        đó build candidate per-event bằng FAISS riêng (thuật toán retrieval
+        không đổi), các candidate được fuse bằng RRF theo (video, keyframe,
+        sub_query) TRƯỚC, rồi DP alignment chạy ĐÚNG 1 LẦN trên candidate
+        pool đã fuse (xem `temporal_search.pipeline.search.SearchPipeline.
+        search_combined`) — thay cho thiết kế cũ (mỗi model tick tự chạy
+        nguyên 1 lượt DP riêng rồi mới RRF kết quả video ở cuối).
+
+        Toàn bộ nguồn (semantic x N model, temporal đã fuse, ocr, asr) sau đó
+        được fuse thêm 1 lần nữa (kết hợp RANK, không kết hợp embedding/score
+        thô) thành 1 danh sách cuối cùng.
+
+        Args:
+            semantic_models: Danh sách model_key dùng cho CẢ semantic search
+                VÀ (nếu `temporal=True`) làm input cho temporal search kết
+                hợp (rỗng/None = không chạy semantic, và tắt luôn temporal
+                dù `temporal=True`, vì không có model nào để chạy).
+            temporal: Bật/tắt temporal search kết hợp trên `semantic_models`.
+            use_ocr/use_asr: Bật/tắt OCR/ASR search.
+            weights: Optional per-source weight dict, key có thể là
+                model_key (áp cho semantic search của model đó), "temporal"
+                (áp cho kết quả temporal đã fuse), "ocr", hoặc "asr". Mặc
+                định 1.0 cho mọi nguồn.
+            rrf_k: Xem `scoring.reciprocal_rank_fusion` — dùng cho cả fuse
+                cấp method cuối cùng lẫn fuse candidate cấp model bên trong
+                `search_combined` (temporal).
+
+        Returns:
+            `(fused_df, per_source)` — `fused_df` là kết quả cuối đã fuse +
+            sort; `per_source` là dict `{"semantic:<model_key>": df, ...,
+            "temporal": df, "temporal_candidates:<model_key>": df, ...}` cho
+            từng nguồn riêng lẻ (để UI có thể hiển thị breakdown nếu muốn) —
+            các key `"temporal_candidates:<model_key>"` là breakdown TRƯỚC
+            khi fuse, chỉ để debug, không tham gia fuse cuối cùng.
+        """
+        semantic_models = list(semantic_models or [])
+        weights = weights or {}
+
+        candidate_k = max(int(top_k) * int(candidate_multiplier), int(top_k))
+        plan = self.build_query_plan(query, mode="semantic", use_split=use_split)
+
+        per_source: dict[str, pd.DataFrame] = {}
+        ranked_lists: list[pd.DataFrame] = []
+        list_weights: list[float] = []
+
+        def _add(label: str, weight_key: str, df: pd.DataFrame) -> None:
+            if df is None or df.empty:
+                return
+            df = df.copy()
+            df["search_mode"] = df.get("search_mode", weight_key.split(":")[0])
+            per_source[label] = df
+            ranked_lists.append(df)
+            list_weights.append(float(weights.get(weight_key, 1.0)))
+
+        for model_key in semantic_models:
+            df = self.semantic_search.search(plan.events, top_k, candidate_k, model_key=model_key)
+            _add(f"semantic:{model_key}", model_key, df)
+
+        if temporal and semantic_models:
+            temporal_plan = self.build_query_plan(query, mode="temporal", use_split=use_split)
+            fused_temporal, per_model_candidates = self.temporal_search.search_combined(
+                temporal_plan.events, semantic_models, top_k, candidate_k, duration_limit, rrf_k=rrf_k
+            )
+            _add("temporal", "temporal", fused_temporal)
+            # Breakdown từng model TRƯỚC khi fuse — chỉ để debug/hiển thị,
+            # KHÔNG đưa vào ranked_lists (tránh double-count với "temporal"
+            # đã fuse ở trên).
+            for model_key, candidates_df in per_model_candidates.items():
+                per_source[f"temporal_candidates:{model_key}"] = candidates_df
+
+        if use_ocr and self.ocr_search_pipeline is not None:
+            _add("ocr", "ocr", self.ocr_search(plan.query, top_k))
+
+        if use_asr and self.asr_search_pipeline is not None:
+            _add("asr", "asr", self.asr_search(plan.query, top_k))
+
+        fused = reciprocal_rank_fusion(ranked_lists, weights=list_weights, rrf_k=rrf_k, top_k=top_k)
+        return fused, per_source
