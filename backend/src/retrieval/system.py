@@ -19,12 +19,20 @@ from typing import Any
 
 import pandas as pd
 
-from src.retrieval.index.factory import build_faiss_index, build_index_manager_from_config
+from src.retrieval.index.factory import (
+    build_faiss_index,
+    build_index_manager_from_config,
+)
 from src.retrieval.retriever.asr_search.factory import build_asr_search_pipeline
 from src.retrieval.retriever.common.orchestrator import Orchestrator, QueryPlan
 from src.retrieval.retriever.ocr_search.factory import build_ocr_search_pipeline
-from src.retrieval.retriever.semantic_search.factory import build_semantic_search_pipeline
-from src.retrieval.retriever.temporal_search.factory import build_temporal_search_pipeline
+from src.retrieval.retriever.semantic_search.factory import (
+    build_semantic_search_pipeline,
+)
+from src.retrieval.retriever.temporal_search.factory import (
+    build_temporal_search_pipeline,
+)
+from src.retrieval.retriever.text_search.factory import build_text_search_pipeline
 from src.translation.base_translator import BaseTranslator
 from src.translation.factory import get_translator
 
@@ -89,10 +97,12 @@ class RetrievalSystem:
         orchestrator: Orchestrator,
         translator: BaseTranslator | None = None,
         translate_cfg: dict[str, Any] | None = None,
+        fusion_cfg: dict[str, Any] | None = None,
     ) -> None:
         self._orchestrator = orchestrator
         self._translator = translator
         self._translate_cfg = translate_cfg or {}
+        self._fusion_cfg = fusion_cfg or {}
 
     @property
     def orchestrator(self) -> Orchestrator:
@@ -118,7 +128,11 @@ class RetrievalSystem:
           Anh tốt).
         """
         cfg = self._translate_cfg
-        effective = bool(cfg.get("enabled_default", False)) if translate is None else bool(translate)
+        effective = (
+            bool(cfg.get("enabled_default", False))
+            if translate is None
+            else bool(translate)
+        )
         if not effective:
             return query
         if self._translator is None:
@@ -128,7 +142,9 @@ class RetrievalSystem:
                 )
             return query
         return self._translator.translate(
-            query, source=str(cfg.get("source", "vi")), target=str(cfg.get("target", "en"))
+            query,
+            source=str(cfg.get("source", "vi")),
+            target=str(cfg.get("target", "en")),
         )
 
     def search_semantic(
@@ -181,6 +197,33 @@ class RetrievalSystem:
         # Cố ý KHÔNG dịch — tương tự search_ocr (ASR transcript tiếng Việt thô).
         return self._orchestrator.run_search(query, mode="asr", top_k=top_k)
 
+    def search_text(
+        self, query: str, top_k: int = 10
+    ) -> tuple[pd.DataFrame, QueryPlan]:
+        # Cố ý KHÔNG dịch — text search match OCR/ASR text thô.
+        return self._orchestrator.run_search(query, mode="text", top_k=top_k)
+
+    def search_fusion(
+        self,
+        query: str,
+        top_k: int = 10,
+        use_split: bool = True,
+        candidate_multiplier: int = 5,
+        translate: bool | None = None,
+    ) -> tuple[pd.DataFrame, QueryPlan]:
+        """Fusion search (semantic + text): semantic arm dùng query đã dịch,
+        text arm dùng query gốc (raw)."""
+        translated_query = self._translate_query(query, translate)
+        return self._orchestrator.run_search(
+            query,
+            mode="fusion",
+            use_split=use_split,
+            top_k=top_k,
+            candidate_multiplier=candidate_multiplier,
+            translated_query=translated_query,
+            fusion_config=self._fusion_cfg,
+        )
+
     def search_auto(
         self,
         query: str,
@@ -194,7 +237,11 @@ class RetrievalSystem:
         # nên dịch ở đây an toàn giống search_semantic/search_temporal.
         query = self._translate_query(query, translate)
         return self._orchestrator.run_search(
-            query, mode="auto", use_split=use_split, top_k=top_k, candidate_multiplier=candidate_multiplier
+            query,
+            mode="auto",
+            use_split=use_split,
+            top_k=top_k,
+            candidate_multiplier=candidate_multiplier,
         )
 
     def available_models(self) -> list[str]:
@@ -250,11 +297,17 @@ def _build_ocr_pipeline_or_none(cfg: dict[str, Any]):
     if not ocr_cfg:
         return None
     try:
-        config_path = ocr_cfg.get("config_path", "configs/ocr_extraction.yaml") if isinstance(ocr_cfg, dict) else ocr_cfg
+        config_path = (
+            ocr_cfg.get("config_path", "configs/ocr_extraction.yaml")
+            if isinstance(ocr_cfg, dict)
+            else ocr_cfg
+        )
         inline_cfg = ocr_cfg.get("cfg") if isinstance(ocr_cfg, dict) else None
         return build_ocr_search_pipeline(cfg=inline_cfg, config_path=config_path)
     except Exception as exc:  # pragma: no cover - lỗi hạ tầng (ES down, v.v.)
-        print(f"[system] OCR pipeline init failed, disabling OCR search: {type(exc).__name__}: {exc}")
+        print(
+            f"[system] OCR pipeline init failed, disabling OCR search: {type(exc).__name__}: {exc}"
+        )
         return None
 
 
@@ -264,11 +317,37 @@ def _build_asr_pipeline_or_none(cfg: dict[str, Any]):
     if not asr_cfg:
         return None
     try:
-        config_path = asr_cfg.get("config_path", "configs/asr_extraction.yaml") if isinstance(asr_cfg, dict) else asr_cfg
+        config_path = (
+            asr_cfg.get("config_path", "configs/asr_extraction.yaml")
+            if isinstance(asr_cfg, dict)
+            else asr_cfg
+        )
         inline_cfg = asr_cfg.get("cfg") if isinstance(asr_cfg, dict) else None
         return build_asr_search_pipeline(cfg=inline_cfg, config_path=config_path)
     except Exception as exc:  # pragma: no cover
-        print(f"[system] ASR pipeline init failed, disabling ASR search: {type(exc).__name__}: {exc}")
+        print(
+            f"[system] ASR pipeline init failed, disabling ASR search: {type(exc).__name__}: {exc}"
+        )
+        return None
+
+
+def _build_text_pipeline_or_none(cfg: dict[str, Any]):
+    """Unified text (OCR+ASR) là subsystem optional — tương tự OCR/ASR."""
+    text_cfg = cfg.get("text")
+    if not text_cfg:
+        return None
+    try:
+        config_path = (
+            text_cfg.get("config_path", "configs/text.yaml")
+            if isinstance(text_cfg, dict)
+            else text_cfg
+        )
+        inline_cfg = text_cfg.get("cfg") if isinstance(text_cfg, dict) else None
+        return build_text_search_pipeline(cfg=inline_cfg, config_path=config_path)
+    except Exception as exc:  # pragma: no cover
+        print(
+            f"[system] Text pipeline init failed, disabling text/fusion search: {type(exc).__name__}: {exc}"
+        )
         return None
 
 
@@ -283,8 +362,12 @@ def _build_translator_or_none(config: dict[str, Any]) -> BaseTranslator | None:
     try:
         backend_dir = Path(__file__).resolve().parents[2]
         return get_translator(config, backend_dir)
-    except Exception as exc:  # pragma: no cover - lỗi hạ tầng (network, API key, model load...)
-        print(f"[system] Translator init failed, disabling translation: {type(exc).__name__}: {exc}")
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - lỗi hạ tầng (network, API key, model load...)
+        print(
+            f"[system] Translator init failed, disabling translation: {type(exc).__name__}: {exc}"
+        )
         return None
 
 
@@ -327,7 +410,11 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
     is_multi_model = isinstance(semantic_cfg, list) or (
         isinstance(semantic_cfg, dict) and "models" in semantic_cfg
     )
-    index = build_index_manager_from_config(semantic_cfg) if is_multi_model else build_faiss_index(semantic_cfg)
+    index = (
+        build_index_manager_from_config(semantic_cfg, milvus_cfg=config.get("milvus"))
+        if is_multi_model
+        else build_faiss_index(semantic_cfg)
+    )
 
     # 4 backend deu la SearchPipeline duoc build qua cung 1 dang factory
     # `build_*_search_pipeline(...)` roi expose thong nhat qua `.search(...)`
@@ -340,6 +427,7 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
     temporal_search = build_temporal_search_pipeline(index)
     ocr_pipeline = _build_ocr_pipeline_or_none(config)
     asr_pipeline = _build_asr_pipeline_or_none(config)
+    text_pipeline = _build_text_pipeline_or_none(config)
     translator = _build_translator_or_none(config)
 
     orchestrator = Orchestrator(
@@ -348,5 +436,11 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
         temporal_search=temporal_search,
         ocr_search_pipeline=ocr_pipeline,
         asr_search_pipeline=asr_pipeline,
+        text_search_pipeline=text_pipeline,
     )
-    return RetrievalSystem(orchestrator, translator=translator, translate_cfg=config.get("translate"))
+    return RetrievalSystem(
+        orchestrator,
+        translator=translator,
+        translate_cfg=config.get("translate"),
+        fusion_cfg=config.get("fusion"),
+    )

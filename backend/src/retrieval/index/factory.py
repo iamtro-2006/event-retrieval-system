@@ -20,6 +20,9 @@ def build_clip_faiss_index(config: dict) -> FaissIndex:
     return build_faiss_index(config)
 
 
-def build_index_manager_from_config(config: dict[str, Any] | list[dict[str, Any]]) -> IndexManager:
+def build_index_manager_from_config(
+    config: dict[str, Any] | list[dict[str, Any]],
+    milvus_cfg: dict[str, Any] | None = None,
+) -> IndexManager:
     """Build an `IndexManager` (multiple models) — see `index_manager.py`."""
-    return build_index_manager(config)
+    return build_index_manager(config, milvus_cfg=milvus_cfg)

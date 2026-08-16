@@ -1,19 +1,25 @@
 # Runtime config for the API (`src.api.main` -> `src.retrieval.system.build_system`).
 # Keep this file as the single source of truth for online search.
 
+# Milvus connection (shared by every model whose `backend: milvus`).
+milvus:
+  host: localhost
+  port: 19530
+
 semantic:
   default_model_key: siglip2-so400m
   models:
     - model_key: siglip2-so400m
       enabled: true
-      model_name: siglip2-so400m
-      index_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/keyframes.faiss
+      backend: milvus
+      model_name: ViT-SO400M-16-SigLIP2-384
+      pretrained: webli
+      collection_name: keyframes_siglip2
+      metric_type: IP
       metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/metadata.csv
       device: auto
       precision: amp
       normalize: true
-      ef_search: 399
-      faiss_threads: 8
       vector_cache_mode: memmap
       vector_cache_dtype: float32
       vector_cache_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/vectors_fp32.npy
@@ -79,6 +85,18 @@ ocr:
 
 asr:
   config_path: configs/asr_extraction.yaml
+
+text:
+  config_path: configs/text.yaml
+
+fusion: # hybrid search (semantic + text) — score normalization + weighted combination
+  weights:
+    semantic: 0.6
+    text: 0.4
+  rrf:
+    k: 60          # RRF damping constant
+    weight: 0.1    # additive RRF consensus bonus scale
+  min_max_epsilon: 1e-6
 
 paths:
   keyframes_root: data/keyframes

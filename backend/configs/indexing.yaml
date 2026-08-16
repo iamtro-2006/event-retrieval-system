@@ -12,6 +12,18 @@ index:
   ef_construction: 512
   ef_search: 300
 
+# Milvus ingestion (scripts/retrieval/run.py --task build-milvus-index).
+milvus:
+  host: localhost
+  port: 19530
+  collection_name: keyframes_siglip2
+  metric: cosine
+  index_type: HNSW
+  hnsw_m: 32
+  ef_construction: 512
+  insert_batch_size: 5000
+  vector_cache_dtype: float32
+
 model:
   name: ViT-SO400M-16-SigLIP2-384
   pretrained: webli

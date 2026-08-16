@@ -45,7 +45,7 @@ export default function SearchBar({
   }, []);
 
   function resolveSearchMode() {
-    if (mode === "temporal" || mode === "auto" || mode === "ocr" || mode === "asr") return mode;
+    if (mode === "temporal" || mode === "auto" || mode === "ocr" || mode === "asr" || mode === "text" || mode === "fusion") return mode;
     return "semantic";
   }
 
@@ -171,7 +171,9 @@ export default function SearchBar({
             </select>
 
             <select className="search-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
-              <option value="text">Semantic</option>
+              <option value="semantic">Semantic</option>
+              <option value="text">Text (OCR + ASR)</option>
+              <option value="fusion">Fusion (Semantic + Text)</option>
               <option value="temporal">Temporal</option>
               <option value="auto">Auto</option>
               <option value="ocr">OCR (on-screen text)</option>

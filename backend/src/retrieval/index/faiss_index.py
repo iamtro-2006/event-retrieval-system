@@ -24,6 +24,7 @@ search), xem `index/index_manager.py` (class `IndexManager`) — đó là lớp
 quản lý 1 dict `{model_key: FaissIndex}`, còn `FaissIndex` ở đây luôn chỉ
 đại diện cho ĐÚNG 1 model + 1 FAISS index tương ứng của nó.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,29 +38,7 @@ import torch
 from PIL import Image
 
 from src.embedding_extraction.models.registry import load_model
-
-# Cột metadata FAISS copy nguyên văn khi enrich OCR/ASR hits (orchestrator.py),
-# để OCR/ASR trả về shape giống hệt semantic search.
-METADATA_DISPLAY_COLUMNS = (
-    "dataset",
-    "video_id",
-    "keyframe_id",
-    "keyframe_id_int",
-    "source_name",
-    "frame_idx",
-    "timestamp_sec",
-    "fps",
-    "keyframe_path",
-)
-
-
-def resolve_device(device_name: str) -> torch.device:
-    """Resolve target device cho các phép toán PyTorch."""
-    if device_name == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if device_name.startswith("cuda") and torch.cuda.is_available():
-        return torch.device(device_name)
-    return torch.device("cpu")
+from src.retrieval.index.constants import resolve_device
 
 
 class FaissIndex:
@@ -158,15 +137,21 @@ class FaissIndex:
             device_name=device,
             **(model_extra or {}),
         )
-        self.model = loaded.model  # exposes .encode_image(batch) / .encode_text(list[str])
+        self.model = (
+            loaded.model
+        )  # exposes .encode_image(batch) / .encode_text(list[str])
         self.preprocess = loaded.preprocess
         self.embedding_dim = loaded.embedding_dim
         self.supports_text = loaded.supports_text
         if compile_model and hasattr(torch, "compile"):
             try:
-                self.model = torch.compile(self.model, mode="reduce-overhead", fullgraph=False)
+                self.model = torch.compile(
+                    self.model, mode="reduce-overhead", fullgraph=False
+                )
             except Exception as exc:
-                print(f"[MODEL] torch.compile skipped for '{self.model_key}': {type(exc).__name__}: {exc}")
+                print(
+                    f"[MODEL] torch.compile skipped for '{self.model_key}': {type(exc).__name__}: {exc}"
+                )
 
         if vector_cache_mode is None:
             vector_cache_mode = "ram" if bool(cache_index_vectors) else "none"
@@ -193,7 +178,9 @@ class FaissIndex:
             "path": str(self.vector_cache_path) if self.vector_cache_path else "",
             "available": cache is not None,
             "shape": tuple(cache.shape) if cache is not None else None,
-            "memory_mb": round(float(cache.nbytes) / (1024 ** 2), 2) if cache is not None else 0.0,
+            "memory_mb": round(float(cache.nbytes) / (1024**2), 2)
+            if cache is not None
+            else 0.0,
             "allow_npy_fallback": self.allow_npy_fallback,
         }
 
@@ -216,20 +203,35 @@ class FaissIndex:
         self._row_by_video_frame: dict[tuple[str, int], int] = {}
         self._rows_by_video: dict[str, np.ndarray] = {}
 
-        frame_col = "keyframe_id_int" if "keyframe_id_int" in self.metadata else "keyframe_id"
+        frame_col = (
+            "keyframe_id_int" if "keyframe_id_int" in self.metadata else "keyframe_id"
+        )
         if frame_col in self.metadata:
-            frame_values = pd.to_numeric(self.metadata[frame_col], errors="coerce").fillna(-1).astype(np.int64)
+            frame_values = (
+                pd.to_numeric(self.metadata[frame_col], errors="coerce")
+                .fillna(-1)
+                .astype(np.int64)
+            )
             videos = self.metadata["video_id"].astype(str).to_numpy()
             frames = frame_values.to_numpy()
-            self._row_by_video_frame = dict(zip(zip(videos, frames), range(len(videos))))
+            self._row_by_video_frame = dict(
+                zip(zip(videos, frames), range(len(videos)))
+            )
 
-        groups = self.metadata.groupby(self.metadata["video_id"].astype(str), sort=False).indices
-        self._rows_by_video = {str(video): np.asarray(rows, dtype=np.int64) for video, rows in groups.items()}
+        groups = self.metadata.groupby(
+            self.metadata["video_id"].astype(str), sort=False
+        ).indices
+        self._rows_by_video = {
+            str(video): np.asarray(rows, dtype=np.int64)
+            for video, rows in groups.items()
+        }
 
     def _init_vector_cache(self) -> np.ndarray | np.memmap | None:
         mode = self.vector_cache_mode
         if mode in {"none", "false", "off", "disable", "disabled"}:
-            print(f"[VECTOR CACHE] model={self.model_key} | mode=none | temporal search will require fallback or fail fast")
+            print(
+                f"[VECTOR CACHE] model={self.model_key} | mode=none | temporal search will require fallback or fail fast"
+            )
             return None
 
         if mode in {"ram", "memory", "reconstruct", "ram_fp32", "ram_fp16"}:
@@ -242,7 +244,7 @@ class FaissIndex:
                 print(
                     f"[VECTOR CACHE] model={self.model_key} | mode=ram | "
                     f"dtype={cache.dtype} | shape={cache.shape} | "
-                    f"memory={cache.nbytes / (1024 ** 2):.2f} MB"
+                    f"memory={cache.nbytes / (1024**2):.2f} MB"
                 )
             return cache
 
@@ -255,7 +257,9 @@ class FaissIndex:
 
         raise ValueError(f"Unsupported vector_cache_mode: {self.vector_cache_mode}")
 
-    def _reconstruct_index_vectors(self, dtype_name: str = "float32") -> np.ndarray | None:
+    def _reconstruct_index_vectors(
+        self, dtype_name: str = "float32"
+    ) -> np.ndarray | None:
         try:
             vectors = np.empty((self.index.ntotal, self.index.d), dtype=np.float32)
             self.index.reconstruct_n(0, self.index.ntotal, vectors)
@@ -265,12 +269,16 @@ class FaissIndex:
                 vectors = vectors.astype(np.float16, copy=False)
             return np.ascontiguousarray(vectors)
         except Exception as exc:
-            print(f"[VECTOR CACHE] model={self.model_key} | FAISS reconstruct failed: {type(exc).__name__}: {exc}")
+            print(
+                f"[VECTOR CACHE] model={self.model_key} | FAISS reconstruct failed: {type(exc).__name__}: {exc}"
+            )
             return None
 
     def _load_vector_memmap(self) -> np.memmap | None:
         if self.vector_cache_path is None:
-            print(f"[VECTOR CACHE] model={self.model_key} | memmap requested but vector_cache_path is empty")
+            print(
+                f"[VECTOR CACHE] model={self.model_key} | memmap requested but vector_cache_path is empty"
+            )
             return None
         if not self.vector_cache_path.exists():
             print(
@@ -287,7 +295,9 @@ class FaissIndex:
                 f"shape={cache.shape}, expected={expected_shape}"
             )
 
-        expected_dtype = np.float16 if self.vector_cache_dtype == "float16" else np.float32
+        expected_dtype = (
+            np.float16 if self.vector_cache_dtype == "float16" else np.float32
+        )
         if cache.dtype != expected_dtype:
             print(
                 f"[VECTOR CACHE] model={self.model_key} | warning: config dtype does not match file dtype | "
@@ -297,7 +307,7 @@ class FaissIndex:
         print(
             f"[VECTOR CACHE] model={self.model_key} | mode=memmap | "
             f"dtype={cache.dtype} | shape={cache.shape} | "
-            f"path={self.vector_cache_path} | file_size={cache.nbytes / (1024 ** 2):.2f} MB"
+            f"path={self.vector_cache_path} | file_size={cache.nbytes / (1024**2):.2f} MB"
         )
         return cache
 
@@ -307,7 +317,9 @@ class FaissIndex:
 
     @torch.inference_mode()
     def encode_texts(self, queries: list[str]) -> np.ndarray:
-        from src.retrieval.retriever.semantic_search.pipeline.search import clean_queries
+        from src.retrieval.retriever.semantic_search.pipeline.search import (
+            clean_queries,
+        )
 
         queries = clean_queries(queries)
         if not queries:
@@ -346,7 +358,9 @@ class FaissIndex:
             return None
         return self.metadata_records[row_idx]
 
-    def metadata_rows_for_asr_hit(self, video_id: str, start_time: float, end_time: float) -> list[dict]:
+    def metadata_rows_for_asr_hit(
+        self, video_id: str, start_time: float, end_time: float
+    ) -> list[dict]:
         """Resolve ASR hit (time window) -> mọi keyframe của video đó trong [start, end]."""
         row_ids = self._rows_by_video.get(str(video_id))
         if row_ids is None or len(row_ids) == 0:

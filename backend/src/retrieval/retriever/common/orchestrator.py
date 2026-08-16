@@ -20,18 +20,31 @@ from typing import Literal, TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from src.retrieval.index.faiss_index import METADATA_DISPLAY_COLUMNS, FaissIndex
+from src.retrieval.index.constants import METADATA_DISPLAY_COLUMNS
+from src.retrieval.index.faiss_index import FaissIndex
 from src.retrieval.index.index_manager import IndexManager
+from src.retrieval.retriever.common.fusion import fuse
 from src.retrieval.retriever.common.scoring import reciprocal_rank_fusion
 from src.retrieval.retriever.semantic_search.pipeline.search import clean_queries
 
 if TYPE_CHECKING:
-    from src.retrieval.retriever.semantic_search.pipeline.search import SearchPipeline as SemanticSearchPipeline
-    from src.retrieval.retriever.temporal_search.pipeline.search import SearchPipeline as TemporalSearchPipeline
-    from src.retrieval.retriever.ocr_search.pipeline.search import SearchPipeline as OCRSearchPipeline
-    from src.retrieval.retriever.asr_search.pipeline.search import SearchPipeline as ASRSearchPipeline
+    from src.retrieval.retriever.semantic_search.pipeline.search import (
+        SearchPipeline as SemanticSearchPipeline,
+    )
+    from src.retrieval.retriever.temporal_search.pipeline.search import (
+        SearchPipeline as TemporalSearchPipeline,
+    )
+    from src.retrieval.retriever.ocr_search.pipeline.search import (
+        SearchPipeline as OCRSearchPipeline,
+    )
+    from src.retrieval.retriever.asr_search.pipeline.search import (
+        SearchPipeline as ASRSearchPipeline,
+    )
+    from src.retrieval.retriever.text_search.pipeline.search import (
+        SearchPipeline as TextSearchPipeline,
+    )
 
-SearchMode = Literal["semantic", "temporal", "ocr", "asr", "auto"]
+SearchMode = Literal["semantic", "temporal", "ocr", "asr", "text", "fusion", "auto"]
 
 
 def split_temporal_events(query: str) -> list[str]:
@@ -103,11 +116,12 @@ class Orchestrator:
         temporal_search: "TemporalSearchPipeline",
         ocr_search_pipeline: "OCRSearchPipeline | None" = None,
         asr_search_pipeline: "ASRSearchPipeline | None" = None,
+        text_search_pipeline: "TextSearchPipeline | None" = None,
     ) -> None:
         """Compose an orchestrator from an already-built `FaissIndex`/`IndexManager` +
-        4 `SearchPipeline` instances (build all via their respective
-        `retrieval.index.factory` / `retrieval.retriever.{semantic,temporal,ocr,asr}_search.factory`
-        modules — all 4 factories have the same `build_*_search_pipeline(...)` shape).
+        5 `SearchPipeline` instances (build all via their respective
+        `retrieval.index.factory` / `retrieval.retriever.{semantic,temporal,ocr,asr,text}_search.factory`
+        modules — all 5 factories have the same `build_*_search_pipeline(...)` shape).
 
         Args:
             index: Loaded FAISS index — either a single `FaissIndex` (1
@@ -123,17 +137,25 @@ class Orchestrator:
                 When provided, enables `mode="ocr"`.
             asr_search_pipeline: Optional ASR `SearchPipeline` (Elasticsearch-backed).
                 When provided, enables `mode="asr"`.
+            text_search_pipeline: Optional unified text `SearchPipeline`
+                (Elasticsearch-backed, `multi_match` over OCR+ASR). When
+                provided, enables `mode="text"` and `mode="fusion"`.
         """
         self.index_manager = index if isinstance(index, IndexManager) else None
         # `self.index` always resolves to a concrete FaissIndex, used for
-        # metadata lookups (OCR/ASR enrichment) which are model-agnostic.
-        self.index: FaissIndex = index.get() if isinstance(index, IndexManager) else index
+        # metadata lookups (OCR/ASR/text enrichment) which are model-agnostic.
+        self.index: FaissIndex = (
+            index.get() if isinstance(index, IndexManager) else index
+        )
         self.semantic_search = semantic_search
         self.temporal_search = temporal_search
         self.ocr_search_pipeline = ocr_search_pipeline
         self.asr_search_pipeline = asr_search_pipeline
+        self.text_search_pipeline = text_search_pipeline
 
-    def build_query_plan(self, query: str, mode: SearchMode = "semantic", use_split: bool = True) -> QueryPlan:
+    def build_query_plan(
+        self, query: str, mode: SearchMode = "semantic", use_split: bool = True
+    ) -> QueryPlan:
         """Parse and structure a raw query into a QueryPlan object."""
         query = str(query or "").strip()
         events = []
@@ -157,7 +179,9 @@ class Orchestrator:
 
         rows: list[dict] = []
         for hit in hits:
-            meta = self.index.metadata_row_for_ocr_hit(hit["video_id"], hit["keyframe_id"])
+            meta = self.index.metadata_row_for_ocr_hit(
+                hit["video_id"], hit["keyframe_id"]
+            )
             if meta is None:
                 continue
 
@@ -177,13 +201,17 @@ class Orchestrator:
         if not rows:
             return pd.DataFrame()
 
-        df = pd.DataFrame.from_records(rows).sort_values("retrieval_score", ascending=False)
+        df = pd.DataFrame.from_records(rows).sort_values(
+            "retrieval_score", ascending=False
+        )
         df = df.head(int(top_k)).reset_index(drop=True)
         df["display_rank"] = np.arange(1, len(df) + 1)
         df["rank"] = df["display_rank"]
         return df
 
-    def ocr_search(self, query: str, top_k: int = 10, oversample_factor: int = 3) -> pd.DataFrame:
+    def ocr_search(
+        self, query: str, top_k: int = 10, oversample_factor: int = 3
+    ) -> pd.DataFrame:
         """Execute an OCR (on-screen text) search and return results shaped like semantic search.
 
         Args:
@@ -287,7 +315,9 @@ class Orchestrator:
                 matched_texts=[transcript_text],
                 temporal_start_time=hit["start_time"],
                 temporal_end_time=hit["end_time"],
-                temporal_duration_sec=max(0.0, float(hit["end_time"]) - float(hit["start_time"])),
+                temporal_duration_sec=max(
+                    0.0, float(hit["end_time"]) - float(hit["start_time"])
+                ),
                 search_mode="asr",
                 display_rank=accepted,
                 matched_sequence=matched_sequence,
@@ -350,6 +380,135 @@ class Orchestrator:
         hits = self.asr_search_pipeline.search(query=query, top_k=raw_top_k)
         return self._enrich_asr_hits(hits, top_k, max_frames_per_hit)
 
+    def _enrich_text_hits(self, hits: list[dict], top_k: int) -> pd.DataFrame:
+        """Join unified text hits with FAISS metadata and normalize scores to `[0, 1]`.
+
+        Text hits are keyframe-level (like OCR, unlike ASR which is segment-
+        level), so enrichment mirrors `_enrich_ocr_hits`: each hit's
+        `(video_id, keyframe_id)` is resolved to a FAISS metadata row. Both
+        `matched_ocr` and `matched_asr` fragments are carried through so the
+        frontend / downstream fusion knows which modality contributed.
+        """
+        if not hits:
+            return pd.DataFrame()
+
+        max_score = max(float(hit["es_score"]) for hit in hits) or 1.0
+
+        rows: list[dict] = []
+        for hit in hits:
+            meta = self.index.metadata_row_for_ocr_hit(
+                hit["video_id"], hit["keyframe_id"]
+            )
+            if meta is None:
+                continue
+
+            item = {col: meta.get(col) for col in METADATA_DISPLAY_COLUMNS}
+            es_score = float(hit["es_score"])
+            normalized_score = es_score / max_score  # bound to (0, 1] for the frontend
+
+            item.update(
+                es_score=es_score,
+                score=normalized_score,
+                retrieval_score=normalized_score,
+                matched_texts=[hit["matched_ocr"], hit["matched_asr"]],
+                matched_ocr=hit["matched_ocr"],
+                matched_asr=hit["matched_asr"],
+                search_mode="text",
+            )
+            rows.append(item)
+
+        if not rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame.from_records(rows).sort_values(
+            "retrieval_score", ascending=False
+        )
+        df = df.head(int(top_k)).reset_index(drop=True)
+        df["display_rank"] = np.arange(1, len(df) + 1)
+        df["rank"] = df["display_rank"]
+        return df
+
+    def text_search(
+        self, query: str, top_k: int = 10, oversample_factor: int = 3
+    ) -> pd.DataFrame:
+        """Execute a unified text (OCR + ASR) search shaped like semantic search.
+
+        Matches the raw query against both OCR and ASR text via a boosted
+        `multi_match` (OCR weighted 3x over ASR) over the `multimodal_text`
+        index. Raises `RuntimeError` if no text backend was injected.
+        """
+        if self.text_search_pipeline is None:
+            raise RuntimeError(
+                "Text search is not available: Orchestrator was built without a "
+                "`text_search_pipeline`. Build one via "
+                "src.retrieval.retriever.text_search.factory.build_text_search_pipeline(...) and pass it in."
+            )
+
+        query = str(query or "").strip()
+        if not query:
+            return pd.DataFrame()
+
+        raw_top_k = max(int(top_k) * max(1, int(oversample_factor)), int(top_k))
+        hits = self.text_search_pipeline.search(query=query, top_k=raw_top_k)
+        return self._enrich_text_hits(hits, top_k)
+
+    def fusion_search(
+        self,
+        raw_query: str,
+        translated_query: str | None,
+        use_split: bool = True,
+        top_k: int = 10,
+        candidate_multiplier: int = 5,
+        weights: dict[str, float] | None = None,
+        rrf_weight: float = 0.1,
+        rrf_k: int = 60,
+    ) -> pd.DataFrame:
+        """Fuse semantic (Milvus/FAISS) + text (Elasticsearch) into one ranked list.
+
+        The semantic arm runs on the translated query via the multi-event query
+        plan; the text arm runs on the RAW query (ES `multi_match` over literal
+        OCR/ASR text). Both arms run concurrently. Scores are min-max normalized
+        per-mode over each arm's oversampled candidate pool, then combined via a
+        weighted sum plus an RRF consensus bonus (see `retriever.common.fusion.fuse`).
+        """
+        if self.text_search_pipeline is None:
+            raise RuntimeError(
+                "Fusion search is not available: Orchestrator was built without a "
+                "`text_search_pipeline`. Build one via "
+                "src.retrieval.retriever.text_search.factory.build_text_search_pipeline(...) and pass it in."
+            )
+
+        weights = weights or {"semantic": 0.6, "text": 0.4}
+        candidate_k = max(int(top_k) * int(candidate_multiplier), int(top_k))
+
+        semantic_query = translated_query or raw_query
+        plan = self.build_query_plan(semantic_query, "semantic", use_split)
+        if not plan.events:
+            return self.text_search(raw_query, top_k)
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        def run_semantic() -> pd.DataFrame:
+            return self.semantic_search.search(plan.events, candidate_k, candidate_k)
+
+        def run_text() -> pd.DataFrame:
+            return self.text_search(raw_query, candidate_k, oversample_factor=1)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            semantic_future = pool.submit(run_semantic)
+            text_future = pool.submit(run_text)
+            semantic_df = semantic_future.result()
+            text_df = text_future.result()
+
+        return fuse(
+            semantic_df=semantic_df,
+            text_df=text_df,
+            weights=weights,
+            rrf_weight=rrf_weight,
+            rrf_k=rrf_k,
+            top_k=top_k,
+        )
+
     def run_search(
         self,
         query: str,
@@ -359,6 +518,8 @@ class Orchestrator:
         candidate_multiplier: int = 5,
         duration_limit: float = -1,
         model_key: str | None = None,
+        translated_query: str | None = None,
+        fusion_config: dict | None = None,
     ) -> tuple[pd.DataFrame, QueryPlan]:
         """Execute a search based on the specified mode and query plan.
 
@@ -367,8 +528,11 @@ class Orchestrator:
                 chọn model nào để search (khi `self.index_manager` có nhiều
                 model). Bỏ trống = model mặc định. Không ảnh hưởng OCR/ASR
                 (không dùng embedding model).
+            translated_query: Chỉ áp dụng cho `mode` "fusion" — truy vấn đã
+                dịch dùng cho semantic arm (text arm dùng `query` gốc).
+            fusion_config: Optional `fusion:` config dict (weights, rrf).
         """
-        plan = self.build_query_plan(query, mode, use_split)
+        plan = self.build_query_plan(translated_query or query, mode, use_split)
         if not plan.events:
             return pd.DataFrame(), plan
 
@@ -379,11 +543,31 @@ class Orchestrator:
         else:
             effective_mode = mode
 
+        if effective_mode == "fusion":
+            fcfg = fusion_config or {}
+            rrf_cfg = fcfg.get("rrf", {}) or {}
+            return (
+                self.fusion_search(
+                    raw_query=query,
+                    translated_query=translated_query,
+                    use_split=use_split,
+                    top_k=top_k,
+                    candidate_multiplier=candidate_multiplier,
+                    weights=fcfg.get("weights"),
+                    rrf_weight=float(rrf_cfg.get("weight", 0.1)),
+                    rrf_k=int(rrf_cfg.get("k", 60)),
+                ),
+                plan,
+            )
         if effective_mode == "semantic":
-            return self.semantic_search.search(plan.events, top_k, candidate_k, model_key=model_key), plan
+            return self.semantic_search.search(
+                plan.events, top_k, candidate_k, model_key=model_key
+            ), plan
         if effective_mode == "temporal":
             return (
-                self.temporal_search.search(plan.events, top_k, candidate_k, duration_limit, model_key=model_key),
+                self.temporal_search.search(
+                    plan.events, top_k, candidate_k, duration_limit, model_key=model_key
+                ),
                 plan,
             )
         if effective_mode == "ocr":
@@ -394,6 +578,10 @@ class Orchestrator:
             # ASR search operates on the raw query text (Elasticsearch does its own
             # tokenization/fuzzy matching), not the CLIP-oriented temporal/semantic split.
             return self.asr_search(plan.query, top_k), plan
+        if effective_mode == "text":
+            # Unified text search operates on the raw query text (Elasticsearch
+            # multi_match does its own tokenization/fuzzy matching across OCR+ASR).
+            return self.text_search(plan.query, top_k), plan
 
         raise ValueError(f"Unsupported search mode: {effective_mode}")
 
@@ -419,7 +607,7 @@ class Orchestrator:
         weights: dict[str, float] | None = None,
         rrf_k: int = 60,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
-        """"Advanced search": chạy đồng thời nhiều method (semantic/temporal/
+        """ "Advanced search": chạy đồng thời nhiều method (semantic/temporal/
         ocr/asr), rồi hợp nhất bằng Reciprocal Rank Fusion — tương ứng UI
         checklist kiểu:
 
@@ -494,13 +682,22 @@ class Orchestrator:
             list_weights.append(float(weights.get(weight_key, 1.0)))
 
         for model_key in semantic_models:
-            df = self.semantic_search.search(plan.events, top_k, candidate_k, model_key=model_key)
+            df = self.semantic_search.search(
+                plan.events, top_k, candidate_k, model_key=model_key
+            )
             _add(f"semantic:{model_key}", model_key, df)
 
         if temporal and semantic_models:
-            temporal_plan = self.build_query_plan(query, mode="temporal", use_split=use_split)
+            temporal_plan = self.build_query_plan(
+                query, mode="temporal", use_split=use_split
+            )
             fused_temporal, per_model_candidates = self.temporal_search.search_combined(
-                temporal_plan.events, semantic_models, top_k, candidate_k, duration_limit, rrf_k=rrf_k
+                temporal_plan.events,
+                semantic_models,
+                top_k,
+                candidate_k,
+                duration_limit,
+                rrf_k=rrf_k,
             )
             _add("temporal", "temporal", fused_temporal)
             # Breakdown từng model TRƯỚC khi fuse — chỉ để debug/hiển thị,
@@ -515,5 +712,7 @@ class Orchestrator:
         if use_asr and self.asr_search_pipeline is not None:
             _add("asr", "asr", self.asr_search(plan.query, top_k))
 
-        fused = reciprocal_rank_fusion(ranked_lists, weights=list_weights, rrf_k=rrf_k, top_k=top_k)
+        fused = reciprocal_rank_fusion(
+            ranked_lists, weights=list_weights, rrf_k=rrf_k, top_k=top_k
+        )
         return fused, per_source

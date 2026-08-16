@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Generated data / indexes / weights
+backend/data/
+backend/weights/
+*.pth
+
+# Logs
+backend/logs/
+*.log
+search_profile_log.txt
+
+# Docker volumes
+volumes/
+
+# Tooling caches
+.understand-anything/
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# Local environment
+.env

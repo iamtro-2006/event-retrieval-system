@@ -17,7 +17,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from src.api.legacy.deps import get_cfg, get_legacy_index, get_legacy_paths, get_legacy_system
+from src.api.legacy.deps import (
+    get_cfg,
+    get_legacy_index,
+    get_legacy_paths,
+    get_legacy_system,
+)
 from src.api.legacy.paths import LegacyPaths
 from src.retrieval.index.faiss_index import FaissIndex
 from src.retrieval.system import RetrievalSystem
@@ -35,28 +40,42 @@ def health(
     """Health check endpoint returning system and configuration status."""
     orchestrator = system.orchestrator
     return {
-        "status": "ok", "backend_dir": str(paths.backend_dir), "config_path": str(paths.config_path),
-        "faiss_index_path": str(clip_index.index_path), "metadata_path": str(clip_index.metadata_path),
+        "status": "ok",
+        "backend_dir": str(paths.backend_dir),
+        "config_path": str(paths.config_path),
+        "faiss_index_path": str(clip_index.index_path),
+        "metadata_path": str(clip_index.metadata_path),
         "vector_cache_path": str(clip_index.vector_cache_path or ""),
-        "vector_cache_exists": bool(clip_index.vector_cache_path and clip_index.vector_cache_path.exists()),
+        "vector_cache_exists": bool(
+            clip_index.vector_cache_path and clip_index.vector_cache_path.exists()
+        ),
         "vector_cache": clip_index.cache_info,
-        "keyframes_root": str(paths.keyframes_root), "videos_root": str(paths.videos_root),
+        "keyframes_root": str(paths.keyframes_root),
+        "videos_root": str(paths.videos_root),
         "map_keyframe_path": str(paths.map_keyframe_root),
-        "keyframes_root_exists": paths.keyframes_root.exists(), "videos_root_exists": paths.videos_root.exists(),
+        "keyframes_root_exists": paths.keyframes_root.exists(),
+        "videos_root_exists": paths.videos_root.exists(),
         "map_keyframe_root_exists": paths.map_keyframe_root.exists(),
-        "faiss_index_exists": clip_index.index_path.exists(), "metadata_exists": clip_index.metadata_path.exists(),
+        "faiss_index_exists": clip_index.index_path.exists(),
+        "metadata_exists": clip_index.metadata_path.exists(),
         "model": {
-            "name": clip_index.model_name, "pretrained": clip_index.pretrained,
-            "device": str(clip_index.device), "precision": clip_index.precision,
+            "name": clip_index.model_name,
+            "pretrained": clip_index.pretrained,
+            "device": str(clip_index.device),
+            "precision": clip_index.precision,
             "normalize": bool(clip_index.normalize),
         },
         "available_models": orchestrator.available_semantic_models(),
         "ocr": {
-            "config_path": str(cfg.get("ocr", {}).get("config_path", "")) if isinstance(cfg.get("ocr"), dict) else "",
+            "config_path": str(cfg.get("ocr", {}).get("config_path", ""))
+            if isinstance(cfg.get("ocr"), dict)
+            else "",
             "available": orchestrator.ocr_search_pipeline is not None,
         },
         "asr": {
-            "config_path": str(cfg.get("asr", {}).get("config_path", "")) if isinstance(cfg.get("asr"), dict) else "",
+            "config_path": str(cfg.get("asr", {}).get("config_path", ""))
+            if isinstance(cfg.get("asr"), dict)
+            else "",
             "available": orchestrator.asr_search_pipeline is not None,
         },
     }
@@ -75,22 +94,35 @@ def get_public_config(
             "default_top_k": int(cfg["search"].get("default_top_k", 20)),
             "max_top_k": int(cfg["search"].get("max_top_k", 200)),
             "candidate_multiplier": int(cfg["search"].get("candidate_multiplier", 1)),
-            "available_modes": ["semantic", "temporal", "ocr", "asr", "auto"],
-            "default_search_mode": "semantic", "default_duration_limit": -1,
+            "available_modes": [
+                "semantic",
+                "temporal",
+                "ocr",
+                "asr",
+                "text",
+                "fusion",
+                "auto",
+            ],
+            "default_search_mode": "semantic",
+            "default_duration_limit": -1,
         },
         "ui": {
             "surrounding_radius": int(cfg["ui"].get("surrounding_radius", 5)),
             "max_surrounding_radius": int(cfg["ui"].get("max_surrounding_radius", 10)),
         },
         "translate": {
-            "enabled_default": bool(cfg.get("translate", {}).get("enabled_default", False)),
+            "enabled_default": bool(
+                cfg.get("translate", {}).get("enabled_default", False)
+            ),
             "source": cfg.get("translate", {}).get("source", "vi"),
             "target": cfg.get("translate", {}).get("target", "en"),
             "agent": str(cfg.get("translate_agent", "envit5")),
         },
         "model": {
-            "name": clip_index.model_name, "pretrained": clip_index.pretrained,
-            "device": str(clip_index.device), "precision": clip_index.precision,
+            "name": clip_index.model_name,
+            "pretrained": clip_index.pretrained,
+            "device": str(clip_index.device),
+            "precision": clip_index.precision,
             "normalize": bool(clip_index.normalize),
         },
         "available_models": orchestrator.available_semantic_models(),

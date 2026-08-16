@@ -34,10 +34,40 @@ MAX_SURROUNDING_RADIUS = 10
 
 # Fake vocabulary only used to fabricate plausible-looking OCR / ASR / caption text.
 MOCK_WORDS = [
-    "người", "đường", "phố", "biển", "xe", "buổi", "sáng", "chợ", "hoa",
-    "trời", "nắng", "mưa", "phóng", "viên", "tin", "tức", "hội", "nghị",
-    "sản", "phẩm", "khách", "hàng", "trường", "học", "sinh", "viên",
-    "báo", "cáo", "thị", "trường", "công", "ty", "sự", "kiện",
+    "người",
+    "đường",
+    "phố",
+    "biển",
+    "xe",
+    "buổi",
+    "sáng",
+    "chợ",
+    "hoa",
+    "trời",
+    "nắng",
+    "mưa",
+    "phóng",
+    "viên",
+    "tin",
+    "tức",
+    "hội",
+    "nghị",
+    "sản",
+    "phẩm",
+    "khách",
+    "hàng",
+    "trường",
+    "học",
+    "sinh",
+    "viên",
+    "báo",
+    "cáo",
+    "thị",
+    "trường",
+    "công",
+    "ty",
+    "sự",
+    "kiện",
 ]
 
 
@@ -123,6 +153,7 @@ FRAME_LOOKUP: dict[tuple[str, int], Path] = {}
 # thuộc vào module retrieval_system thật)
 # =========================
 
+
 class SearchRequest(BaseModel):
     query: str
     top_k: int | None = None
@@ -157,6 +188,7 @@ class DresSubmitRequest(BaseModel):
 # =========================
 # UTILS
 # =========================
+
 
 def safe_int(value: Any, default: int = 0) -> int:
     try:
@@ -378,16 +410,23 @@ def sample_images(top_k: int) -> list[Path]:
 # STARTUP SCAN
 # =========================
 
+
 @app.on_event("startup")
 def startup_scan_images():
     global IMAGE_CACHE, VIDEO_FRAME_INDEX, FRAME_LOOKUP
 
     start = time.perf_counter()
 
-    logger.info("[STARTUP_SCAN_START] root=%s exists=%s", KEYFRAMES_ROOT, KEYFRAMES_ROOT.exists())
+    logger.info(
+        "[STARTUP_SCAN_START] root=%s exists=%s",
+        KEYFRAMES_ROOT,
+        KEYFRAMES_ROOT.exists(),
+    )
 
     if not KEYFRAMES_ROOT.exists():
-        logger.warning("[STARTUP_SCAN_FAIL] keyframes root does not exist: %s", KEYFRAMES_ROOT)
+        logger.warning(
+            "[STARTUP_SCAN_FAIL] keyframes root does not exist: %s", KEYFRAMES_ROOT
+        )
         IMAGE_CACHE = []
         VIDEO_FRAME_INDEX = {}
         FRAME_LOOKUP = {}
@@ -401,7 +440,11 @@ def startup_scan_images():
             logger.info("[STARTUP_SCAN_ITEM] %s", path)
 
         if checked % 10000 == 0:
-            logger.info("[STARTUP_SCAN_PROGRESS] checked=%d found_images=%d", checked, len(images))
+            logger.info(
+                "[STARTUP_SCAN_PROGRESS] checked=%d found_images=%d",
+                checked,
+                len(images),
+            )
 
         if path.is_file() and path.suffix.lower() in IMAGE_EXTS:
             images.append(path)
@@ -418,9 +461,7 @@ def startup_scan_images():
         frame_lookup[(video_id, frame_id)] = image_path
 
     for video_id in video_index:
-        video_index[video_id].sort(
-            key=lambda p: safe_int(p.stem, 0)
-        )
+        video_index[video_id].sort(key=lambda p: safe_int(p.stem, 0))
 
     IMAGE_CACHE = images
     VIDEO_FRAME_INDEX = video_index
@@ -440,6 +481,7 @@ def startup_scan_images():
 # =========================
 # BASIC ENDPOINTS
 # =========================
+
 
 @app.get("/api/health")
 def health():
@@ -482,7 +524,15 @@ def get_public_config():
             "default_top_k": DEFAULT_TOP_K,
             "max_top_k": MAX_TOP_K,
             "candidate_multiplier": 5,
-            "available_modes": ["semantic", "temporal", "ocr", "asr", "auto"],
+            "available_modes": [
+                "semantic",
+                "temporal",
+                "ocr",
+                "asr",
+                "text",
+                "fusion",
+                "auto",
+            ],
             "default_search_mode": "semantic",
             "default_duration_limit": -1,
         },
@@ -520,6 +570,7 @@ def get_public_config():
 # MOCK SEARCH
 # =========================
 
+
 @app.post("/api/search")
 def search_api(payload: SearchRequest):
     request_start = time.perf_counter()
@@ -549,15 +600,23 @@ def search_api(payload: SearchRequest):
     # looks like it has multiple events (has a delimiter), else semantic.
     mode = payload.search_mode or "semantic"
     if mode == "auto":
-        mode = "temporal" if any(sep in original_query for sep in [";", " then ", " sau đó "]) else "semantic"
+        mode = (
+            "temporal"
+            if any(sep in original_query for sep in [";", " then ", " sau đó "])
+            else "semantic"
+        )
 
     candidate_multiplier = max(1, int(payload.candidate_multiplier or 5))
     candidate_k = max(top_k * candidate_multiplier, top_k)
 
-    use_translate = False if payload.use_translate is None else bool(payload.use_translate)
+    use_translate = (
+        False if payload.use_translate is None else bool(payload.use_translate)
+    )
     # OCR/ASR skip translation, matching main.py's should_translate logic.
     should_translate = use_translate and mode not in ("ocr", "asr")
-    translated_query = f"[mock-translated] {original_query}" if should_translate else None
+    translated_query = (
+        f"[mock-translated] {original_query}" if should_translate else None
+    )
 
     sample_start = time.perf_counter()
     selected = sample_images(top_k)
@@ -594,9 +653,7 @@ def search_api(payload: SearchRequest):
                 "start_time": min(timestamps) if timestamps else item["timestamp"],
                 "end_time": max(timestamps) if timestamps else item["timestamp"],
                 "duration_sec": (
-                    max(timestamps) - min(timestamps)
-                    if len(timestamps) >= 2
-                    else 0.0
+                    max(timestamps) - min(timestamps) if len(timestamps) >= 2 else 0.0
                 ),
                 "avg_score": item["similarity"],
             }
@@ -645,9 +702,7 @@ def search_api(payload: SearchRequest):
                 "start_time": min(timestamps) if timestamps else item["timestamp"],
                 "end_time": max(timestamps) if timestamps else item["timestamp"],
                 "duration_sec": (
-                    max(timestamps) - min(timestamps)
-                    if len(timestamps) >= 2
-                    else 0.0
+                    max(timestamps) - min(timestamps) if len(timestamps) >= 2 else 0.0
                 ),
                 "avg_score": item["similarity"],
             }
@@ -687,7 +742,9 @@ def search_api(payload: SearchRequest):
         "use_split": True if payload.use_split is None else bool(payload.use_split),
         "mode": mode,
         "search_mode": mode,
-        "duration_limit": -1.0 if payload.duration_limit is None else float(payload.duration_limit),
+        "duration_limit": -1.0
+        if payload.duration_limit is None
+        else float(payload.duration_limit),
         "top_k": top_k,
         "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k,
@@ -703,6 +760,7 @@ def search_api(payload: SearchRequest):
 # =========================
 # MOCK SIMILARITY SEARCH
 # =========================
+
 
 @app.post("/api/similarity-search")
 def similarity_search_api(payload: SimilaritySearchRequest):
@@ -801,6 +859,7 @@ def similarity_search_api(payload: SimilaritySearchRequest):
 # MOCK SPEECH TRANSCRIBE
 # =========================
 
+
 @app.post("/api/speech/transcribe")
 async def transcribe_speech(file: UploadFile = File(...)):
     """Mirrors main.py's /api/speech/transcribe shape, but returns a random
@@ -833,6 +892,7 @@ async def transcribe_speech(file: UploadFile = File(...)):
 # =========================
 # FRAME INFO
 # =========================
+
 
 @app.get("/api/frame-info")
 def get_frame_info(video_id: str, keyframe_id: int):
@@ -869,6 +929,7 @@ def get_frame_info(video_id: str, keyframe_id: int):
 # =========================
 # SURROUNDING FRAMES
 # =========================
+
 
 @app.get("/api/surrounding-frames")
 def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 10):
@@ -940,9 +1001,12 @@ def get_surrounding_frames(video_id: str, keyframe_id: int, radius: int = 10):
 # MOCK DRES ENDPOINTS
 # =========================
 
+
 @app.post("/api/dres/login")
 def dres_login(payload: DresLoginRequest):
-    logger.info("[MOCK_DRES_LOGIN] dres_url=%s username=%s", payload.dres_url, payload.username)
+    logger.info(
+        "[MOCK_DRES_LOGIN] dres_url=%s username=%s", payload.dres_url, payload.username
+    )
 
     if not payload.username.strip() or not payload.password:
         raise HTTPException(status_code=400, detail="Missing username or password")

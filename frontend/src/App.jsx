@@ -71,7 +71,7 @@ export default function App() {
   // ── UI state ──────────────────────────────────────────
   const [theme, setTheme] = useState("dark");
   const [model, setModel] = useState("ViT-B-16-quickgelu");
-  const [mode, setMode] = useState("text");
+  const [mode, setMode] = useState("semantic");
   const [durationLimit, setDurationLimit] = useState(-1);
   const [columns, setColumns] = useState(4);
   const [grouped, setGrouped] = useState(false);
@@ -138,7 +138,9 @@ export default function App() {
     return mode === "temporal" ||
       mode === "auto" ||
       mode === "ocr" ||
-      mode === "asr"
+      mode === "asr" ||
+      mode === "text" ||
+      mode === "fusion"
       ? mode
       : "semantic";
   }, [mode]);

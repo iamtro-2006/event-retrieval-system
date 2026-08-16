@@ -13,6 +13,7 @@ Model không load được (thiếu checkpoint, thiếu index...) sẽ bị SKIP
 cảnh báo in ra console, thay vì làm sập toàn bộ hệ thống — giống cách
 `system.py` đã làm với OCR/ASR optional subsystem.
 """
+
 from __future__ import annotations
 
 from typing import Any, Iterable
@@ -23,9 +24,13 @@ from src.retrieval.index.faiss_index import FaissIndex
 class IndexManager:
     """Dict-like registry of `{model_key: FaissIndex}`."""
 
-    def __init__(self, indexes: dict[str, FaissIndex], default_model_key: str | None = None) -> None:
+    def __init__(
+        self, indexes: dict[str, FaissIndex], default_model_key: str | None = None
+    ) -> None:
         if not indexes:
-            raise ValueError("IndexManager needs at least 1 successfully loaded FaissIndex.")
+            raise ValueError(
+                "IndexManager needs at least 1 successfully loaded FaissIndex."
+            )
         self._indexes = indexes
         self._default_model_key = default_model_key or next(iter(indexes))
         if self._default_model_key not in self._indexes:
@@ -68,21 +73,33 @@ class IndexManager:
         return self._indexes.items()
 
 
-def build_index_manager(config: dict[str, Any] | list[dict[str, Any]]) -> IndexManager:
+def build_index_manager(
+    config: dict[str, Any] | list[dict[str, Any]],
+    milvus_cfg: dict[str, Any] | None = None,
+) -> IndexManager:
     """Build an `IndexManager` from config.
 
     Args:
         config: Either
             - a list of per-model dicts (each a kwargs dict for
-              `FaissIndex.__init__`, must include a unique `model_key`), or
+              `FaissIndex.__init__` or `ClipMilvusIndex.__init__`, must include
+              a unique `model_key`), or
             - a dict with keys `{"models": [...], "default_model_key": "..."}`
               (matches `configs/indexing.yaml` shape: `semantic.models` /
               `temporal.models`).
+        milvus_cfg: Optional top-level `milvus:` connection block
+            (`{"host": ..., "port": ...}`). Injected as `milvus_host` /
+            `milvus_port` into any model entry whose `backend` is `"milvus"`.
+
+    A model entry with `backend: "milvus"` builds a `ClipMilvusIndex` (Milvus
+    ANN) instead of a `FaissIndex`; every other entry builds a `FaissIndex`.
 
     Models whose entry has `enabled: false`, or that raise on load (missing
     checkpoint/index file/etc.), are skipped with a printed warning rather
     than aborting the whole build — mirrors `system.py`'s OCR/ASR handling.
     """
+    from src.retrieval.index.clip_milvus_index import ClipMilvusIndex
+
     if isinstance(config, dict):
         model_configs = list(config.get("models") or [])
         default_model_key = config.get("default_model_key")
@@ -90,19 +107,46 @@ def build_index_manager(config: dict[str, Any] | list[dict[str, Any]]) -> IndexM
         model_configs = list(config)
         default_model_key = None
 
+    milvus_cfg = milvus_cfg or {}
+    milvus_host = milvus_cfg.get("host", "localhost")
+    milvus_port = milvus_cfg.get("port", 19530)
+
     indexes: dict[str, FaissIndex] = {}
     for entry in model_configs:
         entry = dict(entry)
         if not entry.get("enabled", True):
             continue
         entry.pop("enabled", None)
-        model_key = entry.get("model_key") or entry.get("key") or entry.get("model_name")
+        model_key = (
+            entry.get("model_key") or entry.get("key") or entry.get("model_name")
+        )
         entry.setdefault("model_key", model_key)
         entry.pop("key", None)
+
+        is_milvus = entry.get("backend") == "milvus"
+        if is_milvus:
+            entry.pop("backend", None)
+            for faiss_key in (
+                "ef_search",
+                "faiss_threads",
+                "cache_index_vectors",
+                "model_extra",
+                "index_path",
+            ):
+                entry.pop(faiss_key, None)
+            entry.setdefault("milvus_host", milvus_host)
+            entry.setdefault("milvus_port", milvus_port)
+
         try:
-            indexes[model_key] = FaissIndex(**entry)
-            print(f"[IndexManager] loaded model '{model_key}' ({entry.get('model_name')})")
+            indexes[model_key] = (
+                ClipMilvusIndex(**entry) if is_milvus else FaissIndex(**entry)
+            )
+            print(
+                f"[IndexManager] loaded model '{model_key}' ({entry.get('model_name')})"
+            )
         except Exception as exc:
-            print(f"[IndexManager] skipping model '{model_key}': {type(exc).__name__}: {exc}")
+            print(
+                f"[IndexManager] skipping model '{model_key}': {type(exc).__name__}: {exc}"
+            )
 
     return IndexManager(indexes, default_model_key=default_model_key)

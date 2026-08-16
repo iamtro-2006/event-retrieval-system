@@ -29,7 +29,12 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
-from src.api.legacy.deps import get_cfg, get_legacy_index, get_legacy_paths, get_legacy_system
+from src.api.legacy.deps import (
+    get_cfg,
+    get_legacy_index,
+    get_legacy_paths,
+    get_legacy_system,
+)
 from src.api.legacy.paths import LegacyPaths
 from src.api.legacy.serializers import (
     dict_to_result_FAST,
@@ -38,7 +43,11 @@ from src.api.legacy.serializers import (
     safe_int,
 )
 from src.api.legacy.translate import translate_query_if_needed
-from src.api.schemas.legacy import FusionSearchRequest, SearchRequest, SimilaritySearchRequest
+from src.api.schemas.legacy import (
+    FusionSearchRequest,
+    SearchRequest,
+    SimilaritySearchRequest,
+)
 from src.retrieval.index.faiss_index import FaissIndex
 from src.retrieval.system import RetrievalSystem
 
@@ -57,7 +66,9 @@ async def get_frame_info(
 
     def _fetch():
         row = find_metadata_row(clip_index, video_id, keyframe_id)
-        return dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir)
+        return dict_to_result_FAST(
+            row.to_dict(), paths.keyframes_root, paths.backend_dir
+        )
 
     return await run_in_threadpool(_fetch)
 
@@ -98,18 +109,31 @@ async def search_api(
     default_top_k = int(cfg["search"].get("default_top_k", 20))
     top_k = max(1, min(int(payload.top_k or default_top_k), max_top_k))
 
-    candidate_multiplier = max(1, int(payload.candidate_multiplier or cfg["search"].get("candidate_multiplier", 5)))
+    candidate_multiplier = max(
+        1,
+        int(
+            payload.candidate_multiplier or cfg["search"].get("candidate_multiplier", 5)
+        ),
+    )
     use_split = True if payload.use_split is None else bool(payload.use_split)
-    use_translate = bool(cfg.get("translate", {}).get("enabled_default", False)) if payload.use_translate is None else bool(payload.use_translate)
+    use_translate = (
+        bool(cfg.get("translate", {}).get("enabled_default", False))
+        if payload.use_translate is None
+        else bool(payload.use_translate)
+    )
 
     mode = payload.search_mode
-    duration_limit = -1.0 if payload.duration_limit is None or payload.duration_limit == 0 else float(payload.duration_limit)
+    duration_limit = (
+        -1.0
+        if payload.duration_limit is None or payload.duration_limit == 0
+        else float(payload.duration_limit)
+    )
 
-    # OCR/ASR search match raw text via Elasticsearch (its own tokenizer/fuzzy
-    # matching, over on-screen text or Vietnamese speech transcripts), so
+    # OCR/ASR/text search match raw text via Elasticsearch (its own tokenizer/
+    # fuzzy matching, over on-screen text or Vietnamese speech transcripts), so
     # translation is skipped for those modes: translating the query would
     # work against literal signage/labels or the transcript language.
-    should_translate = use_translate and mode not in ("ocr", "asr")
+    should_translate = use_translate and mode not in ("ocr", "asr", "text")
 
     start = time.perf_counter()
 
@@ -122,12 +146,29 @@ async def search_api(
             backend_dir=paths.backend_dir,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}"
+        )
+
+    # "fusion" = semantic arm (translated query) + text arm (raw query).
+    if mode == "fusion":
+        run_query = original_query
+        translated_query = search_query if should_translate else None
+    else:
+        run_query = search_query
+        translated_query = None
 
     try:
         results_df, query_plan = await run_in_threadpool(
-            orchestrator.run_search, query=search_query, mode=mode, use_split=use_split,
-            top_k=top_k, candidate_multiplier=candidate_multiplier, duration_limit=duration_limit,
+            orchestrator.run_search,
+            query=run_query,
+            mode=mode,
+            use_split=use_split,
+            top_k=top_k,
+            candidate_multiplier=candidate_multiplier,
+            duration_limit=duration_limit,
+            translated_query=translated_query,
+            fusion_config=cfg.get("fusion"),
         )
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc))
@@ -135,41 +176,89 @@ async def search_api(
         # e.g. OCR requested but Elasticsearch is unavailable/not configured.
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Search failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Search failed: {type(exc).__name__}: {exc}"
+        )
 
     latency_ms = round((time.perf_counter() - start) * 1000)
     candidate_k = max(top_k * candidate_multiplier, top_k)
 
     response_base = {
-        "original_query": original_query, "query": search_query,
+        "original_query": original_query,
+        "query": search_query,
         "translated_query": search_query if should_translate else None,
-        "use_translate": should_translate, "use_split": use_split, "mode": mode, "search_mode": mode,
-        "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
-        "candidate_k": candidate_k, "latency_ms": latency_ms,
-        "events": query_plan.events, "event_queries": query_plan.event_queries, "sub_queries": query_plan.flat_queries,
+        "use_translate": should_translate,
+        "use_split": use_split,
+        "mode": mode,
+        "search_mode": mode,
+        "duration_limit": duration_limit,
+        "top_k": top_k,
+        "candidate_multiplier": candidate_multiplier,
+        "candidate_k": candidate_k,
+        "latency_ms": latency_ms,
+        "events": query_plan.events,
+        "event_queries": query_plan.event_queries,
+        "sub_queries": query_plan.flat_queries,
     }
 
     if results_df.empty:
         return {**response_base, "count": 0, "results": []}
 
     try:
+
         def _serialize_results():
-            cols_to_keep = [c for c in [
-                "video_id", "keyframe_id", "keyframe_id_int", "frame_idx", "dataset",
-                "keyframe_path", "video_path", "timestamp_sec", "timestamp", "fps",
-                "score", "retrieval_score", "avg_score", "caption", "matched_sequence",
-                "temporal_start_time", "temporal_end_time", "temporal_duration_sec", "video_score",
-                # OCR-specific columns (see FaissRetrievalSystem._enrich_ocr_hits)
-                "matched_texts", "ocr_score",
-                # ASR-specific columns (see FaissRetrievalSystem._enrich_asr_hits)
-                "asr_score", "segment_id",
-            ] if c in results_df.columns]
-            records = results_df[cols_to_keep].to_dict(orient="records")
-            return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in records]
+            cols_to_keep = [
+                c
+                for c in [
+                    "video_id",
+                    "keyframe_id",
+                    "keyframe_id_int",
+                    "frame_idx",
+                    "dataset",
+                    "keyframe_path",
+                    "video_path",
+                    "timestamp_sec",
+                    "timestamp",
+                    "fps",
+                    "score",
+                    "retrieval_score",
+                    "avg_score",
+                    "caption",
+                    "matched_sequence",
+                    "temporal_start_time",
+                    "temporal_end_time",
+                    "temporal_duration_sec",
+                    "video_score",
+                    # OCR-specific columns (see FaissRetrievalSystem._enrich_ocr_hits)
+                    "matched_texts",
+                    "ocr_score",
+                    # ASR-specific columns (see FaissRetrievalSystem._enrich_asr_hits)
+                    "asr_score",
+                    "segment_id",
+                    # Unified text + fusion provenance columns
+                    "es_score",
+                    "matched_ocr",
+                    "matched_asr",
+                    "fusion_components",
+                ]
+                if c in results_df.columns
+            ]
+            selected = (
+                results_df[cols_to_keep]
+                .astype(object)
+                .where(results_df[cols_to_keep].notna(), None)
+            )
+            records = selected.to_dict(orient="records")
+            return [
+                dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir)
+                for rec in records
+            ]
 
         results = await run_in_threadpool(_serialize_results)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Serialize failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Serialize failed: {type(exc).__name__}: {exc}"
+        )
 
     return {**response_base, "count": len(results), "results": results}
 
@@ -198,10 +287,23 @@ async def search_fusion_api(
     default_top_k = int(cfg["search"].get("default_top_k", 20))
     top_k = max(1, min(int(payload.top_k or default_top_k), max_top_k))
 
-    candidate_multiplier = max(1, int(payload.candidate_multiplier or cfg["search"].get("candidate_multiplier", 5)))
+    candidate_multiplier = max(
+        1,
+        int(
+            payload.candidate_multiplier or cfg["search"].get("candidate_multiplier", 5)
+        ),
+    )
     use_split = True if payload.use_split is None else bool(payload.use_split)
-    use_translate = bool(cfg.get("translate", {}).get("enabled_default", False)) if payload.use_translate is None else bool(payload.use_translate)
-    duration_limit = -1.0 if payload.duration_limit is None or payload.duration_limit == 0 else float(payload.duration_limit)
+    use_translate = (
+        bool(cfg.get("translate", {}).get("enabled_default", False))
+        if payload.use_translate is None
+        else bool(payload.use_translate)
+    )
+    duration_limit = (
+        -1.0
+        if payload.duration_limit is None or payload.duration_limit == 0
+        else float(payload.duration_limit)
+    )
 
     start = time.perf_counter()
 
@@ -214,7 +316,9 @@ async def search_fusion_api(
             backend_dir=paths.backend_dir,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}"
+        )
 
     try:
         fused_df, _per_source = await run_in_threadpool(
@@ -235,31 +339,48 @@ async def search_fusion_api(
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc).strip('"'))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Fusion search failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Fusion search failed: {type(exc).__name__}: {exc}"
+        )
 
     latency_ms = round((time.perf_counter() - start) * 1000)
 
     response_base = {
-        "original_query": original_query, "query": search_query,
+        "original_query": original_query,
+        "query": search_query,
         "translated_query": search_query if use_translate else None,
-        "use_translate": use_translate, "use_split": use_split, "mode": "fusion", "search_mode": "fusion",
-        "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
+        "use_translate": use_translate,
+        "use_split": use_split,
+        "mode": "fusion",
+        "search_mode": "fusion",
+        "duration_limit": duration_limit,
+        "top_k": top_k,
+        "candidate_multiplier": candidate_multiplier,
         "latency_ms": latency_ms,
-        "semantic_models": payload.semantic_models, "temporal": payload.temporal,
-        "use_ocr": payload.use_ocr, "use_asr": payload.use_asr, "weights": payload.weights or {},
+        "semantic_models": payload.semantic_models,
+        "temporal": payload.temporal,
+        "use_ocr": payload.use_ocr,
+        "use_asr": payload.use_asr,
+        "weights": payload.weights or {},
     }
 
     if fused_df is None or fused_df.empty:
         return {**response_base, "count": 0, "results": []}
 
     try:
+
         def _serialize_results():
             records = fused_df.to_dict(orient="records")
-            return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in records]
+            return [
+                dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir)
+                for rec in records
+            ]
 
         results = await run_in_threadpool(_serialize_results)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Serialize failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Serialize failed: {type(exc).__name__}: {exc}"
+        )
 
     return {**response_base, "count": len(results), "results": results}
 
@@ -289,16 +410,33 @@ async def get_surrounding_frames(
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
 
         # Vectorized sorting key extraction (replaces slow .apply(lambda))
-        sort_col = next((c for c in ["keyframe_id_int", "keyframe_id", "frame_idx"] if c in video_df.columns), None)
+        sort_col = next(
+            (
+                c
+                for c in ["keyframe_id_int", "keyframe_id", "frame_idx"]
+                if c in video_df.columns
+            ),
+            None,
+        )
         if not sort_col:
-            raise HTTPException(status_code=500, detail="Metadata missing keyframe identifier column")
+            raise HTTPException(
+                status_code=500, detail="Metadata missing keyframe identifier column"
+            )
 
-        video_df["_keyframe_sort"] = pd.to_numeric(video_df[sort_col], errors="coerce").fillna(0).astype(np.int32)
-        video_df = video_df.sort_values("_keyframe_sort", kind="stable").reset_index(drop=True)
+        video_df["_keyframe_sort"] = (
+            pd.to_numeric(video_df[sort_col], errors="coerce")
+            .fillna(0)
+            .astype(np.int32)
+        )
+        video_df = video_df.sort_values("_keyframe_sort", kind="stable").reset_index(
+            drop=True
+        )
 
         center_matches = video_df[video_df["_keyframe_sort"] == target_keyframe_id]
         if center_matches.empty:
-            raise HTTPException(status_code=404, detail=f"Frame not found: {video_id}/{keyframe_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Frame not found: {video_id}/{keyframe_id}"
+            )
 
         center_pos = int(center_matches.index[0])
         start_pos = max(0, center_pos - radius_val)
@@ -310,16 +448,23 @@ async def get_surrounding_frames(
         frames = []
         for rec in records:
             item = dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir)
-            item["is_surround_center"] = safe_int(item.get("frame_id"), -1) == target_keyframe_id
-            item["surround_offset"] = safe_int(item.get("frame_id"), 0) - target_keyframe_id
+            item["is_surround_center"] = (
+                safe_int(item.get("frame_id"), -1) == target_keyframe_id
+            )
+            item["surround_offset"] = (
+                safe_int(item.get("frame_id"), 0) - target_keyframe_id
+            )
             frames.append(item)
 
         return radius_val, frames
 
     r_val, frames_result = await run_in_threadpool(_fetch_surround)
     return {
-        "video_id": video_id, "center_frame_id": int(keyframe_id),
-        "radius": r_val, "count": len(frames_result), "frames": frames_result,
+        "video_id": video_id,
+        "center_frame_id": int(keyframe_id),
+        "radius": r_val,
+        "count": len(frames_result),
+        "frames": frames_result,
     }
 
 
@@ -339,32 +484,50 @@ async def similarity_search_api(
 
         row = find_metadata_row(clip_index, payload.video_id, payload.frame_id)
         source_dict = row.to_dict()
-        image_path = resolve_keyframe_path_from_dict(source_dict, paths.keyframes_root, paths.backend_dir)
+        image_path = resolve_keyframe_path_from_dict(
+            source_dict, paths.keyframes_root, paths.backend_dir
+        )
 
-        results_df = orchestrator.semantic_search.similarity_search_by_image(image_path=Path(image_path), top_k=top_k)
+        results_df = orchestrator.semantic_search.similarity_search_by_image(
+            image_path=Path(image_path), top_k=top_k
+        )
         return source_dict, results_df
 
     start = time.perf_counter()
     try:
         source_dict_data, df_results = await run_in_threadpool(_run_sim_search)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Similarity search failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Similarity search failed: {type(exc).__name__}: {exc}",
+        )
 
     latency_ms = round((time.perf_counter() - start) * 1000)
 
     if df_results.empty:
         return {
             "query": f"similarity:{payload.video_id}/{payload.frame_id:06d}",
-            "search_mode": "similarity", "latency_ms": latency_ms, "count": 0, "results": [],
+            "search_mode": "similarity",
+            "latency_ms": latency_ms,
+            "count": 0,
+            "results": [],
         }
 
     def _parse():
-        return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in df_results.to_dict(orient="records")]
+        return [
+            dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir)
+            for rec in df_results.to_dict(orient="records")
+        ]
 
     results = await run_in_threadpool(_parse)
 
     return {
         "query": f"similarity:{payload.video_id}/{payload.frame_id:06d}",
-        "search_mode": "similarity", "latency_ms": latency_ms, "count": len(results),
-        "source": dict_to_result_FAST(source_dict_data, paths.keyframes_root, paths.backend_dir), "results": results,
+        "search_mode": "similarity",
+        "latency_ms": latency_ms,
+        "count": len(results),
+        "source": dict_to_result_FAST(
+            source_dict_data, paths.keyframes_root, paths.backend_dir
+        ),
+        "results": results,
     }

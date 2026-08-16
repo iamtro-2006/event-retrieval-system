@@ -1,0 +1,14 @@
+elasticsearch:
+  host: localhost
+  port: 9200
+  scheme: http
+  index: multimodal_text
+
+# Data roots for the fusion pipeline (scripts/text/index/run.py):
+#   ocr_root/<dataset>/<video_id>.json  -> per-keyframe on-screen text
+#   asr_root/<dataset>/<video_id>.json  -> per-segment speech transcripts
+#   metadata_path                       -> keyframe -> timestamp_sec map
+dataset:
+  ocr_root: data/processed/ocr
+  asr_root: data/processed/asr
+  metadata_path: data/database/faiss_hnsw_siglip2_so400m_384/metadata.csv
