@@ -147,8 +147,14 @@ class ClipMilvusIndex:
 
         self.model_key = model_key or model_name
         self.model_name = model_name
+        self.pretrained = pretrained
         self.backend = backend or "milvus"
         self.supports_text = True
+        # FAISS-interface parity: there is no local index file for Milvus, so
+        # expose a descriptive placeholder path (`.exists()` is honestly False).
+        self.index_path = Path(
+            f"milvus://{milvus_host}:{milvus_port}/{collection_name}"
+        )
 
         connections.connect("default", host=str(milvus_host), port=str(milvus_port))
 

@@ -23,7 +23,7 @@ class ElasticsearchService:
     ) -> None:
         self.index_name = index_name
         self.search_field = search_field
-        self.client = Elasticsearch(f"{scheme}://{host}:{port}") # offline cân port 
+        self.client = Elasticsearch(f"{scheme}://{host}:{port}")  # offline cân port
         # self.client = Elasticsearch(f"{scheme}://{host}") # online kh cần port vd elastic-search.tku.life
 
     # ------------------------------------------------------------------
@@ -64,10 +64,7 @@ class ElasticsearchService:
         )
 
     def bulk_insert(self, documents: list[dict[str, Any]]) -> None:
-        actions = [
-            {"_index": self.index_name, "_source": doc}
-            for doc in documents
-        ]
+        actions = [{"_index": self.index_name, "_source": doc} for doc in documents]
         bulk(self.client, actions)
 
     # ------------------------------------------------------------------
@@ -95,14 +92,12 @@ class ElasticsearchService:
                             }
                         }
                     },
-
                     # =========================================================
                     # TẦNG 2 — RERANK theo nhiều "trường hợp", mỗi case là 1
                     # should clause độc lập, không loại kết quả, chỉ cộng điểm.
                     # Xếp theo độ ưu tiên giảm dần qua boost.
                     # =========================================================
                     "should": [
-
                         # --- Case A: khớp CỤM chính xác, ĐÚNG THỨ TỰ tuyệt đối ---
                         # Ưu tiên cao nhất — user gõ đúng y hệt cụm trong document.
                         {
@@ -114,7 +109,6 @@ class ElasticsearchService:
                                 }
                             }
                         },
-
                         # --- Case B: khớp CỤM gần đúng thứ tự (cho phép lệch nhẹ) ---
                         # Bắt các biến thể: chèn thêm từ ở giữa, đảo nhẹ vị trí.
                         # slop=3 nghĩa là tối đa 3 bước dịch chuyển để khớp lại thứ tự.
@@ -127,7 +121,6 @@ class ElasticsearchService:
                                 }
                             }
                         },
-
                         # --- Case C: khớp ĐỦ 100% token, KHÔNG cần đúng thứ tự ---
                         # Document chứa hết các từ khóa nhưng nằm rải rác.
                         {
@@ -139,7 +132,6 @@ class ElasticsearchService:
                                 }
                             }
                         },
-
                         # --- Case D: khớp chính xác >=85% token (siết hơn tầng recall) ---
                         # Cầu nối giữa "khớp hết" (case C) và "khớp 50%" (must).
                         {
@@ -152,7 +144,6 @@ class ElasticsearchService:
                                 }
                             }
                         },
-
                         # --- Case E: FUZZY — bắt lỗi chính tả / dấu / OCR nhiễu ---
                         # Đặt boost thấp vì đây là fallback, không phải tín hiệu mạnh.
                         # prefix_length=2 để tránh fuzzy phá vỡ ký tự đầu của từ
@@ -169,7 +160,6 @@ class ElasticsearchService:
                                 }
                             }
                         },
-
                         # --- Case F: PROXIMITY — các từ khóa gần nhau trong văn bản ---
                         # Không yêu cầu đúng cụm, chỉ cần các token nằm gần nhau
                         # (khoảng cách <= slop). Hữu ích khi câu bị OCR/ASR cắt rời.
@@ -183,11 +173,63 @@ class ElasticsearchService:
                             }
                         },
                     ],
-
                     # Không bắt buộc should nào phải match — chúng chỉ cộng điểm.
                     "minimum_should_match": 0,
                 }
             },
+            size=size,
+        )
+        return response["hits"]["hits"]
+
+    def multi_match_search(
+        self,
+        query: str,
+        fields: list[str],
+        size: int = 10,
+        fuzziness: str = "AUTO",
+        match_type: str = "best_fields",
+        highlight_fields: list[str] | None = None,
+    ) -> list[dict]:
+        """Run a `multi_match` query across several fields with per-field boosting.
+
+        Used by the unified `multimodal_text` index to search OCR + ASR text in
+        a single query. Unlike `search()` (single-field bool/should rerank),
+        this delegates field selection + boost weights to the caller via the
+        `fields` list (e.g. ``["ocr_text^3", "asr_text^1"]``).
+
+        Args:
+            query: Free-text query string.
+            fields: List of ``"field_name^boost"`` entries. The ``^N`` suffix
+                sets a per-field weight (higher = more relevant).
+            size: Maximum number of hits to return.
+            fuzziness: ``"AUTO"`` lets ES auto-pick edit distance based on term
+                length (typo / OCR-noise tolerance). Set to ``"0"`` to disable.
+            match_type: ``"best_fields"`` scores each document by its BEST-
+                matching field (rather than summing), so a strong OCR hit is
+                not diluted by a weak ASR hit on the same keyframe.
+            highlight_fields: Optional list of fields to return matched
+                fragments for (populates ``matched_ocr``/``matched_asr``).
+
+        Returns:
+            Raw Elasticsearch hits (list of ``{"_score": ..., "_source": {...},
+            "highlight": {...}}``).
+        """
+        highlight = (
+            {"fields": {field: {} for field in highlight_fields}}
+            if highlight_fields
+            else None
+        )
+        response = self.client.search(
+            index=self.index_name,
+            query={
+                "multi_match": {
+                    "query": query,
+                    "fields": fields,
+                    "type": match_type,
+                    "fuzziness": fuzziness,
+                }
+            },
+            highlight=highlight,
             size=size,
         )
         return response["hits"]["hits"]

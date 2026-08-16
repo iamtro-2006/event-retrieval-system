@@ -224,6 +224,7 @@ async def search_api(
                     "retrieval_score",
                     "avg_score",
                     "caption",
+                    "display_rank",
                     "matched_sequence",
                     "temporal_start_time",
                     "temporal_end_time",
