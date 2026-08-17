@@ -91,3 +91,27 @@ extraction:
     max_new_tokens: 512
     temperature: 0.0
     prompt: null      # null -> use built-in default OCR prompt
+
+# =========================================================
+# Post-OCR processing (runs on extracted JSON without rerunning OCR)
+# =========================================================
+post_process:
+  input_root: "D:/event-retrieval-system/data/ocr_new"
+  output_root: "D:/event-retrieval-system/data/ocr_post"
+  skip_existing: false
+
+  dedupe: true
+  split_glued_phrases: true
+  normalize_math_notation: true
+
+  repetition_guard: true
+  repetition_guard_params:
+    min_repeat_hard: 5
+    min_repeat_soft: 3
+    soft_confidence_threshold: 0.5
+    exempt_numeric: true
+
+  post_correction: true
+  post_correction_config:
+    dictionary: "merged"
+    domain_vocab_path: "D:/event-retrieval-system/data/domain_vocab.json"

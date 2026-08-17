@@ -1,9 +1,9 @@
 keyframes_root: D:/event-retrieval-system/data/keyframes
-embeddings_root: D:/event-retrieval-system/data/embeddings/embeddings_siglip2_so400m_384
-map_keyframes_root: D:/event-retrieval-system/data/processed/map_keyframes
+embeddings_root: D:/event-retrieval-system/data/embeddings/embeddings_dfn_vit_h14_378
+map_keyframes_root: D:/event-retrieval-system/data/map_keyframes
 
 index:
-  output_dir: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384
+  output_dir: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378
   index_name: keyframes.faiss
   metadata_name: metadata.csv
   type: hnsw
