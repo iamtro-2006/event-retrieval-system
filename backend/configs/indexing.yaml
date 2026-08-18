@@ -1,20 +1,14 @@
 keyframes_root: D:/event-retrieval-system/data/keyframes
-embeddings_root: D:/event-retrieval-system/data/embeddings/embeddings_dfn_vit_h14_378
+embeddings_root: D:/event-retrieval-system/data/embeddings/embeddings_beit3_large_itc
 map_keyframes_root: D:/event-retrieval-system/data/map_keyframes
 
 index:
-  output_dir: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378
+  output_dir: D:/event-retrieval-system/data/database/faiss_beit3_large_itc
   index_name: keyframes.faiss
   metadata_name: metadata.csv
   type: hnsw
   metric: cosine
   hnsw_m: 32
-  ef_construction: 512
+  ef_construction: 600 
   ef_search: 300
 
-model:
-  name: ViT-SO400M-16-SigLIP2-384
-  pretrained: webli
-  device: auto
-  precision: amp
-  normalize: true

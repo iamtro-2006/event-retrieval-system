@@ -49,6 +49,7 @@ from src.api.routers.health import router as legacy_health_router
 from src.api.routers.legacy_search import router as legacy_search_router
 from src.api.routers.search import router as search_router
 from src.api.routers.speech import router as speech_router
+from src.api.routers.translate import router as translate_router
 from src.retrieval.system import RetrievalSystem, build_system
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -169,6 +170,7 @@ app.include_router(legacy_search_router)
 app.include_router(legacy_health_router)
 app.include_router(dres_router)
 app.include_router(speech_router)
+app.include_router(translate_router)
 
 
 @app.get("/")

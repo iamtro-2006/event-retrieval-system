@@ -117,7 +117,50 @@ def _load_tokenizer(spm_path: str, logger: logging.Logger | None = None):
         )
     if logger:
         logger.info("[beit3] loading tokenizer (beit3.spm) from %s", spm_path)
-    return XLMRobertaTokenizer(spm_path)
+    # transformers <= 4.x accepted a SentencePiece filename here.  In
+    # transformers 5 the slow tokenizer constructor expects the already
+    # decoded vocabulary (a list of ``(piece, score)`` pairs), and passing the
+    # filename produces ``Can't extract str to Vec``.  Build that vocabulary
+    # explicitly so BEiT-3 keeps working with both API generations.
+    try:
+        tokenizer = XLMRobertaTokenizer(spm_path)
+        # transformers 5.x may accept the path without raising, but interpret
+        # it as a tiny custom vocabulary (vocab_size=5).  That tokenizer is
+        # unusable for BEiT-3 and must go through the compatibility path below.
+        if tokenizer.vocab_size >= 10000:
+            return tokenizer
+    except (TypeError, ValueError):
+        pass
+
+    import sentencepiece as spm
+
+    processor = spm.SentencePieceProcessor(model_file=spm_path)
+    vocab = [
+        (processor.id_to_piece(i), float(processor.get_score(i)))
+        for i in range(processor.vocab_size())
+    ]
+    # The legacy slow XLM-R tokenizer used by the official BEiT-3 code
+    # exposes the SentencePiece ids as BOS=0 (<unk>), EOS=2 and PAD=1 (<s>).
+    tokenizer = XLMRobertaTokenizer(
+        vocab=vocab,
+        bos_token="<unk>",
+        cls_token="<s>",
+        pad_token="<s>",
+    )
+    if tokenizer.vocab_size < 10000:
+        raise RuntimeError(
+            f"Invalid BEiT-3 tokenizer vocabulary size: {tokenizer.vocab_size}"
+        )
+    if logger:
+        logger.info(
+            "[beit3] transformers-5 SentencePiece compatibility path "
+            "vocab=%d bos=%d eos=%d pad=%d",
+            tokenizer.vocab_size,
+            tokenizer.bos_token_id,
+            tokenizer.eos_token_id,
+            tokenizer.pad_token_id,
+        )
+    return tokenizer
 
 
 def _tokenize_batch(
@@ -135,14 +178,30 @@ def _tokenize_batch(
 
     token_ids: list[list[int]] = []
     for text in texts:
-        ids = tokenizer.encode(str(text or ""), add_special_tokens=False)
+        # Match unilm/beit3/datasets.py exactly: it calls tokenizer.tokenize()
+        # (which returns SentencePiece ids for XLMRobertaTokenizer), then
+        # adds BOS/EOS itself.  Calling encode() here is subtly different
+        # across transformers versions because encode may add/handle special
+        # tokens internally.
+        pieces_or_ids = tokenizer.tokenize(str(text or ""))
+        if not pieces_or_ids:
+            raise ValueError("BEiT-3 text query must contain at least one token")
+        # transformers 4's XLM-R tokenizer returned ids here in the BEiT-3
+        # environment; newer versions return SentencePiece strings.
+        ids = (
+            tokenizer.convert_tokens_to_ids(pieces_or_ids)
+            if isinstance(pieces_or_ids[0], str)
+            else pieces_or_ids
+        )
         ids = ids[: max_text_len - 2]
         ids = [bos_id, *ids, eos_id]
         token_ids.append(ids)
 
-    max_len = max((len(ids) for ids in token_ids), default=0)
-    padded = torch.full((len(token_ids), max_len), pad_id, dtype=torch.long)
-    padding_mask = torch.ones((len(token_ids), max_len), dtype=torch.long)  # 1 = padded
+    # The official retrieval dataset pads every example to exactly
+    # num_max_bpe_tokens (64), not to the longest item in the current batch.
+    # Keeping this fixed is important for matching the trained text tower.
+    padded = torch.full((len(token_ids), max_text_len), pad_id, dtype=torch.long)
+    padding_mask = torch.ones((len(token_ids), max_text_len), dtype=torch.long)  # 1 = padded
     for row, ids in enumerate(token_ids):
         padded[row, : len(ids)] = torch.tensor(ids, dtype=torch.long)
         padding_mask[row, : len(ids)] = 0  # 0 = real token

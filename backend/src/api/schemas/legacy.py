@@ -26,6 +26,8 @@ class SearchRequest(BaseModel):
     use_translate: bool | None = None
     search_mode: SearchMode | None = "semantic"
     duration_limit: float | None = -1
+    translate_provider: str | None = None
+    translate_api_key: str | None = None
 
 
 class FusionSearchRequest(BaseModel):
@@ -49,6 +51,8 @@ class FusionSearchRequest(BaseModel):
     use_translate: bool | None = None
     duration_limit: float | None = -1
     weights: dict[str, float] | None = None
+    translate_provider: str | None = None
+    translate_api_key: str | None = None
 
 
 class DresLoginRequest(BaseModel):

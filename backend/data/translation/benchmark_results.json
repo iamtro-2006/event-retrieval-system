@@ -1,0 +1,10 @@
+{
+  "dataset": "vi_en_ground_truth.jsonl",
+  "samples": 30,
+  "metric": "corpus BLEU-4 with add-one smoothing and character F-score",
+  "results": {
+    "envit5": {"BLEU": 53.48, "chrF": 86.7},
+    "vi2en": {"BLEU": 28.99, "chrF": 72.0}
+  },
+  "selected_primary": "envit5"
+}

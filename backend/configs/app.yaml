@@ -2,7 +2,7 @@
 # Keep this file as the single source of truth for online search.
 
 semantic:
-  default_model_key: vitH-378-quickgelu
+  default_model_key: BEiT-3
   models:
     - model_key: siglip2-so400m
       enabled: false
@@ -20,7 +20,7 @@ semantic:
       allow_npy_fallback: false
 
     - model_key: vitH-378-quickgelu
-      enabled: true
+      enabled: false
       model_name: vitH-378-quickgelu
       index_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/keyframes.faiss
       metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/metadata.csv
@@ -52,26 +52,26 @@ semantic:
         pooling: first
 
     - model_key: BEiT-3
-      enabled: false
+      enabled: true
       model_name: BEiT-3
-      index_path: data/database/embedding_beit3_large_itc/keyframes.faiss
-      metadata_path: data/database/embedding_beit3_large_itc/metadata.csv
+      index_path: D:/event-retrieval-system/data/database/faiss_beit3_large_itc/keyframes.faiss
+      metadata_path: D:/event-retrieval-system/data/database/faiss_beit3_large_itc/metadata.csv
       device: auto
       precision: fp32
       normalize: true
       ef_search: 399
       faiss_threads: 8
       vector_cache_mode: memmap
-      vector_cache_dtype: float32
-      vector_cache_path: data/database/embedding_beit3_large_itc/vectors_fp32.npy
+      vector_cache_dtype: float32 
+      vector_cache_path: D:/event-retrieval-system/data/database/embedding_beit3_large_itc/vectors_fp32.npy
       allow_npy_fallback: false
       model_extra:
         beit3:
-          repo_path: external/unilm/beit3
+          repo_path: D:/event-retrieval-system/backend/external/unilm/beit3
           model_arch: beit3_large_patch16_384_retrieval
-          checkpoint_path: weights/beit3_large_patch16_384_coco_retrieval.pth
+          checkpoint_path: D:/event-retrieval-system/backend/weights/beit3_large_patch16_384_f30k_retrieval.pth
           input_size: 384
-          spm_path: weights/beit3.spm
+          spm_path: D:/event-retrieval-system/backend/weights/beit3.spm
           max_text_len: 64
 
 ocr:
@@ -108,6 +108,13 @@ translate:
     num_beams: 1
     dtype: auto
     max_new_tokens: 96
+
+  vi2en:
+    model_name: vinai/vinai-translate-vi2en-v2
+    device: auto
+    max_length: 256
+    num_beams: 5
+    max_new_tokens: 128
 
   llm:
     api_key: null

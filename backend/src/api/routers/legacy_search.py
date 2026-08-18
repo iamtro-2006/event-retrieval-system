@@ -124,6 +124,8 @@ async def search_api(
             use_translate=should_translate,
             cfg=cfg,
             backend_dir=paths.backend_dir,
+            provider=payload.translate_provider,
+            api_key=payload.translate_api_key,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
@@ -235,6 +237,8 @@ async def search_fusion_api(
             duration_limit=duration_limit,
             weights=payload.weights,
             translate=use_translate,
+            translate_provider=payload.translate_provider,
+            translate_api_key=payload.translate_api_key,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
