@@ -22,6 +22,7 @@ export function useRetrievalSearch() {
     useTranslate = true,
     searchMode: requestedSearchMode = "semantic",
     durationLimit: requestedDurationLimit = -1,
+    translateProvider = "google",
   }) {
     const cleanQuery = typeof query === "string" ? query.trim() : "";
 
@@ -43,6 +44,7 @@ export function useRetrievalSearch() {
         useTranslate,
         searchMode: requestedSearchMode,
         durationLimit: requestedDurationLimit,
+        translateProvider,
       });
 
       if (requestId !== requestIdRef.current) {
@@ -84,6 +86,7 @@ export function useRetrievalSearch() {
     useSplit = true,
     useTranslate = true,
     fusionConfig,
+    translateProvider = "google",
   }) {
     const cleanQuery = typeof query === "string" ? query.trim() : "";
 
@@ -104,6 +107,7 @@ export function useRetrievalSearch() {
         useSplit,
         useTranslate,
         fusionConfig,
+        translateProvider,
       });
 
       if (requestId !== requestIdRef.current) {

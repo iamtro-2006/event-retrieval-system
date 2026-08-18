@@ -3,10 +3,20 @@ import { createPortal } from "react-dom";
 import { X, GitMerge, Sparkles, Waves, ScanText, AudioLines } from "lucide-react";
 
 /**
- * FusionSettingsModal — pop-up cấu hình cho search mode "fusion".
+ * FusionSettingsModal — pop-up cấu hình cho search mode "fusion" (advanced
+ * search).
  *
- * Cho phép tick nhiều semantic model (mỗi model 1 weight riêng), bật/tắt
- * temporal (kèm duration limit + weight), OCR (weight), ASR (weight).
+ * Cho phép tick nhiều semantic model, bật/tắt temporal (kèm duration
+ * limit), OCR, ASR. KHÔNG còn weight theo từng nguồn: backend
+ * (`Orchestrator.advanced_search`) đã bỏ khái niệm weight — mọi nguồn được
+ * fuse bằng Reciprocal Rank Fusion thuần theo RANK, không theo trọng số
+ * gán tay (field `weights` cũ giờ chỉ giữ lại ở API cho tương thích ngược,
+ * bị bỏ qua hoàn toàn). Khi temporal bật, nó chạy multimodal PER EVENT:
+ * mỗi event tự fuse (bằng RRF) đúng các method đã tick ở trên (model(s) +
+ * OCR/ASR nếu bật) TRƯỚC khi DP alignment ghép chuỗi — dùng chung danh sách
+ * model đã tick ở "Semantic models", không có checklist model riêng cho
+ * temporal.
+ *
  * Bấm "Lưu cấu hình" → đóng modal, config được áp dụng ở lần bấm Search
  * tiếp theo (không tự động search khi save).
  *
@@ -45,18 +55,9 @@ export default function FusionSettingsModal({
         ...prev,
         semanticModels: checked
           ? prev.semanticModels.filter((m) => m.key !== modelKey)
-          : [...prev.semanticModels, { key: modelKey, weight: 1 }],
+          : [...prev.semanticModels, { key: modelKey }],
       };
     });
-  }
-
-  function setModelWeight(modelKey, weight) {
-    setDraft((prev) => ({
-      ...prev,
-      semanticModels: prev.semanticModels.map((m) =>
-        m.key === modelKey ? { ...m, weight } : m
-      ),
-    }));
   }
 
   function updateField(key, val) {
@@ -71,12 +72,6 @@ export default function FusionSettingsModal({
   const hasAnyMethod =
     draft.semanticModels.length > 0 || draft.useOcr || draft.useAsr;
 
-  const totalWeight =
-    draft.semanticModels.reduce((sum, m) => sum + (Number(m.weight) || 0), 0) +
-    (draft.temporal ? Number(draft.temporalWeight) || 0 : 0) +
-    (draft.useOcr ? Number(draft.ocrWeight) || 0 : 0) +
-    (draft.useAsr ? Number(draft.asrWeight) || 0 : 0);
-
   return createPortal(
     <div className="fusion-modal-backdrop" onClick={onClose}>
       <div className="fusion-modal" onClick={(e) => e.stopPropagation()}>
@@ -87,7 +82,7 @@ export default function FusionSettingsModal({
 
           <div className="fusion-modal-header-text">
             <h2>Fusion search — cấu hình</h2>
-            <p>Chọn model, method, và trọng số (weight) cho từng nguồn.</p>
+            <p>Chọn model và method muốn kết hợp — kết quả được fuse theo rank (RRF), không cần chỉnh trọng số.</p>
           </div>
 
           <button className="modal-close-btn" type="button" onClick={onClose} aria-label="Đóng">
@@ -109,16 +104,13 @@ export default function FusionSettingsModal({
 
             <div className="fusion-row-list">
               {models.map((modelKey) => {
-                const entry = draft.semanticModels.find((m) => m.key === modelKey);
-                const checked = Boolean(entry);
+                const checked = draft.semanticModels.some((m) => m.key === modelKey);
                 return (
                   <MethodRow
                     key={modelKey}
                     label={modelKey}
                     checked={checked}
                     onToggle={() => toggleModel(modelKey)}
-                    weight={entry?.weight}
-                    onWeightChange={(w) => setModelWeight(modelKey, w)}
                   />
                 );
               })}
@@ -136,11 +128,9 @@ export default function FusionSettingsModal({
               <MethodRow
                 icon={<Waves size={14} />}
                 label="Temporal"
-                sublabel="Chuỗi sự kiện, chạy trên các model đã tick ở trên"
+                sublabel="Chuỗi sự kiện — mỗi event tự fuse (RRF) các method đã tick ở trên rồi ghép chuỗi"
                 checked={draft.temporal}
                 onToggle={() => updateField("temporal", !draft.temporal)}
-                weight={draft.temporal ? draft.temporalWeight : undefined}
-                onWeightChange={(w) => updateField("temporalWeight", w)}
               />
 
               {draft.temporal && (
@@ -162,8 +152,6 @@ export default function FusionSettingsModal({
                 sublabel="Chữ xuất hiện trên màn hình"
                 checked={draft.useOcr}
                 onToggle={() => updateField("useOcr", !draft.useOcr)}
-                weight={draft.useOcr ? draft.ocrWeight : undefined}
-                onWeightChange={(w) => updateField("ocrWeight", w)}
               />
 
               <MethodRow
@@ -172,20 +160,13 @@ export default function FusionSettingsModal({
                 sublabel="Lời thoại / giọng nói"
                 checked={draft.useAsr}
                 onToggle={() => updateField("useAsr", !draft.useAsr)}
-                weight={draft.useAsr ? draft.asrWeight : undefined}
-                onWeightChange={(w) => updateField("asrWeight", w)}
               />
             </div>
           </div>
 
-          {!hasAnyMethod ? (
+          {!hasAnyMethod && (
             <p className="fusion-empty-hint fusion-empty-hint--warn">
               Cần tick ít nhất 1 model semantic, hoặc bật OCR/ASR để fusion search chạy được.
-            </p>
-          ) : (
-            <p className="fusion-total-hint">
-              Tổng weight hiện tại: <strong>{totalWeight.toFixed(2)}</strong> — không bắt buộc phải bằng 1,
-              backend sẽ tự chuẩn hoá khi fuse.
             </p>
           )}
         </div>
@@ -209,7 +190,7 @@ export default function FusionSettingsModal({
   );
 }
 
-function MethodRow({ icon, label, sublabel, checked, onToggle, weight, onWeightChange }) {
+function MethodRow({ icon, label, sublabel, checked, onToggle }) {
   return (
     <div className={["fusion-method-row", checked ? "is-checked" : ""].filter(Boolean).join(" ")}>
       <button
@@ -230,19 +211,6 @@ function MethodRow({ icon, label, sublabel, checked, onToggle, weight, onWeightC
           </span>
         </span>
       </button>
-
-      {checked && (
-        <div className="fusion-weight-control">
-          <span>Weight</span>
-          <input
-            type="number"
-            min={0}
-            step={0.1}
-            value={weight ?? 1}
-            onChange={(e) => onWeightChange(Number(e.target.value))}
-          />
-        </div>
-      )}
     </div>
   );
 }

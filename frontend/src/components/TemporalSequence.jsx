@@ -120,7 +120,9 @@ const TemporalSequence = memo(function TemporalSequence({
           <span className="temporal-sequence-count">{sequence.length} events</span>
         </div>
         <span className="temporal-sequence-meta">
-          {result.video_id} · {Number(result.temporal?.duration_sec ?? 0).toFixed(2)}s
+          {result.video_id} · {Number(result.temporal?.start_time ?? result.timestamp ?? 0).toFixed(2)}s
+          → {Number(result.temporal?.end_time ?? result.timestamp ?? 0).toFixed(2)}s
+          · {Number(result.temporal?.duration_sec ?? 0).toFixed(2)}s duration
         </span>
         <div className="temporal-sequence-actions">
           <button type="button" className="temporal-pill-btn" onClick={() => onPlay?.(result)}>

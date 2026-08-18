@@ -324,7 +324,7 @@ img {
    SEARCH BAR
    ============================================= */
 .search-wrapper {
-  @apply w-full max-w-[760px] rounded-full p-[2px];
+  @apply w-full max-w-[1080px] rounded-full p-[2px];
   transition: border-radius var(--t-normal) var(--ease-out);
 }
 
@@ -366,12 +366,15 @@ img {
 .search-chat-footer {
   @apply flex shrink-0 items-center gap-1;
   min-width: 0;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .search-chat-controls {
   @apply flex items-center gap-1;
   min-width: 0;
-  flex-shrink: 1;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 
 /* Expanded state */
@@ -410,12 +413,46 @@ img {
   color: var(--text-secondary);
   outline: none;
   transition: background var(--t-fast), color var(--t-fast);
-  max-width: 128px;
+  width: 112px;
+  max-width: 112px;
   min-width: 0;
   flex-shrink: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Keep provider/model/mode controls compact so the new provider selector does
+   not make the search bar wider than the viewport. */
+.search-provider-select {
+  min-width: 76px;
+  max-width: 86px;
+}
+
+.search-chat-controls {
+  min-width: 0;
+  gap: 6px;
+}
+
+.search-chat-controls .search-select {
+  min-width: 0;
+  padding-left: 7px;
+  padding-right: 22px;
+  font-size: 11px;
+}
+
+/* The query field owns the flexible space; all actions stay in one compact
+   right-aligned cluster. */
+.search-chat-textarea {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 900px) {
+  .search-wrapper { max-width: calc(100vw - 32px); }
+  .search-select { width: 82px; max-width: 82px; }
+  .search-provider-select { width: 70px; max-width: 70px; }
+  .search-chat-controls { gap: 2px; }
+  .rerank-tag span { display: none; }
 }
 
 .search-select:hover {
@@ -455,6 +492,18 @@ img {
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 13px;
+}
+
+/* Keep the controls compact on result pages: the query field gets the space,
+   while long option labels are ellipsized instead of pushing the bar narrow. */
+.search-chat-controls .search-select:first-of-type {
+  width: 118px;
+  max-width: 118px;
+}
+
+.search-chat-controls .search-select:last-of-type {
+  width: 96px;
+  max-width: 96px;
 }
 
 .search-dock {
@@ -3282,7 +3331,7 @@ img {
 .bottom-search-zone .search-wrapper {
   pointer-events: auto;
   width: 100%;
-  max-width: 860px;
+  max-width: none;
   border-radius: 26px;
   padding: 1px;
   background: linear-gradient(
@@ -3294,6 +3343,10 @@ img {
   box-shadow:
     0 18px 60px rgba(0, 0, 0, 0.42),
     0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+.bottom-search-zone {
+  width: min(1100px, calc(100vw - 104px));
 }
 
 .bottom-search-zone .search-inner {
@@ -4237,3 +4290,92 @@ img {
   .rerank-tag { padding: 4px; }
 }
 
+/* Initial empty-state composer: always roomy. The result-page composer lives
+   in .bottom-search-zone and intentionally keeps the normal pill layout. */
+.home-panel .search-wrapper {
+  width: min(920px, calc(100vw - 48px));
+  max-width: 920px;
+  border-radius: 28px;
+}
+.home-panel .search-wrapper .search-inner {
+  min-height: 156px;
+  align-items: stretch;
+  flex-direction: column;
+  border-radius: 26px;
+  padding: 18px 18px 12px;
+  gap: 12px;
+}
+.home-panel .search-wrapper .search-chat-textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 76px;
+  max-height: 92px;
+  height: auto;
+  padding: 0 8px;
+  font-size: 16px;
+}
+.home-panel .search-wrapper .search-chat-footer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.home-panel .search-wrapper .search-chat-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Final expanded-composer overrides. Keep these at the end because the file
+   contains responsive/result-dock rules that otherwise restore the pill shape. */
+.home-panel:has(.search-wrapper.expanded) {
+  width: min(920px, calc(100vw - 48px));
+  max-width: 920px;
+}
+
+.search-wrapper.expanded {
+  width: min(920px, calc(100vw - 48px));
+  max-width: 920px;
+}
+
+.search-wrapper.expanded .search-inner {
+  min-height: 156px !important;
+  align-items: stretch;
+  border-radius: 26px;
+  padding: 18px 18px 12px;
+  gap: 12px;
+}
+
+.search-wrapper.expanded .search-chat-textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 76px !important;
+  max-height: 92px;
+  height: auto;
+  padding: 0 8px;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
+.search-wrapper.expanded .search-chat-footer {
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+}
+
+.search-wrapper.expanded .search-chat-controls {
+  margin-left: auto;
+  gap: 6px;
+}
+
+.search-wrapper.expanded .search-select {
+  width: 118px;
+  max-width: 118px;
+}
+
+.search-wrapper.expanded .search-duration-input {
+  width: 72px;
+}

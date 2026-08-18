@@ -24,6 +24,37 @@ function apiUrl(path) {
   return `${API_BASE_URL}/${String(path).replace(/^\/+/, "")}`;
 }
 
+// Temporary diagnostic trace for the search contract.  Keep this at the API
+// boundary so every POST response can be inspected before normalization and
+// compared with the shape consumed by the UI (frame vs sequence, including
+// ASR).  Disable with VITE_DEBUG_API_RESPONSES=false.
+function logApiResponse(label, requestId, data) {
+  if (import.meta.env.VITE_DEBUG_API_RESPONSES === "false") return;
+  const results = Array.isArray(data?.results) ? data.results : [];
+  console.groupCollapsed(`[API ${label} ${requestId}] response`);
+  console.log("meta", {
+    mode: data?.mode ?? data?.search_mode,
+    count: data?.count,
+    temporal: data?.temporal,
+    use_asr: data?.use_asr,
+    use_ocr: data?.use_ocr,
+    latency_ms: data?.latency_ms,
+  });
+  console.table(results.map((item, index) => ({
+    index,
+    video_id: item?.video_id,
+    frame_id: item?.frame_id,
+    rank: item?.rank,
+    matched_sequence: Array.isArray(item?.matched_sequence) ? item.matched_sequence.length : 0,
+    temporal_start: item?.temporal?.start_time ?? item?.temporal_start_time,
+    temporal_end: item?.temporal?.end_time ?? item?.temporal_end_time,
+    search_mode: item?.search_mode,
+    matched_texts: Array.isArray(item?.matched_texts) ? item.matched_texts.join(" | ") : "",
+  })));
+  console.log("raw", data);
+  console.groupEnd();
+}
+
 function joinBaseUrl(baseUrl, relPath) {
   if (!baseUrl || !relPath) {
     return "";
@@ -81,6 +112,7 @@ export async function searchRetrieval({
   useTranslate = true,
   searchMode = "semantic",
   durationLimit = -1,
+  translateProvider = "google",
 }) {
   if (activeSearchController) {
     activeSearchController.abort();
@@ -97,6 +129,8 @@ export async function searchRetrieval({
     candidate_multiplier: candidateMultiplier,
     use_split: useSplit,
     use_translate: useTranslate,
+    translate_provider: translateProvider,
+    translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
     search_mode: searchMode,
     duration_limit: durationLimit,
   };
@@ -129,6 +163,8 @@ export async function searchRetrieval({
 
     const data = await response.json();
     const t2 = performance.now();
+
+    logApiResponse("search", requestId, data);
 
     if (requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
@@ -201,6 +237,7 @@ export async function searchFusion({
   useSplit = true,
   useTranslate = true,
   fusionConfig,
+  translateProvider = "google",
 }) {
   if (activeSearchController) {
     activeSearchController.abort();
@@ -211,20 +248,13 @@ export async function searchFusion({
 
   const requestId = ++activeSearchRequestId;
 
+  // Backend (`Orchestrator.advanced_search`) không còn dùng `weights` theo
+  // nguồn nữa — mọi nguồn (semantic model(s), temporal, OCR, ASR) được fuse
+  // thuần theo RANK (Reciprocal Rank Fusion), không có trọng số gán tay.
+  // `weights` vẫn được validate ở backend nếu client cũ gửi lên (giữ tương
+  // thích ngược), nhưng không còn ảnh hưởng tới kết quả — nên không gửi
+  // field này nữa để UI/payload khớp với hành vi thật.
   const semanticModels = (fusionConfig?.semanticModels ?? []).map((m) => m.key);
-  const weights = {};
-  for (const m of fusionConfig?.semanticModels ?? []) {
-    weights[m.key] = Number(m.weight ?? 1);
-  }
-  if (fusionConfig?.temporal) {
-    weights.temporal = Number(fusionConfig.temporalWeight ?? 1);
-  }
-  if (fusionConfig?.useOcr) {
-    weights.ocr = Number(fusionConfig.ocrWeight ?? 1);
-  }
-  if (fusionConfig?.useAsr) {
-    weights.asr = Number(fusionConfig.asrWeight ?? 1);
-  }
 
   const payload = {
     query,
@@ -236,8 +266,9 @@ export async function searchFusion({
     candidate_multiplier: candidateMultiplier,
     use_split: useSplit,
     use_translate: useTranslate,
+    translate_provider: translateProvider,
+    translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
     duration_limit: fusionConfig?.temporal ? Number(fusionConfig?.durationLimit ?? -1) : -1,
-    weights,
   };
 
   const t0 = performance.now();
@@ -267,6 +298,8 @@ export async function searchFusion({
 
     const data = await response.json();
     const t2 = performance.now();
+
+    logApiResponse("fusion", requestId, data);
 
     if (requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);

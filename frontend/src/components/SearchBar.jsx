@@ -13,16 +13,23 @@ export default function SearchBar({
   rerankEnabled = false,
   availableModels = [],
   fusionConfig,
+  translateProvider = "google",
   onModelChange,
   onModeChange,
   onDurationLimitChange,
   onRerankToggle,
   onFusionConfigChange,
+  onTranslateProviderChange,
+  expandedByDefault = false,
   onSearch,
 }) {
   const [query, setQuery] = useState("");
   const [recording, setRecording] = useState(false);
   const [fusionModalOpen, setFusionModalOpen] = useState(false);
+  // The home composer starts expanded; the bottom composer starts compact
+  // and expands only when the query wraps past the normal height.
+  const [isExpanded, setIsExpanded] = useState(expandedByDefault);
+  const expandedRef = useRef(expandedByDefault);
 
   const modelOptions = availableModels.length > 0 ? availableModels : FALLBACK_MODELS;
 
@@ -34,16 +41,45 @@ export default function SearchBar({
   const isOcr = mode === "ocr";
   const isAsr = mode === "asr";
   const isFusion = mode === "fusion";
-  const isExpanded = query.includes("\n") || query.length > 80;
-
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
+      // Measure against the collapsed 40px textarea rather than using a
+      // character-count heuristic. A short query can wrap on a narrow
+      // viewport, while a long query may still fit on a wide one.
+      const probe = el.cloneNode(true);
+      probe.style.position = "absolute";
+      probe.style.visibility = "hidden";
+      probe.style.pointerEvents = "none";
+      probe.style.left = "-100000px";
+      probe.style.top = "0";
+      probe.style.width = `${Math.max(1, el.clientWidth)}px`;
+      probe.style.height = "40px";
+      probe.style.minHeight = "40px";
+      probe.style.maxHeight = "40px";
+      probe.style.overflow = "hidden";
+      probe.style.whiteSpace = "pre-wrap";
+      probe.value = el.value;
+      document.body.appendChild(probe);
+      const shouldExpand = probe.scrollHeight > 40 || query.includes("\n");
+      probe.remove();
+
+      // Do not measure the expanded layout and immediately collapse it again:
+      // the expanded textarea is wider, so the same text can fit on one line
+      // after expansion and create an expand/collapse feedback loop.
+      if (!expandedRef.current && shouldExpand) {
+        expandedRef.current = true;
+        setIsExpanded(true);
+      } else if (expandedRef.current && !query.trim()) {
+        expandedRef.current = false;
+        setIsExpanded(false);
+      }
+
       el.style.height = "auto";
       el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
     });
-  }, []);
+  }, [query]);
 
   useEffect(() => {
     resizeTextarea();
@@ -184,6 +220,18 @@ export default function SearchBar({
                 ))}
               </select>
             )}
+
+            <select
+              className="search-select search-provider-select"
+              value={translateProvider}
+              onChange={(e) => onTranslateProviderChange?.(e.target.value)}
+              title="Translation provider"
+              aria-label="Translation provider"
+            >
+              <option value="google">Google</option>
+              <option value="llm">LLM</option>
+              <option value="envit5">EnViT5</option>
+            </select>
 
             <select className="search-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
               <option value="text">Semantic</option>

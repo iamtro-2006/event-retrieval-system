@@ -75,15 +75,18 @@ export default function App() {
   const [availableModels, setAvailableModels] = useState([]);
   const [mode, setMode] = useState("text");
   const [durationLimit, setDurationLimit] = useState(-1);
+  // Fusion (advanced search) config: chỉ còn on/off cho từng nguồn +
+  // duration_limit cho temporal. Backend (`Orchestrator.advanced_search`)
+  // không còn nhận weight theo nguồn nữa (temporal search giờ luôn multimodal
+  // per-event: mỗi event tự fuse các method đã tick bằng RRF trước khi DP
+  // alignment) — không còn field `*Weight` nào ở đây để tránh UI hứa hẹn 1
+  // hành vi backend không còn hỗ trợ.
   const [fusionConfig, setFusionConfig] = useState({
     semanticModels: [],
     temporal: false,
-    temporalWeight: 1,
     durationLimit: -1,
     useOcr: false,
-    ocrWeight: 1,
     useAsr: false,
-    asrWeight: 1,
     hasConfig: false,
   });
   const [columns, setColumns] = useState(4);
@@ -110,6 +113,7 @@ export default function App() {
     username: defaultSubmission.teamId,
     password: defaultSubmission.teamPassword,
   });
+  const [translateProvider, setTranslateProvider] = useState("google");
 
   // ── Backend ──────────────────────────────────────────
   const [backendReady, setBackendReady] = useState(false);
@@ -174,13 +178,15 @@ export default function App() {
       rerankEnabled,
       availableModels,
       fusionConfig,
+      translateProvider,
+      onTranslateProviderChange: setTranslateProvider,
       onModelChange: setModel,
       onModeChange: setMode,
       onDurationLimitChange: setDurationLimit,
       onRerankToggle: setRerankEnabled,
       onFusionConfigChange: setFusionConfig,
     }),
-    [model, mode, loading, backendReady, durationLimit, rerankEnabled, availableModels, fusionConfig]
+    [model, mode, loading, backendReady, durationLimit, rerankEnabled, availableModels, fusionConfig, translateProvider]
   );
 
   // ── Bootstrap ────────────────────────────────────────
@@ -356,6 +362,7 @@ export default function App() {
             candidateMultiplier: settings.candidateMultiplier,
             useSplit: settings.useSplit,
             useTranslate: settings.useTranslate,
+            translateProvider,
             fusionConfig: cfg,
           });
         } else {
@@ -367,6 +374,7 @@ export default function App() {
             useTranslate: settings.useTranslate,
             searchMode,
             durationLimit: nextDurationLimit,
+            translateProvider,
           });
         }
       } catch (err) {
@@ -378,7 +386,7 @@ export default function App() {
         pushToast("warning", "Search failed", getErrorMessage(err));
       }
     },
-    [backendReady, durationLimit, fusionConfig, loading, pushToast, resolvedMode, search, searchWithFusion, settings]
+    [backendReady, durationLimit, fusionConfig, loading, pushToast, resolvedMode, search, searchWithFusion, settings, translateProvider]
   );
 
   // Auto-rerank tối ưu hơn: debounce + chống stale update
@@ -701,9 +709,9 @@ export default function App() {
                 {backendStatus}
               </div>
 
-              <h1 className="main-title">Bạn muốn retrieval sự kiện nào?</h1>
+              <h1 className="main-title">Multimodal Retrieval System</h1>
 
-              <SearchBar {...searchBarProps} onSearch={handleSearch} />
+              <SearchBar {...searchBarProps} expandedByDefault onSearch={handleSearch} />
             </section>
           )}
 
@@ -791,7 +799,7 @@ export default function App() {
               </section>
 
               <div className={`bottom-search-zone ${loading ? "is-searching" : ""}`}>
-                <SearchBar {...searchBarProps} onSearch={handleSearch} />
+                <SearchBar {...searchBarProps} expandedByDefault={false} onSearch={handleSearch} />
 
                 <p className="footer-note">
                   Retrieval result có thể thiếu chính xác, cần kiểm tra lại bằng video gốc.
