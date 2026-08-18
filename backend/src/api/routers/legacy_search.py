@@ -100,7 +100,11 @@ async def search_api(
 
     candidate_multiplier = max(1, int(payload.candidate_multiplier or cfg["search"].get("candidate_multiplier", 5)))
     use_split = True if payload.use_split is None else bool(payload.use_split)
-    use_translate = bool(cfg.get("translate", {}).get("enabled_default", False)) if payload.use_translate is None else bool(payload.use_translate)
+    use_translate = (
+        bool(cfg.get("translate", {}).get("enabled_default", False))
+        if payload.use_translate is None
+        else bool(payload.use_translate)
+    )
 
     mode = payload.search_mode
     duration_limit = -1.0 if payload.duration_limit is None or payload.duration_limit == 0 else float(payload.duration_limit)
@@ -200,26 +204,27 @@ async def search_fusion_api(
 
     candidate_multiplier = max(1, int(payload.candidate_multiplier or cfg["search"].get("candidate_multiplier", 5)))
     use_split = True if payload.use_split is None else bool(payload.use_split)
-    use_translate = bool(cfg.get("translate", {}).get("enabled_default", False)) if payload.use_translate is None else bool(payload.use_translate)
+    requested_translate = (
+        bool(cfg.get("translate", {}).get("enabled_default", False))
+        if payload.use_translate is None
+        else bool(payload.use_translate)
+    )
+    # Semantic/temporal and OCR/ASR now receive separate query paths in the
+    # backend: semantic gets the translated query, OCR/ASR get original text.
+    use_translate = requested_translate
     duration_limit = -1.0 if payload.duration_limit is None or payload.duration_limit == 0 else float(payload.duration_limit)
 
     start = time.perf_counter()
 
     try:
-        search_query = await run_in_threadpool(
-            translate_query_if_needed,
-            query=original_query,
-            use_translate=use_translate,
-            cfg=cfg,
-            backend_dir=paths.backend_dir,
-        )
+        search_query = original_query
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
 
     try:
         fused_df, _per_source = await run_in_threadpool(
             system.search_advanced,
-            search_query,
+            original_query,
             semantic_models=payload.semantic_models,
             temporal=payload.temporal,
             use_ocr=payload.use_ocr,
@@ -229,6 +234,7 @@ async def search_fusion_api(
             candidate_multiplier=candidate_multiplier,
             duration_limit=duration_limit,
             weights=payload.weights,
+            translate=use_translate,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
@@ -241,7 +247,7 @@ async def search_fusion_api(
 
     response_base = {
         "original_query": original_query, "query": search_query,
-        "translated_query": search_query if use_translate else None,
+        "translated_query": None,
         "use_translate": use_translate, "use_split": use_split, "mode": "fusion", "search_mode": "fusion",
         "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
         "latency_ms": latency_ms,

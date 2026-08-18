@@ -2,9 +2,9 @@
 # Elasticsearch indexing (used by scripts/ocr/index/run.py)
 # =========================================================
 elasticsearch:
-  host: "localhost"
-  port: 9200
-  scheme: "http"
+  host: "pasted-tropical-sway.ngrok-free.dev"
+  port: 443
+  scheme: "https"
   index: "ocr_db"
 
 # Root folder of per-video OCR json files: <root>/<dataset>/<video_id>.json

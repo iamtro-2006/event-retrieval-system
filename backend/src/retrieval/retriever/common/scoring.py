@@ -9,6 +9,24 @@ import pandas as pd
 _IDENTITY_COLUMNS = ("dataset", "video_id", "keyframe_id")
 
 
+def _canonical_identity_value(column: str, value) -> str:
+    """Canonicalize IDs so heterogeneous backends identify the same frame.
+
+    FAISS metadata commonly exposes numeric keyframe IDs while Elasticsearch
+    returns strings (sometimes zero-padded). Without canonicalization, 291,
+    "291", and "000291" incorrectly become three different RRF entities.
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    text = str(value).strip()
+    if column == "keyframe_id":
+        try:
+            return str(int(float(text)))
+        except (TypeError, ValueError):
+            pass
+    return text.casefold()
+
+
 def reciprocal_rank_fusion(
     ranked_lists: list[pd.DataFrame],
     weights: list[float] | None = None,
@@ -66,7 +84,7 @@ def reciprocal_rank_fusion(
         label = " / ".join(str(x) for x in (source_label, model_label) if x) or "unknown"
 
         for (_, row), rank in zip(df.iterrows(), ranks):
-            key = tuple(row.get(c) for c in identity_cols)
+            key = tuple(_canonical_identity_value(c, row.get(c)) for c in identity_cols)
             contribution = float(weight) / (rrf_k + float(rank))
             if key not in fused:
                 fused[key] = {

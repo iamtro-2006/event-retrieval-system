@@ -23,6 +23,7 @@ import pandas as pd
 from src.retrieval.index.faiss_index import METADATA_DISPLAY_COLUMNS, FaissIndex
 from src.retrieval.index.index_manager import IndexManager
 from src.retrieval.retriever.common.scoring import reciprocal_rank_fusion
+from src.retrieval.retriever.temporal_search.pipeline.search import temporal_search_from_score_candidates
 from src.retrieval.retriever.semantic_search.pipeline.search import clean_queries
 
 if TYPE_CHECKING:
@@ -418,6 +419,7 @@ class Orchestrator:
         duration_limit: float = -1,
         weights: dict[str, float] | None = None,
         rrf_k: int = 60,
+        raw_query: str | None = None,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
         """"Advanced search": chạy đồng thời nhiều method (semantic/temporal/
         ocr/asr), rồi hợp nhất bằng Reciprocal Rank Fusion — tương ứng UI
@@ -478,42 +480,193 @@ class Orchestrator:
         weights = weights or {}
 
         candidate_k = max(int(top_k) * int(candidate_multiplier), int(top_k))
+        # Semantic/temporal use the translated query when requested by the
+        # facade; OCR/ASR use the original-language query supplied as
+        # ``raw_query``. This keeps the two language paths independent.
+        raw_query = query if raw_query is None else str(raw_query)
         plan = self.build_query_plan(query, mode="semantic", use_split=use_split)
+        raw_plan = self.build_query_plan(raw_query, mode="semantic", use_split=use_split)
 
         per_source: dict[str, pd.DataFrame] = {}
         ranked_lists: list[pd.DataFrame] = []
         list_weights: list[float] = []
 
+        def _flatten_sequences(df: pd.DataFrame) -> pd.DataFrame:
+            """Convert sequence hits to frame hits for non-temporal fusion.
+
+            RRF identity is a keyframe identity.  Keeping ``matched_sequence``
+            on the parent row would therefore fuse one whole sequence as one
+            item and would hide all frames except its representative frame.
+            When temporal mode is off, every source must contribute the same
+            frame-shaped rows to RRF.
+            """
+            if df is None or df.empty or "matched_sequence" not in df.columns:
+                return df
+
+            rows: list[dict] = []
+            for _, parent in df.iterrows():
+                sequence = parent.get("matched_sequence")
+                if not isinstance(sequence, (list, tuple)) or not sequence:
+                    rows.append(parent.to_dict())
+                    continue
+
+                parent_values = parent.to_dict()
+                for frame in sequence:
+                    if not isinstance(frame, dict):
+                        continue
+                    item = {**parent_values, **frame}
+                    item.pop("matched_sequence", None)
+                    rows.append(item)
+
+            if not rows:
+                return pd.DataFrame()
+            expanded = pd.DataFrame.from_records(rows)
+            expanded["rank"] = np.arange(1, len(expanded) + 1)
+            expanded["display_rank"] = expanded["rank"]
+            return expanded
+
         def _add(label: str, weight_key: str, df: pd.DataFrame) -> None:
             if df is None or df.empty:
                 return
             df = df.copy()
+            if not temporal:
+                df = _flatten_sequences(df)
+                if df.empty:
+                    return
             df["search_mode"] = df.get("search_mode", weight_key.split(":")[0])
             per_source[label] = df
             ranked_lists.append(df)
             list_weights.append(float(weights.get(weight_key, 1.0)))
 
-        for model_key in semantic_models:
-            df = self.semantic_search.search(plan.events, top_k, candidate_k, model_key=model_key)
-            _add(f"semantic:{model_key}", model_key, df)
+        def _sequence_to_frames(df: pd.DataFrame) -> pd.DataFrame:
+            """Expand sequence hits into frame candidates for temporal fusion."""
+            if df is None or df.empty or "matched_sequence" not in df.columns:
+                return df.copy() if df is not None else pd.DataFrame()
+            rows = []
+            for _, parent in df.iterrows():
+                sequence = parent.get("matched_sequence")
+                if not isinstance(sequence, (list, tuple)) or not sequence:
+                    rows.append(parent.to_dict())
+                    continue
+                base = parent.to_dict()
+                for frame in sequence:
+                    if isinstance(frame, dict):
+                        item = {**base, **frame}
+                        item.pop("matched_sequence", None)
+                        # Sequence position is not the query-event index.
+                        # The parent hit is already being assigned to the
+                        # event currently searched.
+                        item.pop("sub_query_idx", None)
+                        rows.append(item)
+            return pd.DataFrame.from_records(rows) if rows else pd.DataFrame()
 
-        if temporal and semantic_models:
-            temporal_plan = self.build_query_plan(query, mode="temporal", use_split=use_split)
-            fused_temporal, per_model_candidates = self.temporal_search.search_combined(
-                temporal_plan.events, semantic_models, top_k, candidate_k, duration_limit, rrf_k=rrf_k
-            )
-            _add("temporal", "temporal", fused_temporal)
-            # Breakdown từng model TRƯỚC khi fuse — chỉ để debug/hiển thị,
-            # KHÔNG đưa vào ranked_lists (tránh double-count với "temporal"
-            # đã fuse ở trên).
-            for model_key, candidates_df in per_model_candidates.items():
-                per_source[f"temporal_candidates:{model_key}"] = candidates_df
+        def _event_candidates(df: pd.DataFrame, event_idx: int) -> pd.DataFrame:
+            """Normalize one source to frame candidates belonging to one event."""
+            frames = _sequence_to_frames(df)
+            if frames.empty:
+                return frames
+            if "sub_query_idx" in frames.columns:
+                frames = frames[frames["sub_query_idx"].fillna(event_idx).astype(int) == event_idx]
+            frames = frames.copy()
+            frames["sub_query_idx"] = event_idx
+            frames["search_mode"] = frames.get("search_mode", "candidate")
+            # RRF must rank individual frame candidates, not the parent ASR
+            # segment rank inherited by every flattened frame.
+            frames["rank"] = np.arange(1, len(frames) + 1)
+            frames["display_rank"] = frames["rank"]
+            return frames
+
+        source_frames_by_event: dict[int, list[tuple[str, pd.DataFrame, float]]] = {}
+
+        for model_key in semantic_models:
+            if temporal:
+                for event_idx, event in enumerate(plan.events):
+                    df = self.semantic_search.search([event], top_k, candidate_k, model_key=model_key)
+                    part = _event_candidates(df, event_idx)
+                    if not part.empty:
+                        per_source[f"semantic:{model_key}:event:{event_idx}"] = part
+                        source_frames_by_event.setdefault(event_idx, []).append(
+                            (f"semantic:{model_key}", part, float(weights.get(model_key, 1.0)))
+                        )
+            else:
+                df = self.semantic_search.search(plan.events, top_k, candidate_k, model_key=model_key)
+                _add(f"semantic:{model_key}", model_key, df)
+
+        if temporal:
+            for event_idx, event in enumerate(plan.events):
+                raw_event = raw_plan.events[event_idx] if event_idx < len(raw_plan.events) else event
+                event_query = raw_event[0] if raw_event else ""
+                if use_ocr and self.ocr_search_pipeline is not None:
+                    ocr_df = _event_candidates(self.ocr_search(event_query, candidate_k), event_idx)
+                    if not ocr_df.empty:
+                        per_source[f"ocr:event:{event_idx}"] = ocr_df
+                        source_frames_by_event.setdefault(event_idx, []).append(
+                            ("ocr", ocr_df, float(weights.get("ocr", 1.0)))
+                        )
+                if use_asr and self.asr_search_pipeline is not None:
+                    asr_df = _event_candidates(self.asr_search(event_query, candidate_k), event_idx)
+                    if not asr_df.empty:
+                        per_source[f"asr:event:{event_idx}"] = asr_df
+                        source_frames_by_event.setdefault(event_idx, []).append(
+                            ("asr", asr_df, float(weights.get("asr", 1.0)))
+                        )
+
+            fused_event_frames = []
+            for event_idx, sources in source_frames_by_event.items():
+                fused = reciprocal_rank_fusion(
+                    [df for _, df, _ in sources],
+                    weights=[weight for _, _, weight in sources],
+                    rrf_k=rrf_k,
+                    top_k=candidate_k,
+                )
+                if not fused.empty:
+                    fused["sub_query_idx"] = event_idx
+                    fused_event_frames.append(fused)
+
+            candidate_pool = pd.concat(fused_event_frames, ignore_index=True) if fused_event_frames else pd.DataFrame()
+            if not candidate_pool.empty:
+                temporal_plan = self.build_query_plan(query, mode="temporal", use_split=use_split)
+                fused_temporal = temporal_search_from_score_candidates(
+                    candidate_pool,
+                    temporal_plan.event_queries,
+                    duration_limit=duration_limit,
+                    top_k_videos=top_k,
+                    score_col="rrf_score",
+                )
+                if not fused_temporal.empty:
+                    fused_temporal["search_mode"] = "temporal"
+                    per_source["temporal"] = fused_temporal
+                return fused_temporal, per_source
+            return pd.DataFrame(), per_source
 
         if use_ocr and self.ocr_search_pipeline is not None:
-            _add("ocr", "ocr", self.ocr_search(plan.query, top_k))
+            # OCR search trên text tiếng Việt thô -> phải dùng raw_plan.query
+            # (chưa dịch), giống hệt nhánh temporal=True ở trên. KHÔNG dùng
+            # plan.query (đã dịch cho semantic/temporal).
+            _add("ocr", "ocr", self.ocr_search(raw_plan.query, top_k))
 
         if use_asr and self.asr_search_pipeline is not None:
-            _add("asr", "asr", self.asr_search(plan.query, top_k))
+            # Tương tự use_ocr ở trên.
+            _add("asr", "asr", self.asr_search(raw_plan.query, top_k))
 
         fused = reciprocal_rank_fusion(ranked_lists, weights=list_weights, rrf_k=rrf_k, top_k=top_k)
+        if not temporal and not fused.empty:
+            # Non-temporal fusion has one presentation contract: every
+            # contribution is a semantic-style frame. Do not let a row that
+            # happened to originate from OCR/ASR change the UI card shape.
+            frame_only_columns = (
+                "matched_sequence",
+                "matched_texts",
+                "ocr_score",
+                "asr_score",
+                "temporal_start_time",
+                "temporal_end_time",
+                "temporal_duration_sec",
+                "video_score",
+                "avg_score",
+                "alignment_score",
+                "selected_indices",
+            )
+            fused = fused.drop(columns=[c for c in frame_only_columns if c in fused.columns])
+            fused["search_mode"] = "semantic"
         return fused, per_source

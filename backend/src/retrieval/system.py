@@ -214,6 +214,7 @@ class RetrievalSystem:
         candidate_multiplier: int = 5,
         duration_limit: float = -1,
         weights: dict[str, float] | None = None,
+        translate: bool | None = None,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
         """Advanced search: combine several ticked semantic models + an
         on/off `temporal` toggle (temporal search runs on that same ticked
@@ -223,15 +224,15 @@ class RetrievalSystem:
         passthrough, matching the shape of `search_semantic`/`search_temporal`/
         etc. above).
 
-        KHÔNG dịch `query` ở đây (khác `search_semantic`/`search_temporal`/
-        `search_auto`): `Orchestrator.advanced_search` dùng CHUNG 1 chuỗi
-        `query` cho cả semantic/temporal LẪN ocr/asr (không có tham số
-        "semantic query" riêng), nên dịch trước khi gọi xuống đây sẽ dịch
-        luôn cả phần OCR/ASR (vốn cần giữ nguyên tiếng Việt) — cần sửa
-        `Orchestrator.advanced_search` để tách 2 đường trước khi wire dịch
-        vào đây an toàn được; để lại cho lần sau (xem handoff note)."""
+        `Orchestrator.advanced_search` nhận cả `semantic_query` (đã dịch, dùng
+        cho semantic/temporal) LẪN `raw_query` (giữ nguyên tiếng Việt, dùng
+        cho ocr/asr ở CẢ nhánh temporal=True và temporal=False) — 2 đường
+        ngôn ngữ được tách bên trong `advanced_search` (`plan` vs `raw_plan`),
+        nên truyền cả 2 xuống đây là an toàn."""
+        raw_query = query
+        semantic_query = self._translate_query(query, translate)
         return self._orchestrator.advanced_search(
-            query,
+            semantic_query,
             semantic_models=semantic_models,
             temporal=temporal,
             use_ocr=use_ocr,
@@ -241,6 +242,7 @@ class RetrievalSystem:
             candidate_multiplier=candidate_multiplier,
             duration_limit=duration_limit,
             weights=weights,
+            raw_query=raw_query,
         )
 
 
