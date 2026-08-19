@@ -67,13 +67,17 @@ async def get_video_preview(
     video_id: str,
     request: Request,
     frame_id: int | None = None,
+    frame_idx: int | None = None,
     timestamp_ms: int | None = None,
     clip_index: FaissIndex = Depends(get_legacy_index),
     paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Resolve a video plus frame_id or milliseconds to the normal video result shape."""
-    if (frame_id is None) == (timestamp_ms is None):
-        raise HTTPException(status_code=400, detail="Provide exactly one of frame_id or timestamp_ms")
+    if frame_id is not None and frame_idx is not None:
+        raise HTTPException(status_code=400, detail="Provide only one of frame_id or frame_idx")
+    requested_frame = frame_idx if frame_idx is not None else frame_id
+    if (requested_frame is None) == (timestamp_ms is None):
+        raise HTTPException(status_code=400, detail="Provide exactly one of frame_id/frame_idx or timestamp_ms")
     if timestamp_ms is not None and timestamp_ms < 0:
         raise HTTPException(status_code=400, detail="timestamp_ms must be non-negative")
 
@@ -82,8 +86,32 @@ async def get_video_preview(
         rows = metadata[metadata["video_id"].astype(str) == str(video_id)].copy()
         if rows.empty:
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
-        if frame_id is not None:
-            row = find_metadata_row(clip_index, video_id, int(frame_id))
+        if requested_frame is not None:
+            # `frame_id` in the preview UI is the decoded video frame index,
+            # not the sparse keyframe id used by the retrieval index.
+            # Metadata may contain one row per keyframe, so select the row
+            # whose actual frame_idx is closest to the requested frame.
+            frame_col = next((c for c in ("frame_idx", "frame_id") if c in rows.columns), None)
+            if frame_col:
+                frame_values = pd.to_numeric(rows[frame_col], errors="coerce")
+                valid = frame_values.notna()
+                if valid.any():
+                    row = rows.loc[(frame_values[valid] - int(requested_frame)).abs().idxmin()]
+                else:
+                    raise HTTPException(status_code=422, detail="Frame index metadata is unavailable for this video")
+            else:
+                # Backward compatibility for old indexes that only expose
+                # keyframe ids.
+                row = find_metadata_row(clip_index, video_id, int(requested_frame))
+            fps = pd.to_numeric(row.get("fps", 0), errors="coerce")
+            if float(fps) > 0:
+                result_timestamp = float(requested_frame) / float(fps)
+            else:
+                result_timestamp = pd.to_numeric(
+                    row.get("timestamp_sec", row.get("timestamp", 0)), errors="coerce"
+                )
+            # Applied after serializing below so the video seeks to the
+            # requested real frame rather than the nearest sparse keyframe.
         else:
             time_col = next((c for c in ("timestamp_sec", "timestamp", "time_sec") if c in rows.columns), None)
             if not time_col:
@@ -94,6 +122,16 @@ async def get_video_preview(
         result = dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir)
         if timestamp_ms is not None:
             result["timestamp"] = float(timestamp_ms) / 1000.0
+            # `frame_id` in the index is a keyframe id. The frame id requested
+            # by the video player is the actual decoded video frame, derived
+            # from the playback timestamp and that video's FPS.
+            fps = pd.to_numeric(row.get("fps", 0), errors="coerce")
+            if float(fps) > 0:
+                result["frame_idx"] = int(round(float(timestamp_ms) / 1000.0 * float(fps)))
+        elif requested_frame is not None:
+            result["frame_idx"] = int(requested_frame)
+            if "result_timestamp" in locals() and pd.notna(result_timestamp):
+                result["timestamp"] = float(result_timestamp)
         return result
 
     return await run_in_threadpool(_fetch)
