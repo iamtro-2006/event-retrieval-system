@@ -62,6 +62,43 @@ async def get_frame_info(
     return await run_in_threadpool(_fetch)
 
 
+@router.get("/api/video-preview")
+async def get_video_preview(
+    video_id: str,
+    request: Request,
+    frame_id: int | None = None,
+    timestamp_ms: int | None = None,
+    clip_index: FaissIndex = Depends(get_legacy_index),
+    paths: LegacyPaths = Depends(get_legacy_paths),
+):
+    """Resolve a video plus frame_id or milliseconds to the normal video result shape."""
+    if (frame_id is None) == (timestamp_ms is None):
+        raise HTTPException(status_code=400, detail="Provide exactly one of frame_id or timestamp_ms")
+    if timestamp_ms is not None and timestamp_ms < 0:
+        raise HTTPException(status_code=400, detail="timestamp_ms must be non-negative")
+
+    def _fetch():
+        metadata = clip_index.metadata
+        rows = metadata[metadata["video_id"].astype(str) == str(video_id)].copy()
+        if rows.empty:
+            raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
+        if frame_id is not None:
+            row = find_metadata_row(clip_index, video_id, int(frame_id))
+        else:
+            time_col = next((c for c in ("timestamp_sec", "timestamp", "time_sec") if c in rows.columns), None)
+            if not time_col:
+                raise HTTPException(status_code=422, detail="Timestamp metadata is unavailable for this video")
+            values = pd.to_numeric(rows[time_col], errors="coerce")
+            target_sec = float(timestamp_ms) / 1000.0
+            row = rows.loc[(values - target_sec).abs().idxmin()]
+        result = dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir)
+        if timestamp_ms is not None:
+            result["timestamp"] = float(timestamp_ms) / 1000.0
+        return result
+
+    return await run_in_threadpool(_fetch)
+
+
 @router.post("/api/search")
 async def search_api(
     payload: SearchRequest,

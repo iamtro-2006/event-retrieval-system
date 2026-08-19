@@ -6,7 +6,7 @@ semantic:
   models:
     - model_key: siglip2-so400m
       enabled: false
-      model_name: siglip2-so400m
+      model_name: ViT-SO400M-16-SigLIP2-384
       index_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/keyframes.faiss
       metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_siglip2_so400m_384/metadata.csv
       device: auto
@@ -21,7 +21,7 @@ semantic:
 
     - model_key: vitH-378-quickgelu
       enabled: false
-      model_name: vitH-378-quickgelu
+      model_name: ViT-H-14-378-quickgelu
       index_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/keyframes.faiss
       metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/metadata.csv
       device: auto
