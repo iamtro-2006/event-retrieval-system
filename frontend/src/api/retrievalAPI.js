@@ -606,6 +606,15 @@ export async function getFrameInfo(videoId, keyframeId) {
   return normalizeResults([data])[0];
 }
 
+export async function getVideoPreview(videoId, { frameId, timestampMs } = {}) {
+  const params = new URLSearchParams({ video_id: videoId });
+  if (frameId !== undefined && frameId !== "") params.set("frame_id", String(frameId));
+  if (timestampMs !== undefined && timestampMs !== "") params.set("timestamp_ms", String(timestampMs));
+  const response = await fetch(apiUrl(`/api/video-preview?${params}`), { headers: NGROK_HEADER });
+  if (!response.ok) throw new Error((await response.text()) || "Cannot load video preview");
+  return normalizeResults([await response.json()])[0];
+}
+
 export async function transcribeSpeech(blob) {
   const formData = new FormData();
   formData.append("file", blob, "speech.webm");

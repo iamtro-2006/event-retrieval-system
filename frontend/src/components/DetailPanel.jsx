@@ -66,6 +66,16 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
     }
   }
 
+  async function handleCopyFrameId() {
+    const videoId = activeResult.video_id ?? "";
+    const frameId = Number(activeResult.frame_id ?? activeResult.raw?.frame_id ?? 0);
+    try {
+      await navigator.clipboard.writeText(`${videoId}, ${frameId}`);
+    } catch {
+      console.error("Cannot copy frame id");
+    }
+  }
+
   async function handleTimelineClick(frame) {
     const clickedKeyframeId = Number(frame.keyframeId ?? frame.frameId ?? 0);
 
@@ -172,6 +182,11 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
           <button type="button" onClick={handleCopyPath}>
             <Copy size={14} />
             Copy Path
+          </button>
+
+          <button type="button" className="detail-copy-frame" onClick={handleCopyFrameId}>
+            <Copy size={14} />
+            Copy ID
           </button>
 
           {activeResult.image_url ? (

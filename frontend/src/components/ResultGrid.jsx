@@ -9,10 +9,10 @@ const ResultGrid = memo(function ResultGrid({ results, columns, selectedId, onSe
       Array.isArray(result.matched_sequence) && result.matched_sequence.length ? (
         <TemporalSequence key={result.id} result={result} sequenceIndex={index} index={index} selectedId={selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />
       ) : (
-        <ResultCard key={result.id} result={result} index={index} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />
+        <ResultCard key={result.id} result={result} index={index} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />
       )
     )}</div>;
   }
-  return <div className="result-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>{results.map((result, index) => <ResultCard key={result.id} result={result} index={index} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />)}</div>;
+  return <div className="result-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>{results.map((result, index) => <ResultCard key={result.id} result={result} index={index} selected={result.id === selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />)}</div>;
 });
 export default ResultGrid;

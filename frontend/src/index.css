@@ -1630,6 +1630,8 @@ img {
   background: var(--bg-surface);
   -webkit-overflow-scrolling: touch;
   animation: slide-in-right var(--t-slow) var(--ease-out) both;
+  position: relative;
+  z-index: 5000;
 }
 
 @keyframes slide-in-right {
@@ -1785,6 +1787,17 @@ img {
   border-color: var(--green-border) !important;
   background: linear-gradient(135deg, var(--green), var(--green-alt)) !important;
   color: #fff !important;
+}
+
+.detail-copy-frame {
+  border-color: rgba(248, 113, 113, .7) !important;
+  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+  color: #fff !important;
+}
+
+.detail-copy-frame:hover {
+  background: linear-gradient(135deg, #b91c1c, #f87171) !important;
+  border-color: #fca5a5 !important;
 }
 
 .detail-submit-inline:hover {
@@ -2527,6 +2540,7 @@ img {
    ============================================= */
 .toast-host {
   @apply fixed right-5 top-5 z-[200] flex w-[320px] flex-col gap-3;
+  z-index: 12000;
   pointer-events: none;
 }
 
@@ -2563,6 +2577,16 @@ img {
   backdrop-filter: blur(12px);
   animation: fade-in var(--t-fast) var(--ease-out) both;
 }
+
+.preview-modal-backdrop { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; background: rgba(0,0,0,.72); backdrop-filter: blur(10px); }
+.preview-modal { width: min(420px, calc(100vw - 32px)); display: grid; gap: 14px; padding: 20px; border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); background: var(--bg-surface); box-shadow: 0 24px 80px rgba(0,0,0,.45); }
+.preview-modal header, .preview-unit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.preview-modal header > div { display: flex; align-items: center; gap: 8px; }
+.preview-modal header button { color: var(--text-secondary); }
+.preview-modal label { display: grid; gap: 6px; color: var(--text-secondary); font-size: 12px; font-weight: 600; flex: 1; }
+.preview-modal input, .preview-modal select { min-height: 38px; width: 100%; padding: 0 10px; border: 1px solid var(--border-subtle); border-radius: 9px; background: var(--bg-input, #080d1d); color: var(--text-primary); }
+.preview-submit { min-height: 40px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #38bdf8); color: white; font-weight: 700; }
+.preview-error { margin: 0; color: #fca5a5; font-size: 12px; }
 
 .video-modal {
   width: min(90vw, 900px);

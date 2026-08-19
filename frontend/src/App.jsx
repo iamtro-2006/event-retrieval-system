@@ -19,6 +19,7 @@ import ToastHost from "./components/ToastHost";
 import SurroundingFramesModal from "./components/SurroundingFramesModal";
 import SimilarityFramesModal from "./components/SimilarityFramesModal";
 import VideoModal from "./components/VideoModal";
+import PreviewVideoModal from "./components/PreviewVideoModal";
 import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
 import {
   checkBackendHealth,
@@ -71,6 +72,7 @@ export default function App() {
 
   // ── UI state ──────────────────────────────────────────
   const [theme, setTheme] = useState("dark");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [model, setModel] = useState("siglip2-so400m");
   const [availableModels, setAvailableModels] = useState([]);
   const [mode, setMode] = useState("text");
@@ -699,6 +701,7 @@ export default function App() {
           onToggleTheme={handleToggleTheme}
           onReset={handleReset}
           onOpenSettings={handleOpenSettings}
+          onOpenPreview={() => setPreviewOpen(true)}
         />
 
         <main className={hasResults ? "main-layout has-results" : "main-layout is-home"}>
@@ -818,6 +821,8 @@ export default function App() {
           onClose={closeAllModals}
           onSubmit={handleSubmitResult}
         />
+
+        <PreviewVideoModal open={previewOpen} onClose={() => setPreviewOpen(false)} onSubmit={handleSubmitResult} />
 
         <SettingsPanel
           open={settingsOpen}
