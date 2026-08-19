@@ -12,6 +12,7 @@ export default function SimilarityFramesModal({
   onClose,
   onSelect,
   onSubmit,
+  onPlay,
   onSimilaritySearch,
   onSurroundingImages,
   layer = 1,
@@ -91,6 +92,7 @@ export default function SimilarityFramesModal({
                   selected={isSource}
                   onSelect={onSelect}
                   onSubmit={onSubmit}
+                  onPlay={onPlay}
                   onSimilaritySearch={onSimilaritySearch}
                   onSurroundingImages={onSurroundingImages}
                 />

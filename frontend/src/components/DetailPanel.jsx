@@ -15,7 +15,7 @@ import {
 import { getNeighborFrames } from "../utils/frameUtils";
 import { buildSurroundingFrames } from "../utils/surroundingFrames";
 import VideoModal from "./VideoModal";
-import { getFrameInfo } from "../api/retrievalAPI";
+import { getFrameInfo, getFrameIdxAtTimestamp } from "../api/retrievalAPI";
 
 export default function DetailPanel({ result, onClose, onSubmit }) {
   const [videoOpen, setVideoOpen] = useState(false);
@@ -68,9 +68,10 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
 
   async function handleCopyFrameId() {
     const videoId = activeResult.video_id ?? "";
-    const frameId = Number(activeResult.frame_id ?? activeResult.raw?.frame_id ?? 0);
+    const timestampMs = Math.max(0, Math.round(timestamp * 1000));
     try {
-      await navigator.clipboard.writeText(`${videoId}, ${frameId}`);
+      const frameIdx = await getFrameIdxAtTimestamp(videoId, timestampMs);
+      await navigator.clipboard.writeText(`${videoId}, ${frameIdx}`);
     } catch {
       console.error("Cannot copy frame id");
     }

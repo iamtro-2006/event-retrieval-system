@@ -845,6 +845,7 @@ export default function App() {
           onClose={closeAllModals}
           onSelect={handleSelectResult}
           onSubmit={handleSubmitResult}
+          onPlay={handlePlayResult}
           onSimilaritySearch={handleSimilaritySearch}
           onSurroundingImages={handleOpenSurroundingImages}
         />
@@ -860,6 +861,7 @@ export default function App() {
           onClose={closeAllModals}
           onSelect={handleSelectResult}
           onSubmit={handleSubmitResult}
+          onPlay={handlePlayResult}
           onSimilaritySearch={handleSimilaritySearch}
           onSurroundingImages={handleOpenSurroundingImages}
         />
