@@ -2195,6 +2195,7 @@ img {
   background: var(--bg-surface);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.2);
   animation: scale-up var(--t-normal) var(--spring) both;
+  color: #e8eefc;
 }
 
 .fusion-modal-header {
@@ -2234,7 +2235,7 @@ img {
 .fusion-modal-header-text p {
   margin: 3px 0 0;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #aebbd3;
 }
 
 .fusion-modal-body {
@@ -2249,6 +2250,7 @@ img {
   border-radius: var(--radius-lg);
   background: var(--bg-card, var(--bg-input));
   padding: 14px 16px;
+  color: #e8eefc;
 }
 
 .fusion-card-title {
@@ -2330,7 +2332,7 @@ img {
 .fusion-method-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #f1f5ff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2338,7 +2340,7 @@ img {
 
 .fusion-method-sub {
   font-size: 11px;
-  color: var(--text-muted);
+  color: #aebbd3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2427,6 +2429,44 @@ img {
   bottom: 0;
   background: var(--bg-surface);
 }
+
+.fusion-weight-total {
+  margin: 0 0 10px;
+  color: #aebbd3;
+  font-size: 12px;
+}
+
+.fusion-radar-wrap { display: flex; justify-content: center; margin: 4px 0 14px; }
+.fusion-radar { width: 250px; height: 250px; overflow: visible; }
+.fusion-radar-grid { fill: rgba(120,169,255,.06); stroke: #52627b; stroke-width: .8; }
+.fusion-radar-value { fill: rgba(120,169,255,.3); stroke: #78a9ff; stroke-width: 1.4; }
+.fusion-radar text { fill: currentColor; font-size: 5px; text-anchor: middle; }
+
+.fusion-weight-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 58px;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  font-size: 13px;
+  color: #dbe6fb;
+  font-weight: 600;
+}
+
+.fusion-weight-row input[type="range"] { width: 100%; accent-color: #78a9ff; }
+.fusion-weight-number {
+  width: 58px;
+  box-sizing: border-box;
+  border: 1px solid #43516b;
+  border-radius: 6px;
+  padding: 4px 5px;
+  background: #111a2b;
+  color: #eef4ff;
+  font-weight: 600;
+}
+
+.fusion-weight-number:disabled,
+.fusion-weight-row input[type="range"]:disabled { opacity: .42; }
 
 .fusion-cancel-btn,
 .fusion-save-btn {

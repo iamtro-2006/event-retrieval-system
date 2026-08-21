@@ -10,14 +10,14 @@ export default function SearchBar({
   loading,
   disabled = false,
   durationLimit = -1,
-  rerankEnabled = false,
+  reasoningEnabled = false,
   availableModels = [],
   fusionConfig,
   translateProvider = "google",
   onModelChange,
   onModeChange,
   onDurationLimitChange,
-  onRerankToggle,
+  onReasoningToggle,
   onFusionConfigChange,
   onTranslateProviderChange,
   expandedByDefault = false,
@@ -104,6 +104,7 @@ export default function SearchBar({
       searchMode,
       durationLimit: searchMode === "temporal" ? Number(durationLimit) : -1,
       fusionConfig: searchMode === "fusion" ? fusionConfig : null,
+      reasoning: searchMode === "temporal" || searchMode === "fusion" ? reasoningEnabled : false,
     });
   }
 
@@ -254,22 +255,22 @@ export default function SearchBar({
               />
             )}
 
-            {/* ── Rerank toggle tag ───────────────────────────────────── */}
-            {!isFusion && (
+            {/* ── LLM reasoning toggle ─────────────────────────────────── */}
+            {(isTemporal || isFusion) && (
               <button
                 type="button"
-                className={["rerank-tag", rerankEnabled ? "rerank-tag--active" : ""].filter(Boolean).join(" ")}
-                aria-label={rerankEnabled ? "Tắt Auto-Rerank" : "Bật Auto-Rerank (VLM)"}
+                className={["rerank-tag", reasoningEnabled ? "rerank-tag--active" : ""].filter(Boolean).join(" ")}
+                aria-label={reasoningEnabled ? "Tắt Reasoning" : "Bật Reasoning"}
                 title={
-                  rerankEnabled
-                    ? "Auto-Rerank đang BẬT — sau khi search, VLM sẽ tự động chấm lại kết quả"
-                    : "Bật Auto-Rerank — VLM sẽ load ngầm và cập nhật kết quả"
+                  reasoningEnabled
+                    ? "LLM reasoning đang bật: temporal order, scene split và focused fusion queries"
+                    : "Bật LLM reasoning cho temporal/fusion"
                 }
-                onClick={() => onRerankToggle?.(!rerankEnabled)}
+                onClick={() => onReasoningToggle?.(!reasoningEnabled)}
                 disabled={disabled}
               >
                 <Zap size={13} />
-                <span>Rerank</span>
+                <span>Reasoning</span>
               </button>
             )}
 

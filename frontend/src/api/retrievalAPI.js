@@ -52,6 +52,13 @@ function logApiResponse(label, requestId, data) {
     matched_texts: Array.isArray(item?.matched_texts) ? item.matched_texts.join(" | ") : "",
   })));
   console.log("raw", data);
+  console.groupCollapsed("diagnostic: query reasoning / fusion");
+  console.log("weights", data?.weights ?? data?.debug?.weights ?? "not returned");
+  console.log("events", data?.events ?? data?.query_plan?.events ?? data?.debug?.events ?? "not returned");
+  console.log("event_queries", data?.event_queries ?? data?.debug?.event_queries ?? "not returned");
+  console.log("focused_queries", data?.focused_queries ?? data?.debug?.focused_queries ?? "not returned");
+  console.log("reasoning", data?.reasoning ?? data?.debug?.reasoning ?? "not returned");
+  console.groupEnd();
   console.groupEnd();
 }
 
@@ -113,6 +120,7 @@ export async function searchRetrieval({
   searchMode = "semantic",
   durationLimit = -1,
   translateProvider = "google",
+  reasoning = false,
 }) {
   if (activeSearchController) {
     activeSearchController.abort();
@@ -128,6 +136,7 @@ export async function searchRetrieval({
     top_k: topK,
     candidate_multiplier: candidateMultiplier,
     use_split: useSplit,
+    reasoning,
     use_translate: useTranslate,
     translate_provider: translateProvider,
     translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
@@ -238,6 +247,7 @@ export async function searchFusion({
   useTranslate = true,
   fusionConfig,
   translateProvider = "google",
+  reasoning = false,
 }) {
   if (activeSearchController) {
     activeSearchController.abort();
@@ -248,12 +258,6 @@ export async function searchFusion({
 
   const requestId = ++activeSearchRequestId;
 
-  // Backend (`Orchestrator.advanced_search`) không còn dùng `weights` theo
-  // nguồn nữa — mọi nguồn (semantic model(s), temporal, OCR, ASR) được fuse
-  // thuần theo RANK (Reciprocal Rank Fusion), không có trọng số gán tay.
-  // `weights` vẫn được validate ở backend nếu client cũ gửi lên (giữ tương
-  // thích ngược), nhưng không còn ảnh hưởng tới kết quả — nên không gửi
-  // field này nữa để UI/payload khớp với hành vi thật.
   const semanticModels = (fusionConfig?.semanticModels ?? []).map((m) => m.key);
 
   const payload = {
@@ -265,6 +269,8 @@ export async function searchFusion({
     top_k: topK,
     candidate_multiplier: candidateMultiplier,
     use_split: useSplit,
+    weights: fusionConfig?.weights ?? undefined,
+    reasoning,
     use_translate: useTranslate,
     translate_provider: translateProvider,
     translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
@@ -273,6 +279,11 @@ export async function searchFusion({
 
   const t0 = performance.now();
   console.log(`[FUSION SEARCH ${requestId}] payload`, payload);
+  console.groupCollapsed(`[FUSION SEARCH ${requestId}] reasoning input`);
+  console.log("reasoning", reasoning);
+  console.log("weights sent", payload.weights);
+  console.log("enabled sources", { semantic: semanticModels.length > 0, ocr: payload.use_ocr, asr: payload.use_asr, temporal: payload.temporal });
+  console.groupEnd();
 
   try {
     const response = await fetch(apiUrl("/api/search/fusion"), {
@@ -335,6 +346,11 @@ export async function searchFusion({
       count: data.count ?? 0,
       searchMode: "fusion",
       durationLimit: data.duration_limit ?? -1,
+      reasoning: Boolean(data.reasoning),
+      weights: data.weights ?? {},
+      events: data.events ?? [],
+      eventQueries: data.event_queries ?? [],
+      focusedQueries: data.focused_queries ?? {},
       results: normalizedResults,
     };
   } catch (error) {
