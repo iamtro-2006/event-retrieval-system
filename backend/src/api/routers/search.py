@@ -249,6 +249,7 @@ def search_advanced(payload: AdvancedSearchRequest, request: Request) -> Advance
             candidate_multiplier=payload.candidate_multiplier,
             duration_limit=payload.duration_limit,
             weights=payload.weights,
+            reasoning=payload.reasoning,
         ),
         feature_name="Advanced search",
     )

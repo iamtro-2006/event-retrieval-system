@@ -1,12 +1,28 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
+
+try:  # Numba is an optional acceleration layer; keep a pure-Python fallback.
+    from numba import njit
+except ImportError:  # pragma: no cover - exercised only in minimal installs
+    def njit(*args, **kwargs):
+        return lambda fn: fn
 
 # Identity of a "result" across different retrievers/models: same keyframe,
 # regardless of which model/method found it. Used by `reciprocal_rank_fusion`
 # to merge ranked lists coming from different semantic models and/or
 # semantic/temporal/ocr/asr methods (`advanced_search`).
 _IDENTITY_COLUMNS = ("dataset", "video_id", "keyframe_id")
+
+
+@njit(cache=True, fastmath=True)
+def _rrf_contributions(ranks: np.ndarray, weights: np.ndarray, rrf_k: float) -> np.ndarray:
+    """Hot numeric loop for RRF; DataFrame/object work stays outside Numba."""
+    out = np.empty(ranks.size, dtype=np.float64)
+    for i in range(ranks.size):
+        out[i] = weights[i] / (rrf_k + ranks[i])
+    return out
 
 
 def _canonical_identity_value(column: str, value) -> str:
@@ -30,7 +46,7 @@ def _canonical_identity_value(column: str, value) -> str:
 def reciprocal_rank_fusion(
     ranked_lists: list[pd.DataFrame],
     weights: list[float] | None = None,
-    rrf_k: int = 60,
+    rrf_k: int = 32,
     top_k: int | None = None,
 ) -> pd.DataFrame:
     """Merge several already-ranked result DataFrames (each sorted best-first,
@@ -78,17 +94,25 @@ def reciprocal_rank_fusion(
         if not identity_cols:
             continue
 
-        ranks = df["rank"] if "rank" in df.columns else (pd.Series(range(1, len(df) + 1), index=df.index))
+        # Materialize once. `iterrows()` constructs a Series per row and is
+        # disproportionately expensive for the small candidate lists used by
+        # fusion. Numba handles the only arithmetic loop.
+        ranks = pd.to_numeric(df["rank"], errors="coerce").fillna(0).to_numpy(dtype=np.float64) if "rank" in df.columns else np.arange(1, len(df) + 1, dtype=np.float64)
+        contributions = _rrf_contributions(
+            ranks,
+            np.full(ranks.size, float(weight), dtype=np.float64),
+            float(rrf_k),
+        )
         source_label = df["search_mode"].iloc[0] if "search_mode" in df.columns else None
         model_label = df["model_key"].iloc[0] if "model_key" in df.columns else None
         label = " / ".join(str(x) for x in (source_label, model_label) if x) or "unknown"
 
-        for (_, row), rank in zip(df.iterrows(), ranks):
+        records = df.to_dict(orient="records")
+        for row, contribution in zip(records, contributions):
             key = tuple(_canonical_identity_value(c, row.get(c)) for c in identity_cols)
-            contribution = float(weight) / (rrf_k + float(rank))
             if key not in fused:
                 fused[key] = {
-                    "row": row.to_dict(),
+                    "row": row,
                     "rrf_score": 0.0,
                     "source_labels": [],
                 }

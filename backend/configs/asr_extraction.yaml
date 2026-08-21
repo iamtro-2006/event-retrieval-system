@@ -1,8 +1,9 @@
 elasticsearch:
-  host: "localhost"
-  port: 9200
-  scheme: "http"
+  host: "pasted-tropical-sway.ngrok-free.dev"
+  port: 443
+  scheme: "https"
   index: "asr_db"
+
 
 dataset:
   root: "data/processed/asr"

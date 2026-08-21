@@ -2,7 +2,7 @@
 # Keep this file as the single source of truth for online search.
 
 semantic:
-  default_model_key: vitH-378-quickgelu
+  default_model_key: BEiT-3
   models:
     - model_key: siglip2-so400m
       enabled: false
@@ -20,7 +20,7 @@ semantic:
       allow_npy_fallback: false
 
     - model_key: vitH-378-quickgelu
-      enabled: true
+      enabled: false
       model_name: ViT-H-14-378-quickgelu
       index_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/keyframes.faiss
       metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/metadata.csv
@@ -52,7 +52,7 @@ semantic:
         pooling: first
 
     - model_key: BEiT-3
-      enabled: false
+      enabled: true
       model_name: BEiT-3
       index_path: D:/event-retrieval-system/data/database/faiss_beit3_large_itc/keyframes.faiss
       metadata_path: D:/event-retrieval-system/data/database/faiss_beit3_large_itc/metadata.csv
@@ -86,7 +86,7 @@ paths:
   map_keyframe_path: D:/event-retrieval-system/map_keyframes
 
 search:
-  candidate_multiplier: 3
+  candidate_multiplier: 4
   default_top_k: 20
   max_top_k: 200
 
@@ -119,13 +119,49 @@ translate:
   llm:
     api_key: null
     base_url: https://api.xah.io/v1
-    model: deepseek-v4-flash
+    model: gpt-5.4
     timeout: 15
     max_workers: 8
     temperature: 0.2
     max_output_tokens: 256
     persona: "Dich ngan gon, kieu keyword."
     cache_size: 2048
+
+# Optional LLM-based query enrichment (paraphrase for semantic search,
+# scene/event segmentation for temporal/auto, per-source focused rewrites
+# for advanced/fusion search). Disabled by default: when `enabled: false`
+# (or this whole key is removed), every search mode behaves EXACTLY as
+# before this feature existed (pure regex split_query / split_temporal_events
+# / split_semantic_queries) — see `src/retrieval/retriever/common/orchestrator.py`
+# and `src/query_enrichment/llm_query_engine.py`.
+# OCR/ASR NEVER use this engine (they always search the raw query text).
+query_enrichment:
+  enabled: true
+  # Queries with at most this many words get LLM-paraphrased into
+  # complementary sub-queries; longer queries are assumed detailed enough
+  # already and are left as-is (regex comma-split fallback still applies).
+  min_len_for_paraphrase: 30
+  # Max number of paraphrased sub-queries generated per semantic call.
+  max_subqueries: 3
+  llm:
+    api_key: null
+    base_url: https://api.xah.io/v1
+    model: gpt-5.5
+    timeout: 15
+    max_retries: 2
+    max_workers: 8
+    temperature: 0.3
+    max_output_tokens: 512
+
+# Fusion weights are independent from query enrichment. They are loaded at
+# backend startup and apply whether or not the optional LLM is enabled.
+# Semantic model scores are first fused with RRF; the resulting semantic
+# score is then combined with OCR/ASR using these weights.
+fusion:
+  default_weights:
+    semantic: 0.8
+    ocr: 0.1
+    asr: 0.1
 
 speech:
   model_size: base

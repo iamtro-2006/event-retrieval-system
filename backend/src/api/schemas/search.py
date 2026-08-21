@@ -55,6 +55,7 @@ class BaseSearchRequest(BaseModel):
 
 class SemanticSearchRequest(BaseSearchRequest):
     use_split: bool = True
+    reasoning: bool = False
     candidate_multiplier: int = Field(5, ge=1, le=50)
     model_key: str | None = Field(
         None, description="Model dùng để search khi backend load nhiều model. Bỏ trống = model mặc định."
@@ -69,6 +70,7 @@ class SemanticSearchRequest(BaseSearchRequest):
 
 class TemporalSearchRequest(SemanticSearchRequest):
     duration_limit: float = Field(-1, description="Giới hạn thời lượng chuỗi event (giây). -1 = không giới hạn.")
+    reasoning: bool = False
 
 
 class OcrSearchRequest(BaseSearchRequest):
@@ -81,6 +83,7 @@ class AsrSearchRequest(BaseSearchRequest):
 
 class AutoSearchRequest(BaseSearchRequest):
     use_split: bool = True
+    reasoning: bool = False
     candidate_multiplier: int = Field(5, ge=1, le=50)
     translate: bool | None = Field(
         None,
@@ -106,12 +109,13 @@ class AdvancedSearchRequest(BaseSearchRequest):
     use_ocr: bool = False
     use_asr: bool = False
     use_split: bool = True
+    reasoning: bool = False
     candidate_multiplier: int = Field(5, ge=1, le=50)
     duration_limit: float = -1
     weights: dict[str, float] | None = Field(
         None,
-        description="Weight tuỳ chọn theo nguồn: key là model_key (áp cho semantic search của model đó), "
-        "\"temporal\" (áp cho kết quả temporal đã fuse), \"ocr\", hoặc \"asr\". Mặc định 1.0.",
+        description="Weight theo nhóm nguồn: semantic, ocr, asr. Backend chuẩn hoá tổng weight về 1.0; "
+        "nguồn tắt sẽ không được tính.",
     )
     include_per_source: bool = Field(
         False,
@@ -133,6 +137,8 @@ class AdvancedSearchRequest(BaseSearchRequest):
         if not self.weights:
             return self
         allowed = set(self.semantic_models)
+        # Optional group-level semantic weight used after semantic-model RRF.
+        allowed.add("semantic")
         allowed.add("temporal")
         allowed.add("ocr")
         allowed.add("asr")

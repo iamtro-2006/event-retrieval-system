@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from src.retrieval.retriever.temporal_search.pipeline.search import SearchPipeline as TemporalSearchPipeline
     from src.retrieval.retriever.ocr_search.pipeline.search import SearchPipeline as OCRSearchPipeline
     from src.retrieval.retriever.asr_search.pipeline.search import SearchPipeline as ASRSearchPipeline
+    from src.query_enrichment.llm_query_engine import LLMQueryEngine
 
 SearchMode = Literal["semantic", "temporal", "ocr", "asr", "auto"]
 
@@ -104,6 +105,10 @@ class Orchestrator:
         temporal_search: "TemporalSearchPipeline",
         ocr_search_pipeline: "OCRSearchPipeline | None" = None,
         asr_search_pipeline: "ASRSearchPipeline | None" = None,
+        llm_query_engine: "LLMQueryEngine | None" = None,
+        min_len_for_paraphrase: int = 12,
+        max_subqueries: int = 4,
+        default_source_weights: dict[str, float] | None = None,
     ) -> None:
         """Compose an orchestrator from an already-built `FaissIndex`/`IndexManager` +
         4 `SearchPipeline` instances (build all via their respective
@@ -124,6 +129,33 @@ class Orchestrator:
                 When provided, enables `mode="ocr"`.
             asr_search_pipeline: Optional ASR `SearchPipeline` (Elasticsearch-backed).
                 When provided, enables `mode="asr"`.
+            llm_query_engine: Optional `LLMQueryEngine` (see
+                `src/query_enrichment/llm_query_engine.py`). When `None`
+                (default) every mode behaves EXACTLY as before (pure regex
+                `split_temporal_events`/`split_semantic_queries`). When set,
+                `use_split=True` additionally triggers, per `build_query_plan`:
+                  - semantic: LLM paraphrase of short queries into
+                    complementary sub-queries (falls back to the regex
+                    comma-split on failure or when the query is already
+                    long — see `min_len_for_paraphrase`).
+                  - temporal/auto: LLM-based scene/event segmentation
+                    instead of naive `.`/`;` splitting (falls back to regex
+                    on failure), each event then paraphrased as above.
+                  - ocr/asr: NEVER used — those two modes always search on
+                    the raw query text (see `ocr_search`/`asr_search`).
+            min_len_for_paraphrase: Only queries with at most this many
+                whitespace-separated words get LLM-paraphrased (a query
+                already this long is assumed to be detailed/specific enough
+                that generating more sub-queries would dilute it rather than
+                help).
+            max_subqueries: Upper bound on how many paraphrased sub-queries
+                the LLM generates per semantic paraphrase call.
+            default_source_weights: Optional default fusion weights used by
+                `advanced_search` when `weights` is not supplied for a given
+                source, expressed as a rough percentage split, e.g.
+                `{"visual": 0.5, "ocr": 0.3, "asr": 0.2}` — "visual" covers
+                semantic model(s) AND temporal (both are CLIP-embedding
+                based). See `advanced_search`/`_resolve_default_weight`.
         """
         self.index_manager = index if isinstance(index, IndexManager) else None
         # `self.index` always resolves to a concrete FaissIndex, used for
@@ -133,13 +165,45 @@ class Orchestrator:
         self.temporal_search = temporal_search
         self.ocr_search_pipeline = ocr_search_pipeline
         self.asr_search_pipeline = asr_search_pipeline
+        self.llm_query_engine = llm_query_engine
+        self.min_len_for_paraphrase = max(1, int(min_len_for_paraphrase))
+        self.max_subqueries = max(1, int(max_subqueries))
+        self.default_source_weights = default_source_weights or {"semantic": 0.8, "ocr": 0.1, "asr": 0.1}
 
-    def build_query_plan(self, query: str, mode: SearchMode = "semantic", use_split: bool = True) -> QueryPlan:
+    def _split_events(self, query: str, mode: SearchMode, use_split: bool) -> list[str]:
+        """Split `query` into temporal events/scenes.
+
+        Regex `.`/`;` splitting (`split_temporal_events`) is always the
+        fallback. When an `llm_query_engine` is wired in, `use_split=True`,
+        and `mode` is "temporal" or "auto", the LLM is asked to segment the
+        query by MEANING (handles run-on sentences with no punctuation,
+        merges clauses that describe one simultaneous scene, drops bare
+        event labels/numbering) instead. OCR/ASR never reach this path with
+        an LLM engine active (`run_search` calls `ocr_search`/`asr_search`
+        directly on `plan.query`, not through event splitting).
+        """
+        if self.llm_query_engine is not None and use_split and mode in ("temporal", "auto"):
+            llm_events = self.llm_query_engine.split_temporal_events(query)
+            if llm_events:
+                return llm_events
+        return split_temporal_events(query)
+
+    def _split_semantic(self, text: str, use_split: bool) -> list[str]:
+        """Split semantic sub-queries with the deterministic legacy splitter.
+
+        `use_split` no longer triggers semantic paraphrasing. LLM enrichment
+        is reserved for temporal scene/order reasoning and source-focused
+        fusion rewrites, both of which are explicitly bounded by the UI
+        request and do not expand every ordinary semantic query.
+        """
+        return split_semantic_queries(text) if use_split else clean_queries([text])
+
+    def build_query_plan(self, query: str, mode: SearchMode = "semantic", use_split: bool = True, reasoning: bool = False) -> QueryPlan:
         """Parse and structure a raw query into a QueryPlan object."""
         query = str(query or "").strip()
         events = []
-        for text in split_temporal_events(query):
-            parts = split_semantic_queries(text) if use_split else clean_queries([text])
+        for text in (self._split_events(query, mode, use_split) if reasoning else split_temporal_events(query)):
+            parts = self._split_semantic(text, use_split)
             if parts:
                 events.append(parts)
         return QueryPlan(query=query, mode=mode, use_split=use_split, events=events)
@@ -360,6 +424,7 @@ class Orchestrator:
         candidate_multiplier: int = 5,
         duration_limit: float = -1,
         model_key: str | None = None,
+        reasoning: bool = False,
     ) -> tuple[pd.DataFrame, QueryPlan]:
         """Execute a search based on the specified mode and query plan.
 
@@ -369,7 +434,7 @@ class Orchestrator:
                 model). Bỏ trống = model mặc định. Không ảnh hưởng OCR/ASR
                 (không dùng embedding model).
         """
-        plan = self.build_query_plan(query, mode, use_split)
+        plan = self.build_query_plan(query, mode, use_split, reasoning=reasoning)
         if not plan.events:
             return pd.DataFrame(), plan
 
@@ -398,6 +463,46 @@ class Orchestrator:
 
         raise ValueError(f"Unsupported search mode: {effective_mode}")
 
+    def _effective_weight(
+        self, key: str, semantic_models: list[str], weights: dict[str, float]
+    ) -> float:
+        """Resolve the fusion weight for one source `key`.
+
+        An explicit entry in `weights` always wins (unchanged behavior —
+        `weights` defaults to `{}`, giving 1.0 for everyone, exactly like
+        before this feature existed). When `weights` does NOT specify `key`,
+        instead of silently defaulting to 1.0 for every source (which is
+        what made every source count equally regardless of how many
+        semantic models were ticked), split `self.default_source_weights`
+        ("visual"/"ocr"/"asr" percentages) across the active sources: each
+        ticked semantic model (and "temporal", which is the same visual
+        embedding space) shares the "visual" percentage evenly, while "ocr"
+        and "asr" each get their own percentage outright.
+        """
+        if key in weights:
+            return float(weights[key])
+        if key not in ("ocr", "asr") and "semantic" in weights:
+            return float(weights["semantic"]) / max(1, len(semantic_models))
+        defaults = self.default_source_weights
+        if key not in ("ocr", "asr"):
+            return float(defaults.get("semantic", 1.0))
+        if key == "ocr":
+            return float(defaults.get("ocr", 1.0))
+        if key == "asr":
+            return float(defaults.get("asr", 1.0))
+        return 1.0
+
+    def _focused_queries_or_empty(self, query: str, targets: list[str]) -> dict[str, str]:
+        """LLM-generated per-source query rewrites (see
+        `LLMQueryEngine.generate_focused_queries`), or `{}` when no engine
+        is wired in / the call fails — callers must treat `{}` as "use the
+        original query for every source" (never raises, never blocks
+        `advanced_search` from completing).
+        """
+        if self.llm_query_engine is None or not targets:
+            return {}
+        return self.llm_query_engine.generate_focused_queries(query, targets)
+
     def available_semantic_models(self) -> list[str]:
         """Model keys usable for the `advanced_search` semantic checklist —
         only ones actually loaded (and, for text queries, that support
@@ -420,6 +525,7 @@ class Orchestrator:
         weights: dict[str, float] | None = None,
         rrf_k: int = 60,
         raw_query: str | None = None,
+        reasoning: bool = False,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
         """"Advanced search": chạy đồng thời nhiều method (semantic/temporal/
         ocr/asr), rồi hợp nhất bằng Reciprocal Rank Fusion — tương ứng UI
@@ -478,14 +584,51 @@ class Orchestrator:
         """
         semantic_models = list(semantic_models or [])
         weights = weights or {}
+        # Normalize group weights against sources enabled for this request.
+        # Disabled OCR/ASR are forced to zero; this also protects direct
+        # callers from sending weights whose sum is not exactly 1.0.
+        active_groups = ["semantic"] if semantic_models else []
+        if use_ocr and self.ocr_search_pipeline is not None:
+            active_groups.append("ocr")
+        if use_asr and self.asr_search_pipeline is not None:
+            active_groups.append("asr")
+        if active_groups:
+            raw_group_weights = {
+                group: max(0.0, float(weights.get(group, self.default_source_weights.get(group, 0.0))))
+                for group in active_groups
+            }
+            total_group_weight = sum(raw_group_weights.values())
+            if total_group_weight > 0:
+                weights = {**weights, **{group: value / total_group_weight for group, value in raw_group_weights.items()}}
 
         candidate_k = max(int(top_k) * int(candidate_multiplier), int(top_k))
         # Semantic/temporal use the translated query when requested by the
         # facade; OCR/ASR use the original-language query supplied as
         # ``raw_query``. This keeps the two language paths independent.
         raw_query = query if raw_query is None else str(raw_query)
-        plan = self.build_query_plan(query, mode="semantic", use_split=use_split)
-        raw_plan = self.build_query_plan(raw_query, mode="semantic", use_split=use_split)
+        # `mode="temporal"` here (instead of "semantic") so that, when an
+        # `llm_query_engine` is wired in and `temporal=True`, event
+        # boundaries come from LLM scene segmentation rather than naive
+        # `.`/`;` splitting — see `_split_events`. This only changes how
+        # `plan.events`/`raw_plan.events` are computed; it does not affect
+        # anything else (mode is not otherwise read off `plan`/`raw_plan`
+        # below, `effective_mode`/dispatch is decided independently per
+        # source further down).
+        plan_mode: SearchMode = "temporal" if temporal else "semantic"
+        plan = self.build_query_plan(query, mode=plan_mode, use_split=use_split, reasoning=reasoning)
+        if temporal and reasoning:
+            # The translated and raw-language plans represent the same
+            # temporal sequence. Reuse the LLM-derived event boundaries so a
+            # Fusion temporal request makes one temporal reasoning call, not
+            # one call per language path.
+            raw_plan = QueryPlan(
+                query=raw_query,
+                mode=plan_mode,
+                use_split=use_split,
+                events=plan.events,
+            )
+        else:
+            raw_plan = self.build_query_plan(raw_query, mode=plan_mode, use_split=use_split, reasoning=reasoning)
 
         per_source: dict[str, pd.DataFrame] = {}
         ranked_lists: list[pd.DataFrame] = []
@@ -536,7 +679,7 @@ class Orchestrator:
             df["search_mode"] = df.get("search_mode", weight_key.split(":")[0])
             per_source[label] = df
             ranked_lists.append(df)
-            list_weights.append(float(weights.get(weight_key, 1.0)))
+            list_weights.append(self._effective_weight(weight_key, semantic_models, weights))
 
         def _sequence_to_frames(df: pd.DataFrame) -> pd.DataFrame:
             """Expand sequence hits into frame candidates for temporal fusion."""
@@ -576,59 +719,158 @@ class Orchestrator:
             frames["display_rank"] = frames["rank"]
             return frames
 
+        def _weighted_event_fusion(
+            semantic_sources: list[tuple[str, pd.DataFrame]],
+            auxiliary_sources: list[tuple[str, pd.DataFrame]],
+        ) -> pd.DataFrame:
+            """RRF semantic models first, then weighted-fuse OCR/ASR."""
+            semantic_rrf = reciprocal_rank_fusion(
+                [df for _, df in semantic_sources],
+                weights=[1.0] * len(semantic_sources),
+                rrf_k=rrf_k,
+                top_k=candidate_k,
+            )
+            source_lists: list[tuple[str, pd.DataFrame, float]] = []
+            if not semantic_rrf.empty:
+                source_lists.append(("semantic", semantic_rrf, self._effective_weight("semantic", semantic_models, weights)))
+            for label, df in auxiliary_sources:
+                if not df.empty:
+                    source_lists.append((label, df, self._effective_weight(label, semantic_models, weights)))
+            if not source_lists:
+                return pd.DataFrame()
+
+            frames = []
+            for label, df, weight in source_lists:
+                frame = df.copy()
+                score_col = "rrf_score" if "rrf_score" in frame.columns else "score"
+                values = pd.to_numeric(frame[score_col], errors="coerce").fillna(0.0)
+                maximum = float(values.max()) if len(values) else 0.0
+                frame["_fusion_score"] = (values / maximum if maximum > 0 else 0.0) * float(weight)
+                frame["_fusion_source"] = label
+                frames.append(frame)
+
+            combined = pd.concat(frames, ignore_index=True)
+            identity = [c for c in ("dataset", "video_id", "keyframe_id") if c in combined.columns]
+            if not identity:
+                return pd.DataFrame()
+            result = (
+                combined.groupby(identity, as_index=False)
+                .agg(rrf_score=("_fusion_score", "sum"), matched_sources=("_fusion_source", "nunique"))
+                .sort_values("rrf_score", ascending=False)
+                .head(candidate_k)
+                .reset_index(drop=True)
+            )
+            best_rows = combined.sort_values("_fusion_score", ascending=False).drop_duplicates(identity)
+            metadata = best_rows.drop(columns=[c for c in ("rrf_score", "matched_sources") if c in best_rows.columns])
+            result = result.merge(metadata, on=identity, how="left")
+            result["rank"] = np.arange(1, len(result) + 1)
+            result["display_rank"] = result["rank"]
+            result["search_mode"] = "temporal"
+            return result
+
         source_frames_by_event: dict[int, list[tuple[str, pd.DataFrame, float]]] = {}
+
+        # Per-source query rewrites (LLM-generated, best-effort — see
+        # `_focused_queries_or_empty`): each semantic model gets a variant
+        # emphasizing visual composition, "ocr" gets a variant emphasizing
+        # literal on-screen text, "asr" a variant emphasizing spoken
+        # content. `{}` (no engine, or LLM call failed) means every source
+        # just uses `plan`/`raw_plan` as before this feature existed.
+        semantic_targets = [f"semantic:{m}" for m in semantic_models]
+        focused_semantic = self._focused_queries_or_empty(plan.query, semantic_targets) if (not temporal and use_split and reasoning) else {}
+        focused_flat = (
+            self._focused_queries_or_empty(
+                raw_plan.query, [t for t, on in (("ocr", use_ocr), ("asr", use_asr)) if on]
+            )
+            if (not temporal and use_split and reasoning)
+            else {}
+        )
+
+        # Keep the query plan and the actual LLM rewrites available to the API
+        # layer for diagnostics.  These are response metadata, not retrieval
+        # inputs, so they must reflect the values actually used by this call.
+        debug_weights = {
+            key: self._effective_weight(key, semantic_models, weights)
+            for key in [*semantic_models, "temporal", "ocr", "asr"]
+            if key in semantic_models or (key == "temporal" and temporal)
+            or (key == "ocr" and use_ocr) or (key == "asr" and use_asr)
+        }
+        debug_metadata = {
+            "events": plan.events,
+            "event_queries": plan.event_queries,
+            "focused_queries": {**focused_semantic, **focused_flat},
+            "weights": debug_weights,
+            "reasoning": bool(reasoning),
+        }
+
+        def _plan_for(base_plan: QueryPlan, focused_query: str | None) -> QueryPlan:
+            if not focused_query:
+                return base_plan
+            return self.build_query_plan(focused_query, mode="semantic", use_split=use_split)
 
         for model_key in semantic_models:
             if temporal:
                 for event_idx, event in enumerate(plan.events):
-                    df = self.semantic_search.search([event], top_k, candidate_k, model_key=model_key)
+                    # Temporal fusion needs the full candidate pool for DP;
+                    # applying final top_k at each event would discard valid
+                    # sequence frames before cross-event alignment.
+                    df = self.semantic_search.search([event], candidate_k, candidate_k, model_key=model_key)
                     part = _event_candidates(df, event_idx)
                     if not part.empty:
                         per_source[f"semantic:{model_key}:event:{event_idx}"] = part
                         source_frames_by_event.setdefault(event_idx, []).append(
-                            (f"semantic:{model_key}", part, float(weights.get(model_key, 1.0)))
+                            (
+                                f"semantic:{model_key}",
+                                part,
+                                self._effective_weight(model_key, semantic_models, weights),
+                            )
                         )
             else:
-                df = self.semantic_search.search(plan.events, top_k, candidate_k, model_key=model_key)
+                model_plan = _plan_for(plan, focused_semantic.get(f"semantic:{model_key}"))
+                df = self.semantic_search.search(model_plan.events, top_k, candidate_k, model_key=model_key)
                 _add(f"semantic:{model_key}", model_key, df)
 
         if temporal:
             for event_idx, event in enumerate(plan.events):
                 raw_event = raw_plan.events[event_idx] if event_idx < len(raw_plan.events) else event
                 event_query = raw_event[0] if raw_event else ""
+                # Focused rewrite per event (kept small/best-effort: one call
+                # per event, cached by the engine on identical text).
+                event_focus = self._focused_queries_or_empty(
+                    event_query, [t for t, on in (("ocr", use_ocr), ("asr", use_asr)) if on]
+                ) if (use_split and reasoning) else {}
+                debug_metadata["focused_queries"].update({f"event:{event_idx}:{key}": value for key, value in event_focus.items()})
                 if use_ocr and self.ocr_search_pipeline is not None:
-                    ocr_df = _event_candidates(self.ocr_search(event_query, candidate_k), event_idx)
+                    ocr_query = event_focus.get("ocr", event_query)
+                    ocr_df = _event_candidates(self.ocr_search(ocr_query, candidate_k), event_idx)
                     if not ocr_df.empty:
                         per_source[f"ocr:event:{event_idx}"] = ocr_df
                         source_frames_by_event.setdefault(event_idx, []).append(
-                            ("ocr", ocr_df, float(weights.get("ocr", 1.0)))
+                            ("ocr", ocr_df, self._effective_weight("ocr", semantic_models, weights))
                         )
                 if use_asr and self.asr_search_pipeline is not None:
-                    asr_df = _event_candidates(self.asr_search(event_query, candidate_k), event_idx)
+                    asr_query = event_focus.get("asr", event_query)
+                    asr_df = _event_candidates(self.asr_search(asr_query, candidate_k), event_idx)
                     if not asr_df.empty:
                         per_source[f"asr:event:{event_idx}"] = asr_df
                         source_frames_by_event.setdefault(event_idx, []).append(
-                            ("asr", asr_df, float(weights.get("asr", 1.0)))
+                            ("asr", asr_df, self._effective_weight("asr", semantic_models, weights))
                         )
 
             fused_event_frames = []
             for event_idx, sources in source_frames_by_event.items():
-                fused = reciprocal_rank_fusion(
-                    [df for _, df, _ in sources],
-                    weights=[weight for _, _, weight in sources],
-                    rrf_k=rrf_k,
-                    top_k=candidate_k,
-                )
+                semantic_sources = [(label, df) for label, df, _ in sources if label.startswith("semantic:")]
+                auxiliary_sources = [(label, df) for label, df, _ in sources if label in ("ocr", "asr")]
+                fused = _weighted_event_fusion(semantic_sources, auxiliary_sources)
                 if not fused.empty:
                     fused["sub_query_idx"] = event_idx
                     fused_event_frames.append(fused)
 
             candidate_pool = pd.concat(fused_event_frames, ignore_index=True) if fused_event_frames else pd.DataFrame()
             if not candidate_pool.empty:
-                temporal_plan = self.build_query_plan(query, mode="temporal", use_split=use_split)
                 fused_temporal = temporal_search_from_score_candidates(
                     candidate_pool,
-                    temporal_plan.event_queries,
+                    plan.event_queries,
                     duration_limit=duration_limit,
                     top_k_videos=top_k,
                     score_col="rrf_score",
@@ -636,19 +878,27 @@ class Orchestrator:
                 if not fused_temporal.empty:
                     fused_temporal["search_mode"] = "temporal"
                     per_source["temporal"] = fused_temporal
+                fused_temporal.attrs.update(debug_metadata)
                 return fused_temporal, per_source
-            return pd.DataFrame(), per_source
+            empty = pd.DataFrame()
+            empty.attrs.update(debug_metadata)
+            return empty, per_source
 
         if use_ocr and self.ocr_search_pipeline is not None:
             # OCR search trên text tiếng Việt thô -> phải dùng raw_plan.query
             # (chưa dịch), giống hệt nhánh temporal=True ở trên. KHÔNG dùng
-            # plan.query (đã dịch cho semantic/temporal).
-            _add("ocr", "ocr", self.ocr_search(raw_plan.query, top_k))
+            # plan.query (đã dịch cho semantic/temporal). `focused_flat`
+            # overrides with an LLM rewrite emphasizing literal on-screen
+            # text when available.
+            _add("ocr", "ocr", self.ocr_search(focused_flat.get("ocr", raw_plan.query), top_k))
 
         if use_asr and self.asr_search_pipeline is not None:
-            # Tương tự use_ocr ở trên.
-            _add("asr", "asr", self.asr_search(raw_plan.query, top_k))
+            # Tương tự use_ocr ở trên; `focused_flat["asr"]` emphasizes
+            # spoken/transcript content when an LLM rewrite is available.
+            _add("asr", "asr", self.asr_search(focused_flat.get("asr", raw_plan.query), top_k))
 
+        # `_add` already recorded each source's weight via `_effective_weight`
+        # at append time (see below) — `list_weights` stays as collected.
         fused = reciprocal_rank_fusion(ranked_lists, weights=list_weights, rrf_k=rrf_k, top_k=top_k)
         if not temporal and not fused.empty:
             # Non-temporal fusion has one presentation contract: every
@@ -669,4 +919,5 @@ class Orchestrator:
             )
             fused = fused.drop(columns=[c for c in frame_only_columns if c in fused.columns])
             fused["search_mode"] = "semantic"
+        fused.attrs.update(debug_metadata)
         return fused, per_source
