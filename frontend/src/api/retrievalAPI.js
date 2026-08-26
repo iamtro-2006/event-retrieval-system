@@ -632,6 +632,12 @@ export async function getVideoPreview(videoId, { frameId, timestampMs } = {}) {
   return normalizeResults([await response.json()])[0];
 }
 
+export async function getVideoKeyframes(videoId) {
+  const response = await fetch(apiUrl(`/api/video-keyframes?video_id=${encodeURIComponent(videoId)}`), { headers: NGROK_HEADER });
+  if (!response.ok) throw new Error(`Cannot load video keyframes (${response.status})`);
+  return response.json();
+}
+
 export async function getFrameIdxAtTimestamp(videoId, timestampMs) {
   const result = await getVideoPreview(videoId, { timestampMs });
   return Number(result.frame_idx ?? result.raw?.frame_idx ?? 0);
