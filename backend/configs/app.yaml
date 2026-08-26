@@ -2,7 +2,7 @@
 # Keep this file as the single source of truth for online search.
 
 semantic:
-  default_model_key: BEiT-3
+  default_model_key: vitH-378-quickgelu
   models:
     - model_key: siglip2-so400m
       enabled: false
@@ -20,7 +20,7 @@ semantic:
       allow_npy_fallback: false
 
     - model_key: vitH-378-quickgelu
-      enabled: false
+      enabled: true
       model_name: ViT-H-14-378-quickgelu
       index_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/keyframes.faiss
       metadata_path: D:/event-retrieval-system/data/database/faiss_hnsw_dfn_vit_h14_378/metadata.csv
@@ -52,7 +52,7 @@ semantic:
         pooling: first
 
     - model_key: BEiT-3
-      enabled: true
+      enabled: false
       model_name: BEiT-3
       index_path: D:/event-retrieval-system/data/database/faiss_beit3_large_itc/keyframes.faiss
       metadata_path: D:/event-retrieval-system/data/database/faiss_beit3_large_itc/metadata.csv
