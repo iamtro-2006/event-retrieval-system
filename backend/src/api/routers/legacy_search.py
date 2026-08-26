@@ -121,6 +121,7 @@ async def get_video_preview(
             row = rows.loc[(values - target_sec).abs().idxmin()]
         result = dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir)
         if timestamp_ms is not None:
+            result["is_preview_timestamp"] = True
             result["timestamp"] = float(timestamp_ms) / 1000.0
             # `frame_id` in the index is a keyframe id. The frame id requested
             # by the video player is the actual decoded video frame, derived
@@ -129,11 +130,40 @@ async def get_video_preview(
             if float(fps) > 0:
                 result["frame_idx"] = int(round(float(timestamp_ms) / 1000.0 * float(fps)))
         elif requested_frame is not None:
+            result["is_preview_frame"] = True
             result["frame_idx"] = int(requested_frame)
             if "result_timestamp" in locals() and pd.notna(result_timestamp):
                 result["timestamp"] = float(result_timestamp)
         return result
 
+    return await run_in_threadpool(_fetch)
+
+
+@router.get("/api/video-keyframes")
+async def get_video_keyframes(
+    video_id: str,
+    clip_index: FaissIndex = Depends(get_legacy_index),
+):
+    """Return every indexed keyframe timestamp for a video for timeline overlays."""
+    def _fetch():
+        rows = clip_index.metadata[clip_index.metadata["video_id"].astype(str) == str(video_id)]
+        if rows.empty:
+            raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
+        items = []
+        for _, row in rows.iterrows():
+            fps = pd.to_numeric(row.get("fps", 0), errors="coerce")
+            frame_idx = pd.to_numeric(row.get("frame_idx", row.get("frame_id", 0)), errors="coerce")
+            timestamp = pd.to_numeric(row.get("timestamp_sec", row.get("timestamp", 0)), errors="coerce")
+            if (pd.isna(timestamp) or float(timestamp) < 0) and not pd.isna(fps) and float(fps) > 0 and not pd.isna(frame_idx):
+                timestamp = float(frame_idx) / float(fps)
+            if pd.isna(timestamp):
+                continue
+            items.append({
+                "keyframe_id": str(row.get("keyframe_id", row.get("keyframe_id_int", ""))),
+                "frame_idx": int(frame_idx) if not pd.isna(frame_idx) else None,
+                "timestamp": float(timestamp),
+            })
+        return {"video_id": str(video_id), "keyframes": items}
     return await run_in_threadpool(_fetch)
 
 
