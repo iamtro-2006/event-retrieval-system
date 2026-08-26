@@ -29,8 +29,14 @@ from src.translation.base_translator import BaseTranslator
 from src.translation.factory import get_translator
 from src.translation.google_translator import GoogleCloudTranslator
 from src.translation.llm_translator import LLMTranslator
+from src.query_enrichment.llm_query_engine import build_query_engine_or_none
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BACKEND_DIR / ".env")
+except ImportError:
+    pass
 
 _PATH_KEYS = {
     "index_path",
@@ -177,6 +183,7 @@ class RetrievalSystem:
         translate: bool | None = None,
         translate_provider: str | None = None,
         translate_api_key: str | None = None,
+        reasoning: bool = False,
     ) -> tuple[pd.DataFrame, QueryPlan]:
         query = self._translate_query(query, translate, translate_provider, translate_api_key)
         return self._orchestrator.run_search(
@@ -187,6 +194,7 @@ class RetrievalSystem:
             candidate_multiplier=candidate_multiplier,
             duration_limit=duration_limit,
             model_key=model_key,
+            reasoning=reasoning,
         )
 
     def search_ocr(self, query: str, top_k: int = 10) -> tuple[pd.DataFrame, QueryPlan]:
@@ -208,6 +216,7 @@ class RetrievalSystem:
         translate: bool | None = None,
         translate_provider: str | None = None,
         translate_api_key: str | None = None,
+        reasoning: bool = False,
     ) -> tuple[pd.DataFrame, QueryPlan]:
         # "auto" mode luôn chọn semantic hoặc temporal (run_search: effective_mode
         # in {"semantic","temporal"} khi mode="auto") — chưa bao giờ chọn ocr/asr,
@@ -237,6 +246,7 @@ class RetrievalSystem:
         translate: bool | None = None,
         translate_provider: str | None = None,
         translate_api_key: str | None = None,
+        reasoning: bool = False,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
         """Advanced search: combine several ticked semantic models + an
         on/off `temporal` toggle (temporal search runs on that same ticked
@@ -253,7 +263,7 @@ class RetrievalSystem:
         nên truyền cả 2 xuống đây là an toàn."""
         raw_query = query
         semantic_query = self._translate_query(query, translate, translate_provider, translate_api_key)
-        return self._orchestrator.advanced_search(
+        result = self._orchestrator.advanced_search(
             semantic_query,
             semantic_models=semantic_models,
             temporal=temporal,
@@ -265,7 +275,12 @@ class RetrievalSystem:
             duration_limit=duration_limit,
             weights=weights,
             raw_query=raw_query,
+            reasoning=reasoning,
         )
+        fused_df, per_source = result
+        if fused_df is not None:
+            fused_df.attrs["translated_query"] = semantic_query
+        return fused_df, per_source
 
 
 def _build_ocr_pipeline_or_none(cfg: dict[str, Any]):
@@ -366,11 +381,24 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
     asr_pipeline = _build_asr_pipeline_or_none(config)
     translator = _build_translator_or_none(config)
 
+    # Optional query-enrichment LLM (paraphrase/temporal-split/fusion
+    # rewrite — see `src/query_enrichment/llm_query_engine.py`). Disabled by
+    # default (`query_enrichment.enabled: false` or key absent) so existing
+    # deployments/tests keep the old pure-regex split behavior unchanged;
+    # an init failure here degrades to `None`, same pattern as OCR/ASR/
+    # translate above, never crashes the app.
+    enrichment_cfg = config.get("query_enrichment") or {}
+    llm_query_engine = build_query_engine_or_none(enrichment_cfg)
+
     orchestrator = Orchestrator(
         index=index,
         semantic_search=semantic_search,
         temporal_search=temporal_search,
         ocr_search_pipeline=ocr_pipeline,
         asr_search_pipeline=asr_pipeline,
+        llm_query_engine=llm_query_engine,
+        min_len_for_paraphrase=int(enrichment_cfg.get("min_len_for_paraphrase", 12)),
+        max_subqueries=int(enrichment_cfg.get("max_subqueries", 4)),
+        default_source_weights=(config.get("fusion") or {}).get("default_weights"),
     )
     return RetrievalSystem(orchestrator, translator=translator, translate_cfg=config.get("translate"))

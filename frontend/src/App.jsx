@@ -29,7 +29,6 @@ import {
   similaritySearch,
   rerankResults,
 } from "./api/retrievalAPI";
-import RerankPopover from "./components/RerankPopover";
 import {
   getDefaultSubmissionSettings,
   loginDresViaBackend,
@@ -77,18 +76,13 @@ export default function App() {
   const [availableModels, setAvailableModels] = useState([]);
   const [mode, setMode] = useState("text");
   const [durationLimit, setDurationLimit] = useState(-1);
-  // Fusion (advanced search) config: chỉ còn on/off cho từng nguồn +
-  // duration_limit cho temporal. Backend (`Orchestrator.advanced_search`)
-  // không còn nhận weight theo nguồn nữa (temporal search giờ luôn multimodal
-  // per-event: mỗi event tự fuse các method đã tick bằng RRF trước khi DP
-  // alignment) — không còn field `*Weight` nào ở đây để tránh UI hứa hẹn 1
-  // hành vi backend không còn hỗ trợ.
   const [fusionConfig, setFusionConfig] = useState({
     semanticModels: [],
     temporal: false,
     durationLimit: -1,
     useOcr: false,
     useAsr: false,
+    weights: { semantic: 0.8, ocr: 0.1, asr: 0.1 },
     hasConfig: false,
   });
   const [columns, setColumns] = useState(4);
@@ -132,7 +126,8 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
 
   // ── Rerank state ─────────────────────────────────────
-  const [rerankEnabled, setRerankEnabled] = useState(false);
+  const [reasoningEnabled, setReasoningEnabled] = useState(false);
+  const rerankEnabled = false;
   const [reranking, setReranking] = useState(false);
   const [rerankResultsData, setRerankResultsData] = useState(null);
 
@@ -177,7 +172,7 @@ export default function App() {
       loading,
       disabled: !backendReady,
       durationLimit,
-      rerankEnabled,
+      reasoningEnabled,
       availableModels,
       fusionConfig,
       translateProvider,
@@ -185,10 +180,10 @@ export default function App() {
       onModelChange: setModel,
       onModeChange: setMode,
       onDurationLimitChange: setDurationLimit,
-      onRerankToggle: setRerankEnabled,
+      onReasoningToggle: setReasoningEnabled,
       onFusionConfigChange: setFusionConfig,
     }),
-    [model, mode, loading, backendReady, durationLimit, rerankEnabled, availableModels, fusionConfig, translateProvider]
+    [model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, fusionConfig, translateProvider]
   );
 
   // ── Bootstrap ────────────────────────────────────────
@@ -365,7 +360,8 @@ export default function App() {
             useSplit: settings.useSplit,
             useTranslate: settings.useTranslate,
             translateProvider,
-            fusionConfig: cfg,
+             fusionConfig: cfg,
+             reasoning: Boolean(payload?.reasoning ?? reasoningEnabled),
           });
         } else {
           await search({
@@ -376,7 +372,8 @@ export default function App() {
             useTranslate: settings.useTranslate,
             searchMode,
             durationLimit: nextDurationLimit,
-            translateProvider,
+             translateProvider,
+             reasoning: Boolean(payload?.reasoning ?? reasoningEnabled),
           });
         }
       } catch (err) {
@@ -388,7 +385,7 @@ export default function App() {
         pushToast("warning", "Search failed", getErrorMessage(err));
       }
     },
-    [backendReady, durationLimit, fusionConfig, loading, pushToast, resolvedMode, search, searchWithFusion, settings, translateProvider]
+    [backendReady, durationLimit, fusionConfig, loading, pushToast, reasoningEnabled, resolvedMode, search, searchWithFusion, settings, translateProvider]
   );
 
   // Auto-rerank tối ưu hơn: debounce + chống stale update
@@ -750,15 +747,6 @@ export default function App() {
 
                     <span>{count} results</span>
 
-                    {!rerankEnabled && (
-                      <RerankPopover
-                        currentQuery={lastQuery}
-                        searchMode={resolvedMode}
-                        loading={loading}
-                        reranking={reranking}
-                        onRerank={handleManualRerank}
-                      />
-                    )}
                   </span>
                 </div>
 

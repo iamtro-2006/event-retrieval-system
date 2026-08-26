@@ -7,11 +7,8 @@ import { X, GitMerge, Sparkles, Waves, ScanText, AudioLines } from "lucide-react
  * search).
  *
  * Cho phép tick nhiều semantic model, bật/tắt temporal (kèm duration
- * limit), OCR, ASR. KHÔNG còn weight theo từng nguồn: backend
- * (`Orchestrator.advanced_search`) đã bỏ khái niệm weight — mọi nguồn được
- * fuse bằng Reciprocal Rank Fusion thuần theo RANK, không theo trọng số
- * gán tay (field `weights` cũ giờ chỉ giữ lại ở API cho tương thích ngược,
- * bị bỏ qua hoàn toàn). Khi temporal bật, nó chạy multimodal PER EVENT:
+ * limit), OCR, ASR và điều chỉnh weight theo nhóm nguồn. Backend
+ * Khi temporal bật, nó chạy multimodal PER EVENT:
  * mỗi event tự fuse (bằng RRF) đúng các method đã tick ở trên (model(s) +
  * OCR/ASR nếu bật) TRƯỚC khi DP alignment ghép chuỗi — dùng chung danh sách
  * model đã tick ở "Semantic models", không có checklist model riêng cho
@@ -64,6 +61,20 @@ export default function FusionSettingsModal({
     setDraft((prev) => ({ ...prev, [key]: val }));
   }
 
+  function updateWeight(key, value) {
+    const enabled = { semantic: draft.semanticModels.length > 0, ocr: draft.useOcr, asr: draft.useAsr };
+    if (!enabled[key]) return;
+    const nextValue = Math.max(0, Math.min(1, Number(value) || 0));
+    const current = { semantic: 0, ocr: 0, asr: 0, ...(draft.weights || {}) };
+    const others = Object.keys(enabled).filter((name) => name !== key && enabled[name]);
+    const remainder = Math.max(0, 1 - nextValue);
+    const otherTotal = others.reduce((sum, name) => sum + Number(current[name] || 0), 0);
+    others.forEach((name) => { current[name] = otherTotal > 0 ? remainder * current[name] / otherTotal : remainder / Math.max(1, others.length); });
+    current[key] = nextValue;
+    Object.keys(enabled).forEach((name) => { if (!enabled[name]) current[name] = 0; });
+    setDraft((prev) => ({ ...prev, weights: current }));
+  }
+
   function handleSave() {
     onSave?.(draft);
     onClose?.();
@@ -71,6 +82,13 @@ export default function FusionSettingsModal({
 
   const hasAnyMethod =
     draft.semanticModels.length > 0 || draft.useOcr || draft.useAsr;
+  const radarWeights = draft.weights || { semantic: 0, ocr: 0, asr: 0 };
+  const radarPoint = (key, angle) => {
+    const value = Math.max(0, Math.min(1, Number(radarWeights[key] || 0)));
+    const radius = 34 * value;
+    const radians = (angle - 90) * Math.PI / 180;
+    return `${50 + Math.cos(radians) * radius},${50 + Math.sin(radians) * radius}`;
+  };
 
   return createPortal(
     <div className="fusion-modal-backdrop" onClick={onClose}>
@@ -115,6 +133,25 @@ export default function FusionSettingsModal({
                 );
               })}
             </div>
+          </div>
+
+          <div className="fusion-card">
+            <div className="fusion-card-title"><GitMerge size={13} /><span>Fusion weights</span></div>
+            <p className="fusion-weight-total">Tổng nguồn đang bật luôn được chuẩn hoá = 1.0</p>
+            <div className="fusion-radar-wrap" aria-label="Biểu đồ trọng số fusion">
+              <svg viewBox="0 0 100 100" className="fusion-radar">
+                <polygon points="50,16 84,68 16,68" className="fusion-radar-grid" />
+                <polygon points={`${radarPoint("semantic", 0)} ${radarPoint("ocr", 120)} ${radarPoint("asr", 240)}`} className="fusion-radar-value" />
+                <text x="50" y="10">Semantic</text><text x="87" y="73">OCR</text><text x="3" y="73">ASR</text>
+              </svg>
+            </div>
+            {[["semantic", "Semantic", draft.semanticModels.length > 0], ["ocr", "OCR", draft.useOcr], ["asr", "ASR", draft.useAsr]].map(([key, label, enabled]) => (
+              <label className="fusion-weight-row" key={key}>
+                <span>{label}</span>
+                <input type="range" min="0" max="1" step="0.01" disabled={!enabled} value={Number(draft.weights?.[key] ?? 0)} onChange={(e) => updateWeight(key, e.target.value)} />
+                <input className="fusion-weight-number" type="number" min="0" max="1" step="0.01" disabled={!enabled} value={Number(draft.weights?.[key] ?? 0).toFixed(2)} onChange={(e) => updateWeight(key, e.target.value)} />
+              </label>
+            ))}
           </div>
 
           {/* ── Method khác ────────────────────────────────────────── */}

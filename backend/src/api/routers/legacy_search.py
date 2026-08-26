@@ -208,6 +208,7 @@ async def search_api(
     try:
         results_df, query_plan = await run_in_threadpool(
             orchestrator.run_search, query=search_query, mode=mode, use_split=use_split,
+            reasoning=bool(payload.reasoning),
             top_k=top_k, candidate_multiplier=candidate_multiplier, duration_limit=duration_limit,
         )
     except NotImplementedError as exc:
@@ -224,7 +225,8 @@ async def search_api(
     response_base = {
         "original_query": original_query, "query": search_query,
         "translated_query": search_query if should_translate else None,
-        "use_translate": should_translate, "use_split": use_split, "mode": mode, "search_mode": mode,
+        "use_translate": should_translate, "use_split": use_split, "reasoning": payload.reasoning,
+        "mode": mode, "search_mode": mode,
         "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k, "latency_ms": latency_ms,
         "events": query_plan.events, "event_queries": query_plan.event_queries, "sub_queries": query_plan.flat_queries,
@@ -314,6 +316,7 @@ async def search_fusion_api(
             translate=use_translate,
             translate_provider=payload.translate_provider,
             translate_api_key=payload.translate_api_key,
+            reasoning=payload.reasoning,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
@@ -324,14 +327,22 @@ async def search_fusion_api(
 
     latency_ms = round((time.perf_counter() - start) * 1000)
 
+    translated_query = fused_df.attrs.get("translated_query") if fused_df is not None else None
     response_base = {
-        "original_query": original_query, "query": search_query,
-        "translated_query": None,
-        "use_translate": use_translate, "use_split": use_split, "mode": "fusion", "search_mode": "fusion",
+        "original_query": original_query, "query": translated_query or search_query,
+        "translated_query": translated_query,
+        "use_translate": use_translate, "use_split": use_split, "reasoning": payload.reasoning,
+        "mode": "fusion", "search_mode": "fusion",
         "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
         "latency_ms": latency_ms,
         "semantic_models": payload.semantic_models, "temporal": payload.temporal,
-        "use_ocr": payload.use_ocr, "use_asr": payload.use_asr, "weights": payload.weights or {},
+        "use_ocr": payload.use_ocr, "use_asr": payload.use_asr,
+        # Expose the effective plan/weights used by the backend.  The UI can
+        # distinguish an actual LLM rewrite from regex/default fallback.
+        "weights": (fused_df.attrs.get("weights") if fused_df is not None else None) or payload.weights or {},
+        "events": fused_df.attrs.get("events", []) if fused_df is not None else [],
+        "event_queries": fused_df.attrs.get("event_queries", []) if fused_df is not None else [],
+        "focused_queries": fused_df.attrs.get("focused_queries", {}) if fused_df is not None else {},
     }
 
     if fused_df is None or fused_df.empty:

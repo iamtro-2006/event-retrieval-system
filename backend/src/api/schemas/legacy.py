@@ -23,6 +23,7 @@ class SearchRequest(BaseModel):
     top_k: int | None = None
     candidate_multiplier: int | None = None
     use_split: bool | None = None
+    reasoning: bool = False
     use_translate: bool | None = None
     search_mode: SearchMode | None = "semantic"
     duration_limit: float | None = -1
@@ -48,6 +49,7 @@ class FusionSearchRequest(BaseModel):
     top_k: int | None = None
     candidate_multiplier: int | None = None
     use_split: bool | None = None
+    reasoning: bool = False
     use_translate: bool | None = None
     duration_limit: float | None = -1
     weights: dict[str, float] | None = None
