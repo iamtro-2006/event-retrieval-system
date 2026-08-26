@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Send, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Send, X } from "lucide-react";
+import { getFrameIdxAtTimestamp } from "../api/retrievalAPI";
 
-export default function VideoModal({ open, result, onClose, onSubmit, layer = 40 }) {
+export default function VideoModal({ open, result, onClose, onSubmit, layer = 40, autoPlay = true }) {
   const videoRef = useRef(null);
   const initialMs = useMemo(() => Math.max(0, Math.round(Number(result?.timestamp ?? 0) * 1000)), [result]);
   const [currentMs, setCurrentMs] = useState(initialMs);
   const [durationMs, setDurationMs] = useState(Math.max(initialMs + 1000, 1000));
   const [stepMs, setStepMs] = useState(500);
+  const [copyState, setCopyState] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setCurrentMs(initialMs);
+    setCopyState("");
   }, [open, initialMs]);
 
   if (!open || !result) return null;
@@ -30,6 +33,24 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
     });
   }
 
+  async function copyCurrentFrameId() {
+    const playbackMs = videoRef.current && Number.isFinite(videoRef.current.currentTime)
+      ? videoRef.current.currentTime * 1000
+      : currentMs;
+    const timestampMs = Math.max(0, Math.round(playbackMs));
+    setCurrentMs(timestampMs);
+
+    try {
+      const frameIdx = await getFrameIdxAtTimestamp(result.video_id, timestampMs);
+      await navigator.clipboard.writeText(`${result.video_id}, ${frameIdx}`);
+      setCopyState(`Copied ${frameIdx}`);
+    } catch (error) {
+      console.error("Cannot copy current frame id", error);
+      setCopyState("Copy failed");
+    }
+    window.setTimeout(() => setCopyState(""), 1800);
+  }
+
   return (
     <div className="video-modal-backdrop" style={{ zIndex: 3000 + layer }} onClick={onClose}>
       <div className="video-modal" onClick={(e) => e.stopPropagation()}>
@@ -47,7 +68,7 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
             className="video-player"
             src={`${result.video_url}#t=${initialMs / 1000}`}
             controls
-            autoPlay
+            autoPlay={autoPlay}
             onLoadedMetadata={(e) => {
               const ms = Math.max(1000, Math.round((e.currentTarget.duration || 0) * 1000));
               setDurationMs(ms);
@@ -72,6 +93,7 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
             <label>Exact ms
               <input type="number" min="0" max={durationMs} value={currentMs} onChange={(e) => seekTo(Number(e.target.value))} />
             </label>
+            <button type="button" className="video-copy-id-button" onClick={copyCurrentFrameId}><Copy size={16} /> {copyState || "Copy ID"}</button>
             <button type="button" className="video-submit-button" onClick={submitAtCurrentTime}><Send size={16} /> Submit at {currentMs} ms</button>
           </div>
         </div>

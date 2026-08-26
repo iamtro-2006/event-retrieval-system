@@ -8,6 +8,7 @@ const ResultCard = memo(function ResultCard({
   selected,
   onSelect,
   onSubmit,
+  onPlay,
   onSimilaritySearch,
   onSurroundingImages,
   query,
@@ -22,10 +23,8 @@ const ResultCard = memo(function ResultCard({
 
   // Memoize handlers to prevent child re-renders
   const openVideoAt = useCallback((timestamp) => {
-    if (result.video_url && result.video_url !== "#") {
-      window.open(`${result.video_url}#t=${Number(timestamp).toFixed(2)}`, "_blank");
-    }
-  }, [result.video_url]);
+    onPlay?.({ ...result, timestamp: Number(timestamp) || 0 });
+  }, [onPlay, result]);
 
   const handlePlay = useCallback((e) => {
     e.stopPropagation();

@@ -15,7 +15,7 @@ import {
 import { getNeighborFrames } from "../utils/frameUtils";
 import { buildSurroundingFrames } from "../utils/surroundingFrames";
 import VideoModal from "./VideoModal";
-import { getFrameInfo } from "../api/retrievalAPI";
+import { getFrameInfo, getFrameIdxAtTimestamp } from "../api/retrievalAPI";
 
 export default function DetailPanel({ result, onClose, onSubmit }) {
   const [videoOpen, setVideoOpen] = useState(false);
@@ -63,6 +63,17 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
       await navigator.clipboard.writeText(activeResult.path ?? "");
     } catch {
       console.error("Cannot copy path");
+    }
+  }
+
+  async function handleCopyFrameId() {
+    const videoId = activeResult.video_id ?? "";
+    const timestampMs = Math.max(0, Math.round(timestamp * 1000));
+    try {
+      const frameIdx = await getFrameIdxAtTimestamp(videoId, timestampMs);
+      await navigator.clipboard.writeText(`${videoId}, ${frameIdx}`);
+    } catch {
+      console.error("Cannot copy frame id");
     }
   }
 
@@ -172,6 +183,11 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
           <button type="button" onClick={handleCopyPath}>
             <Copy size={14} />
             Copy Path
+          </button>
+
+          <button type="button" className="detail-copy-frame" onClick={handleCopyFrameId}>
+            <Copy size={14} />
+            Copy ID
           </button>
 
           {activeResult.image_url ? (

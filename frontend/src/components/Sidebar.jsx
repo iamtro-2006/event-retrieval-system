@@ -1,10 +1,11 @@
-import { Moon, Sun, Plus, Menu, Sparkles, Settings } from "lucide-react";
+import { Moon, Sun, Plus, Menu, Sparkles, Settings, Video } from "lucide-react";
 
 export default function Sidebar({
   theme,
   onToggleTheme,
   onReset,
   onOpenSettings,
+  onOpenPreview,
 }) {
   return (
     <aside className="sidebar">
@@ -19,6 +20,10 @@ export default function Sidebar({
 
         <button className="sidebar-button" onClick={onReset}>
           <Plus size={20} />
+        </button>
+
+        <button className="sidebar-button" onClick={onOpenPreview} title="Preview video" aria-label="Preview video">
+          <Video size={20} />
         </button>
       </div>
 

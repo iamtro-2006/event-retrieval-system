@@ -178,6 +178,7 @@ export default function GroupedResults({
                             selected={result.id === selectedId}
                             onSelect={onSelect}
                             onSubmit={onSubmit}
+                            onPlay={onPlay}
                             onSimilaritySearch={onSimilaritySearch}
                             onSurroundingImages={onSurroundingImages}
                             query={query}

@@ -12,6 +12,7 @@ export default function SurroundingFramesModal({
   onClose,
   onSelect,
   onSubmit,
+  onPlay,
   onSimilaritySearch,
   onSurroundingImages,
   layer = 1,
@@ -94,6 +95,7 @@ export default function SurroundingFramesModal({
                   selected={isCenter}
                   onSelect={onSelect}
                   onSubmit={onSubmit}
+                  onPlay={onPlay}
                   onSimilaritySearch={onSimilaritySearch}
                   onSurroundingImages={onSurroundingImages}
                 />

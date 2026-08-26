@@ -396,6 +396,7 @@ function normalizeResults(results) {
       id: `${baseId}-${index}`,
       video_id: item.video_id || "unknown_video",
       frame_id: Number.isFinite(frameId) ? frameId : 0,
+      frame_idx: safeNumber(item.frame_idx ?? raw.frame_idx, Number.isFinite(frameId) ? frameId : 0),
       frame_name:
         item.frame_name ||
         `${String(Number.isFinite(frameId) ? frameId : index).padStart(
@@ -604,6 +605,20 @@ export async function getFrameInfo(videoId, keyframeId) {
   const data = await response.json();
 
   return normalizeResults([data])[0];
+}
+
+export async function getVideoPreview(videoId, { frameId, timestampMs } = {}) {
+  const params = new URLSearchParams({ video_id: videoId });
+  if (frameId !== undefined && frameId !== "") params.set("frame_id", String(frameId));
+  if (timestampMs !== undefined && timestampMs !== "") params.set("timestamp_ms", String(timestampMs));
+  const response = await fetch(apiUrl(`/api/video-preview?${params}`), { headers: NGROK_HEADER });
+  if (!response.ok) throw new Error((await response.text()) || "Cannot load video preview");
+  return normalizeResults([await response.json()])[0];
+}
+
+export async function getFrameIdxAtTimestamp(videoId, timestampMs) {
+  const result = await getVideoPreview(videoId, { timestampMs });
+  return Number(result.frame_idx ?? result.raw?.frame_idx ?? 0);
 }
 
 export async function transcribeSpeech(blob) {
