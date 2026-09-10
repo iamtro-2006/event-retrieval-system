@@ -3,7 +3,7 @@
 Design goal: `embedder.py` / `extract_embeddings.py` (offline image embedding)
 and `retrieval/index/faiss_index.py` (online text/image query encoding for
 search) should NOT need to know which backend (open_clip, transformers,
-beit3 ...) produced the model. Every backend loader returns a `LoadedModel`,
+PE-Core, ...) produced the model. Every backend loader returns a `LoadedModel`,
 whose `.model` object exposes:
 
   - `encode_image(batch: torch.Tensor) -> torch.Tensor`   (required)

@@ -28,7 +28,6 @@ from src.retrieval.retriever.temporal_search.factory import build_temporal_searc
 from src.translation.base_translator import BaseTranslator
 from src.translation.factory import get_translator
 from src.translation.google_translator import GoogleCloudTranslator
-from src.translation.llm_translator import LLMTranslator
 from src.query_enrichment.llm_query_engine import build_query_engine_or_none
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -107,7 +106,7 @@ class RetrievalSystem:
         """Escape hatch cho các trường hợp cần truy cập trực tiếp (vd. test)."""
         return self._orchestrator
 
-    def _translate_query(self, query: str, translate: bool | None, provider: str | None = None, api_key: str | None = None) -> str:
+    def _translate_query(self, query: str, translate: bool | None, api_key: str | None = None) -> str:
         """Bước tiền xử lý dịch vi->en TRƯỚC khi vào Orchestrator (chỉ dùng
         cho semantic/temporal/auto — xem docstring class về lý do KHÔNG áp
         cho ocr/asr/advanced).
@@ -129,27 +128,37 @@ class RetrievalSystem:
         effective = bool(cfg.get("enabled_default", False)) if translate is None else bool(translate)
         if not effective:
             return query
-        if self._translator is None and provider not in {"google", "llm"}:
+        if self._translator is None and not api_key:
             if translate is True:
                 raise RuntimeError(
-                    "Translation chưa được cấu hình hoặc khởi tạo thất bại (xem 'translate_agent' trong config)."
+                    "Google Translation chưa được cấu hình hoặc khởi tạo thất bại."
                 )
             return query
-        translator = self._translator
-        if provider == "google":
-            translator = GoogleCloudTranslator(api_key or "")
-        elif provider == "llm":
-            translator = LLMTranslator(api_key=api_key or "")
-        try:
-            return translator.translate(
-                query, source=str(cfg.get("source", "vi")), target=str(cfg.get("target", "en"))
+        translator = GoogleCloudTranslator(api_key) if api_key else self._translator
+        return translator.translate(
+            query, source=str(cfg.get("source", "vi")), target=str(cfg.get("target", "en"))
+        )
+
+    def _assert_visual_model_isolation(
+        self,
+        result: tuple[pd.DataFrame, QueryPlan],
+        model_key: str | None,
+    ) -> tuple[pd.DataFrame, QueryPlan]:
+        """Fail instead of returning rows stamped by a different model."""
+        frame, plan = result
+        if frame is None or frame.empty:
+            return result
+        resolved = self._orchestrator.semantic_search._resolve(model_key).model_key
+        if "model_key" not in frame.columns:
+            raise RuntimeError(
+                f"Search isolation violation: results for '{resolved}' have no model_key provenance."
             )
-        except Exception:
-            if provider in {"google", "llm"} and self._translator is not None:
-                return self._translator.translate(
-                    query, source=str(cfg.get("source", "vi")), target=str(cfg.get("target", "en"))
-                )
-            raise
+        actual = {str(value) for value in frame["model_key"].dropna().unique()}
+        if actual != {resolved}:
+            raise RuntimeError(
+                f"Search isolation violation: requested '{resolved}', got rows from {sorted(actual)}."
+            )
+        return frame, plan
 
     def search_semantic(
         self,
@@ -159,17 +168,19 @@ class RetrievalSystem:
         candidate_multiplier: int = 5,
         model_key: str | None = None,
         translate: bool | None = None,
-        translate_provider: str | None = None,
         translate_api_key: str | None = None,
     ) -> tuple[pd.DataFrame, QueryPlan]:
-        query = self._translate_query(query, translate, translate_provider, translate_api_key)
-        return self._orchestrator.run_search(
-            query,
-            mode="semantic",
-            use_split=use_split,
-            top_k=top_k,
-            candidate_multiplier=candidate_multiplier,
-            model_key=model_key,
+        query = self._translate_query(query, translate, translate_api_key)
+        return self._assert_visual_model_isolation(
+            self._orchestrator.run_search(
+                query,
+                mode="semantic",
+                use_split=use_split,
+                top_k=top_k,
+                candidate_multiplier=candidate_multiplier,
+                model_key=model_key,
+            ),
+            model_key,
         )
 
     def search_temporal(
@@ -181,20 +192,22 @@ class RetrievalSystem:
         duration_limit: float = -1,
         model_key: str | None = None,
         translate: bool | None = None,
-        translate_provider: str | None = None,
         translate_api_key: str | None = None,
         reasoning: bool = False,
     ) -> tuple[pd.DataFrame, QueryPlan]:
-        query = self._translate_query(query, translate, translate_provider, translate_api_key)
-        return self._orchestrator.run_search(
-            query,
-            mode="temporal",
-            use_split=use_split,
-            top_k=top_k,
-            candidate_multiplier=candidate_multiplier,
-            duration_limit=duration_limit,
-            model_key=model_key,
-            reasoning=reasoning,
+        query = self._translate_query(query, translate, translate_api_key)
+        return self._assert_visual_model_isolation(
+            self._orchestrator.run_search(
+                query,
+                mode="temporal",
+                use_split=use_split,
+                top_k=top_k,
+                candidate_multiplier=candidate_multiplier,
+                duration_limit=duration_limit,
+                model_key=model_key,
+                reasoning=reasoning,
+            ),
+            model_key,
         )
 
     def search_ocr(self, query: str, top_k: int = 10) -> tuple[pd.DataFrame, QueryPlan]:
@@ -213,17 +226,25 @@ class RetrievalSystem:
         top_k: int = 10,
         use_split: bool = True,
         candidate_multiplier: int = 5,
+        model_key: str | None = None,
         translate: bool | None = None,
-        translate_provider: str | None = None,
         translate_api_key: str | None = None,
         reasoning: bool = False,
     ) -> tuple[pd.DataFrame, QueryPlan]:
         # "auto" mode luôn chọn semantic hoặc temporal (run_search: effective_mode
         # in {"semantic","temporal"} khi mode="auto") — chưa bao giờ chọn ocr/asr,
         # nên dịch ở đây an toàn giống search_semantic/search_temporal.
-        query = self._translate_query(query, translate, translate_provider, translate_api_key)
-        return self._orchestrator.run_search(
-            query, mode="auto", use_split=use_split, top_k=top_k, candidate_multiplier=candidate_multiplier
+        query = self._translate_query(query, translate, translate_api_key)
+        return self._assert_visual_model_isolation(
+            self._orchestrator.run_search(
+                query,
+                mode="auto",
+                use_split=use_split,
+                top_k=top_k,
+                candidate_multiplier=candidate_multiplier,
+                model_key=model_key,
+            ),
+            model_key,
         )
 
     def available_models(self) -> list[str]:
@@ -244,7 +265,6 @@ class RetrievalSystem:
         duration_limit: float = -1,
         weights: dict[str, float] | None = None,
         translate: bool | None = None,
-        translate_provider: str | None = None,
         translate_api_key: str | None = None,
         reasoning: bool = False,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
@@ -262,7 +282,7 @@ class RetrievalSystem:
         ngôn ngữ được tách bên trong `advanced_search` (`plan` vs `raw_plan`),
         nên truyền cả 2 xuống đây là an toàn."""
         raw_query = query
-        semantic_query = self._translate_query(query, translate, translate_provider, translate_api_key)
+        semantic_query = self._translate_query(query, translate, translate_api_key)
         result = self._orchestrator.advanced_search(
             semantic_query,
             semantic_models=semantic_models,
@@ -278,6 +298,21 @@ class RetrievalSystem:
             reasoning=reasoning,
         )
         fused_df, per_source = result
+        for selected_key in semantic_models or []:
+            prefix = f"semantic:{selected_key}"
+            for label, source_df in per_source.items():
+                if label != prefix and not label.startswith(f"{prefix}:event:"):
+                    continue
+                if source_df is None or source_df.empty:
+                    continue
+                actual = {
+                    str(value) for value in source_df.get("model_key", pd.Series(dtype=object)).dropna().unique()
+                }
+                if actual != {selected_key}:
+                    raise RuntimeError(
+                        f"Fusion isolation violation in '{label}': expected '{selected_key}', "
+                        f"got rows from {sorted(actual)}."
+                    )
         if fused_df is not None:
             fused_df.attrs["translated_query"] = semantic_query
         return fused_df, per_source
@@ -313,11 +348,10 @@ def _build_asr_pipeline_or_none(cfg: dict[str, Any]):
 
 def _build_translator_or_none(config: dict[str, Any]) -> BaseTranslator | None:
     """Translation là subsystem optional — tương tự OCR/ASR, lỗi ở đây
-    (thiếu network để tải HF model, thiếu API key cho backend `llm`, sai
-    `translate_agent`, v.v.) không được làm sập cả hệ thống search; chỉ vô
+    (ví dụ cấu hình Google không hợp lệ) không được làm sập cả hệ thống search; chỉ vô
     hiệu hoá bước dịch (search vẫn chạy bằng query gốc, xem
     `RetrievalSystem._translate_query`)."""
-    if not config.get("translate") and not config.get("translate_agent"):
+    if not config.get("translate"):
         return None
     try:
         backend_dir = Path(__file__).resolve().parents[2]
@@ -349,9 +383,9 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
               {"config_path": ...} hoặc {"cfg": {...đã parse sẵn...}}.
               Bỏ qua hoặc None -> OCR search bị vô hiệu hoá (raise khi gọi).
             - "asr": tương tự "ocr".
-            - "translate_agent"/"translate": optional (xem
-              `src/translation/factory.py::get_translator` cho shape đầy
-              đủ). Bỏ qua hoặc khởi tạo lỗi -> dịch bị vô hiệu hoá, các hàm
+            - "translate": optional Google Translation config (xem
+              `src/translation/factory.py::get_translator`). Bỏ qua hoặc
+              khởi tạo lỗi -> dịch bị vô hiệu hoá, các hàm
               `search_semantic`/`search_temporal`/`search_auto` chạy bằng
               query gốc (KHÔNG raise, xem
               `RetrievalSystem._translate_query`) trừ khi client CHỦ ĐỘNG

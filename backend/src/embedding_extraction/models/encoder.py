@@ -16,7 +16,7 @@ from src.embedding_extraction.models.registry import load_model as _load_model
 def load_clip_model(model_name: str, pretrained: str | None, precision: str = "fp32", device_name: str = "auto", backend: str | None = None, logger: logging.Logger | None = None, **extra):
 	"""Same dispatch as embedder.py's load_clip_model, kept here too so the
 	video-frame encoding path (encode_video_frames below) can also load any
-	registered backend (open_clip / hf_clip / blip2 / beit3), not just open_clip.
+	registered backend (OpenCLIP / BLIP-2 / PE-Core), not just OpenCLIP.
 	"""
 	loaded = _load_model(
 		model_name=model_name,

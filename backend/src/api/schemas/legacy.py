@@ -26,9 +26,31 @@ class SearchRequest(BaseModel):
     reasoning: bool = False
     use_translate: bool | None = None
     search_mode: SearchMode | None = "semantic"
+    model_key: str | None = None
     duration_limit: float | None = -1
-    translate_provider: str | None = None
     translate_api_key: str | None = None
+
+
+class MultimodalClause(BaseModel):
+    """One visual/temporal clause and the uploaded images attached to it."""
+
+    text: str = ""
+    image_indices: list[int] = []
+
+
+class MultimodalSearchRequest(BaseModel):
+    """JSON metadata carried inside the multipart multimodal request."""
+
+    query: str = ""
+    clauses: list[MultimodalClause]
+    top_k: int | None = None
+    candidate_multiplier: int | None = None
+    use_split: bool = True
+    use_translate: bool | None = None
+    translate_api_key: str | None = None
+    search_mode: SearchMode | None = "semantic"
+    duration_limit: float | None = -1
+    model_key: str | None = None
 
 
 class FusionSearchRequest(BaseModel):
@@ -53,7 +75,6 @@ class FusionSearchRequest(BaseModel):
     use_translate: bool | None = None
     duration_limit: float | None = -1
     weights: dict[str, float] | None = None
-    translate_provider: str | None = None
     translate_api_key: str | None = None
 
 
@@ -76,3 +97,4 @@ class SimilaritySearchRequest(BaseModel):
     video_id: str
     frame_id: int
     top_k: int | None = None
+    model_key: str | None = None

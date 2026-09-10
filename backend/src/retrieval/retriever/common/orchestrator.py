@@ -39,8 +39,10 @@ SearchMode = Literal["semantic", "temporal", "ocr", "asr", "auto"]
 def split_temporal_events(query: str) -> list[str]:
     """Split a complex query into distinct temporal events.
 
-    Semicolons and full-stops act as temporal separators,
-    while commas remain as semantic subqueries within an event.
+    Semicolons, full-stops, newlines, and explicit chronological transition
+    phrases act as temporal separators, while commas remain semantic
+    subqueries within an event. This is also the deterministic fallback when
+    the reasoning LLM fails the strict temporal-output contract.
 
     Args:
         query: The raw input query string.
@@ -48,7 +50,15 @@ def split_temporal_events(query: str) -> list[str]:
     Returns:
         A list of cleaned temporal event strings.
     """
-    return clean_queries(re.split(r"[.;]+", str(query or "").replace("\n", " ")))
+    return clean_queries(
+        re.split(
+            r"[.;\n]+|\b(?:and\s+then|then|after\s+that|before\s+that|"
+            r"followed\s+by|subsequently|next|later|finally|rồi|sau\s+đó|"
+            r"trước\s+đó|tiếp\s+theo|kế\s+tiếp|cuối\s+cùng)\b",
+            str(query or ""),
+            flags=re.IGNORECASE,
+        )
+    )
 
 
 def split_semantic_queries(event: str) -> list[str]:
@@ -533,7 +543,7 @@ class Orchestrator:
 
             # semantic (mỗi model chạy riêng, KHÔNG kết hợp embedding)
             [x] siglip2-so400m   [ ] vitH-378-quickgelu
-            [x] long-clipL       [ ] BEiT-3   [ ] BLIP2
+            [x] long-clipL       [ ] PE-Core  [ ] BLIP2
             # temporal
             [x] on/off  (dùng CHUNG danh sách model đã tick ở semantic)
             # ocr
@@ -676,7 +686,12 @@ class Orchestrator:
                 df = _flatten_sequences(df)
                 if df.empty:
                     return
-            df["search_mode"] = df.get("search_mode", weight_key.split(":")[0])
+            if "search_mode" not in df.columns:
+                # `weight_key` is a model key for semantic sources, not a
+                # search-mode name. Derive the branch from the source label
+                # so provenance remains `semantic / <model>` instead of the
+                # misleading `<model> / <model>`.
+                df["search_mode"] = label.split(":", 1)[0]
             per_source[label] = df
             ranked_lists.append(df)
             list_weights.append(self._effective_weight(weight_key, semantic_models, weights))

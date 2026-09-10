@@ -4,7 +4,7 @@
 Đây là bản tổng quát hoá của `ClipFaissIndex` cũ (file cũ:
 `clip_faiss_index.py`, vẫn được giữ lại như 1 shim import ngược để không vỡ
 code cũ — xem cuối file đó). Khác biệt cốt lõi so với bản cũ: class này
-KHÔNG còn hardcode `open_clip` — việc load model (open_clip / blip2 / beit3
+KHÔNG còn hardcode `open_clip` — việc load model (OpenCLIP / BLIP-2 / PE-Core
 / ...) được uỷ quyền hoàn toàn cho
 `src.embedding_extraction.models.registry.load_model(...)`, cùng 1 registry
 dùng để extract embedding offline. Muốn thêm 1 model mới cho search, chỉ cần
@@ -67,7 +67,7 @@ class FaissIndex:
 
     Chỉ chịu trách nhiệm: load FAISS index + metadata CSV, load model qua
     `embedding_extraction.models.registry` (bất kỳ backend nào: open_clip,
-    blip2, beit3, ...), encode text/image, quản lý vector cache
+    BLIP-2, PE-Core, ...), encode text/image, quản lý vector cache
     (ram/memmap), và resolve metadata row theo (video_id, keyframe) hoặc
     theo time window. Không biết gì về "semantic"/"temporal" — các
     retriever gọi vào `self.index`, `self.search_lock`, `self.metadata_records`
@@ -103,7 +103,7 @@ class FaissIndex:
                 khác nhau — xem indexing.yaml).
             model_name: tên model, có thể là 1 preset key trong
                 `registry.MODEL_PRESETS` (vd "siglip2-so400m", "BLIP2",
-                "BEiT-3", "long-clipL") hoặc tên model gốc của backend
+                "PE-Core-L14-336", "long-clipL") hoặc tên model gốc của backend
                 (vd open_clip "ViT-SO400M-16-SigLIP2-384").
             backend/pretrained: override preset nếu cần; có thể bỏ trống nếu
                 `model_name` là 1 preset key hợp lệ.
@@ -111,8 +111,8 @@ class FaissIndex:
                 trong `IndexManager` / trong request `advanced_search`
                 (vd "siglip2-so400m"). Mặc định = `model_name`.
             model_extra: kwargs bổ sung truyền thẳng vào backend loader
-                (vd `{"pooling": "first"}` cho blip2, `{"beit3": {...}}`
-                cho beit3).
+                (vd `{"pooling": "first"}` cho BLIP-2 hoặc
+                `{"perception_encoder": {...}}` cho PE-Core).
         """
         if faiss_threads is None:
             faiss_threads = max(1, min(os.cpu_count() or 1, 12))

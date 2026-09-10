@@ -28,12 +28,12 @@ from src.embedding_extraction.models.backends.base import LoadedModel
 
 BACKEND_OPEN_CLIP = "open_clip"
 BACKEND_BLIP2 = "blip2"
-BACKEND_BEIT3 = "beit3"
+BACKEND_PERCEPTION_ENCODER = "perception_encoder"
 
 _BACKEND_MODULES = {
     BACKEND_OPEN_CLIP: "src.embedding_extraction.models.backends.open_clip",
     BACKEND_BLIP2: "src.embedding_extraction.models.backends.blip2",
-    BACKEND_BEIT3: "src.embedding_extraction.models.backends.beit3",
+    BACKEND_PERCEPTION_ENCODER: "src.embedding_extraction.models.backends.perception_encoder",
 }
 
 # Convenience presets for the models used across this project. A config
@@ -63,9 +63,19 @@ MODEL_PRESETS: dict[str, dict[str, Any]] = {
     "BLIP2-ViT-G": dict(backend=BACKEND_BLIP2, pretrained="Salesforce/blip2-itm-vit-g"),
     "BLIP2": dict(backend=BACKEND_BLIP2, pretrained="Salesforce/blip2-itm-vit-g", model_name="BLIP2-ViT-G"),
 
-    # --- BEiT-3 Large retrieval (external unilm repo + checkpoint, see backends/beit3.py) ---
-    "BEiT3-Large-Retrieval": dict(backend=BACKEND_BEIT3, pretrained=None),
-    "BEiT-3": dict(backend=BACKEND_BEIT3, pretrained=None, model_name="BEiT3-Large-Retrieval"),
+    # --- Meta Perception Encoder Core (official perception_models package) ---
+    # All five PE-Core variants are CLIP checkpoints and can therefore be
+    # used for both offline image extraction and online text/image search.
+    "PE-Core-T16-384": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True),
+    "PE-Core-S16-384": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True),
+    "PE-Core-B16-224": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True),
+    "PE-Core-L14-336": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True),
+    "PE-Core-G14-448": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True),
+    "facebook/PE-Core-T16-384": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True, model_name="PE-Core-T16-384"),
+    "facebook/PE-Core-S16-384": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True, model_name="PE-Core-S16-384"),
+    "facebook/PE-Core-B16-224": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True, model_name="PE-Core-B16-224"),
+    "facebook/PE-Core-L14-336": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True, model_name="PE-Core-L14-336"),
+    "facebook/PE-Core-G14-448": dict(backend=BACKEND_PERCEPTION_ENCODER, pretrained=True, model_name="PE-Core-G14-448"),
 }
 
 
@@ -92,7 +102,7 @@ def load_model(
     the online search index to load ANY supported model.
 
     `model_name` can be a preset key (e.g. "siglip2-so400m", "BLIP2",
-    "BEiT-3", "long-clipL") — in which case `backend`/`pretrained` (and,
+    "PE-Core-L14-336", "long-clipL") — in which case `backend`/`pretrained` (and,
     for presets whose real underlying model name differs from the key,
     the actual `model_name` passed to the backend) are resolved from
     `MODEL_PRESETS`. Anything explicitly passed always wins over the preset

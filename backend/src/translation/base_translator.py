@@ -1,5 +1,5 @@
 """
-Common interface the translation backend must implement, so `main.py`
+Common interface implemented by the Google translation backend, so `main.py`
 can call `translate()` without depending on the concrete implementation.
 """
 

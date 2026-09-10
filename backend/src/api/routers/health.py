@@ -86,7 +86,7 @@ def get_public_config(
             "enabled_default": bool(cfg.get("translate", {}).get("enabled_default", False)),
             "source": cfg.get("translate", {}).get("source", "vi"),
             "target": cfg.get("translate", {}).get("target", "en"),
-            "agent": str(cfg.get("translate_agent", "envit5")),
+            "provider": "google",
         },
         "model": {
             "name": clip_index.model_name, "pretrained": clip_index.pretrained,

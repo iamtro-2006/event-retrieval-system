@@ -85,6 +85,9 @@ class AutoSearchRequest(BaseSearchRequest):
     use_split: bool = True
     reasoning: bool = False
     candidate_multiplier: int = Field(5, ge=1, le=50)
+    model_key: str | None = Field(
+        None, description="Model dùng cho nhánh semantic/temporal mà auto chọn. Bỏ trống = model mặc định."
+    )
     translate: bool | None = Field(
         None,
         description="Xem `SemanticSearchRequest.translate` — an toàn cho auto mode vì auto luôn resolve về "

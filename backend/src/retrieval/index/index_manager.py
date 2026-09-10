@@ -45,8 +45,7 @@ class IndexManager:
 
     def text_search_keys(self) -> list[str]:
         """Subset of `keys()` whose model actually supports text queries
-        (some backends, e.g. BEiT-3 for now, are image-only — see
-        `embedding_extraction/models/backends/beit3.py`)."""
+        (a backend may be image-only when it has no compatible text tower)."""
         return [key for key, idx in self._indexes.items() if idx.supports_text]
 
     def get(self, model_key: str | None = None) -> FaissIndex:

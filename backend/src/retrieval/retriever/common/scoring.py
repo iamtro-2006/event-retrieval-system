@@ -85,13 +85,21 @@ def reciprocal_rank_fusion(
         return pd.DataFrame()
 
     weights = weights or [1.0] * len(ranked_lists)
+    if len(weights) != len(ranked_lists):
+        raise ValueError("weights must have the same length as ranked_lists")
+
+    non_empty_lists = [df for df in ranked_lists if df is not None and not df.empty]
+    identity_cols = [
+        column for column in _IDENTITY_COLUMNS
+        if all(column in df.columns for df in non_empty_lists)
+    ]
+    if not identity_cols:
+        return pd.DataFrame()
+
     fused: dict[tuple, dict] = {}
 
     for df, weight in zip(ranked_lists, weights):
         if df is None or df.empty:
-            continue
-        identity_cols = [c for c in _IDENTITY_COLUMNS if c in df.columns]
-        if not identity_cols:
             continue
 
         # Materialize once. `iterrows()` constructs a Series per row and is
@@ -108,8 +116,15 @@ def reciprocal_rank_fusion(
         label = " / ".join(str(x) for x in (source_label, model_label) if x) or "unknown"
 
         records = df.to_dict(orient="records")
+        seen_in_source: set[tuple] = set()
         for row, contribution in zip(records, contributions):
             key = tuple(_canonical_identity_value(c, row.get(c)) for c in identity_cols)
+            # RRF contributes at most once per entity and source list. A
+            # duplicated frame in one retriever must not outweigh agreement
+            # from another model/retriever.
+            if key in seen_in_source:
+                continue
+            seen_in_source.add(key)
             if key not in fused:
                 fused[key] = {
                     "row": row,
@@ -126,7 +141,7 @@ def reciprocal_rank_fusion(
     for entry in fused.values():
         item = dict(entry["row"])
         item["rrf_score"] = entry["rrf_score"]
-        item["matched_sources"] = len(entry["source_labels"])
+        item["matched_sources"] = len(set(entry["source_labels"]))
         item["source_models"] = sorted(set(entry["source_labels"]))
         rows.append(item)
 

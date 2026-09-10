@@ -20,11 +20,9 @@ Scope (theo yeu cau nghiep vu):
 - fusion (advanced_search): sinh ra N cau query, moi cau nham vao 1 nguon
   (semantic/ocr/asr) de tan dung the manh rieng cua tung nguon.
 
-Design giong het `translation/llm_translator.py` (OpenAI-compatible client,
-singleton, LRU cache, threadpool cho batch) de nhat quan style + tai dung
-kinh nghiem van hanh (retry/timeout) da co trong repo, nhung TACH THANH
-MODULE RIENG (khong sua translation/*) vi day la 1 moi quan tam khac (query
-enrichment, khong phai dich ngon ngu).
+This uses an OpenAI-compatible client dedicated to query enrichment. It is
+separate from the Google-only translation subsystem because query enrichment
+and language translation are different concerns.
 """
 
 from __future__ import annotations
@@ -39,6 +37,20 @@ from typing import Any, Optional
 
 _DEFAULT_BASE_URL = "https://api.xah.io/v1"
 _DEFAULT_MODEL = "claude-haiku-4.5"
+_TEMPORAL_PROMPT_VERSION = 3
+
+_STRONG_TEMPORAL_BOUNDARY_RE = re.compile(
+    r"(?:\b(?:and\s+then|then|after\s+that|before\s+that|followed\s+by|"
+    r"subsequently|next|later|finally)\b|\b(?:rồi|sau\s+đó|trước\s+đó|"
+    r"tiếp\s+theo|kế\s+tiếp|cuối\s+cùng)\b)",
+    flags=re.IGNORECASE,
+)
+
+_POSSIBLE_MULTI_EVENT_RE = re.compile(
+    r"\b(?:and|then|after|before|followed\s+by|subsequently|next|later|finally|"
+    r"và|rồi|sau|trước|tiếp\s+theo|kế\s+tiếp|cuối\s+cùng)\b",
+    flags=re.IGNORECASE,
+)
 
 # --- Prompts ---------------------------------------------------------------
 
@@ -84,32 +96,50 @@ _SEMANTIC_SYSTEM_PROMPT = (
 )
 
 _TEMPORAL_SYSTEM_PROMPT = (
-    "You are a temporal-event segmentation engine embedded in a video "
-    "search system. The user query describes a sequence of one or more "
-    "events/scenes that happen over time in a video (e.g. 'a man opens the "
-    "door then a woman walks in and sits down'). Split it into an ORDERED "
-    "list of distinct events/scenes.\n"
-    "Rules:\n"
-    "- Segment by temporal meaning, not punctuation. Every sequentially "
-    "different action, state, position, location, or visual configuration "
-    "that occurs at a different time is a SEPARATE event, even when the same "
-    "subject remains present. A subject changing from one place/state to "
-    "another place/state must produce separate ordered scenes, not one event "
-    "described with words such as 'then', 'later', 'alternately', or 'and'.\n"
-    "- Keep clauses in ONE event only when they describe the same simultaneous "
-    "scene or one inseparable action. Do not merge two sequential states just "
-    "because there is no explicit verb for the transition.\n"
-    "- Drop bare event markers/labels/numbering (e.g. 'Event 1:', 'canh 1', "
-    "list bullets) — keep only the descriptive content.\n"
-    "- Each output event must be a self-contained English sentence that can be "
-    "searched independently: repeat the subject and include the relevant "
-    "state/action plus its scene context. Preserve the original temporal "
-    "order. Do not use an unresolved reference such as 'then there' or merge "
-    "multiple scenes into one sentence.\n"
-    "- If the query only describes a single scene, return a single-element "
-    "list.\n"
-    "Respond ONLY with a JSON array of strings (one per event, in order), "
-    "no markdown, no explanation."
+    "You split a video-search query into the smallest useful CHRONOLOGICAL "
+    "sequence of visually searchable events. Accuracy of event order is the "
+    "highest priority.\n"
+    "ORDER ALGORITHM:\n"
+    "1. Read the whole query and identify only events explicitly stated.\n"
+    "2. Build the timeline from explicit relations: X before Y => X,Y; "
+    "X after Y => Y,X; X then/followed by Y => X,Y.\n"
+    "3. For clauses without an explicit relation, retain their narrated "
+    "left-to-right order. Never reorder events using commonsense assumptions.\n"
+    "4. Number steps only after the timeline is fixed. Each step number is its "
+    "position in the video, not its position in your answer draft.\n"
+    "SEGMENTATION RULES:\n"
+    "- Split sequential actions, states, positions, locations, or scene "
+    "configurations. 'walks in and sits down' is two events.\n"
+    "- Keep simultaneous actions joined by while/as/at the same time in one "
+    "event. Keep one inseparable action in one event.\n"
+    "- Do not invent transitions, causes, objects, people, or intermediate "
+    "events. Do not omit or duplicate an explicit event.\n"
+    "- Resolve pronouns by repeating the stated subject. Preserve the query's "
+    "entities, negation, direction and locations; use its wording where possible.\n"
+    "- Each event must be a short, self-contained English visual-search query. "
+    "Do not include then/before/after/later, numbering, or multiple sequential "
+    "states inside an event. A single scene produces one event.\n"
+    "- Return ONE event only when the query contains exactly one visual state "
+    "or one inseparable action at one point on the timeline. Two successive "
+    "actions by the same subject are still two events, even in the same place.\n"
+    "- Set timeline='single' only after checking that no subject changes action, "
+    "state, position, or location over time. Otherwise set timeline='multiple'.\n"
+    "Example: 'Before sitting down, the man closes the door; after he sits, "
+    "a woman enters' => close door (1), man sits (2), woman enters (3).\n"
+    "Example: 'A woman reads while a child draws, then both leave' => woman "
+    "reads while child draws (1), both leave (2).\n"
+    "Return ONLY one compact JSON object with exactly these keys: "
+    "{\"timeline\":\"single|multiple\",\"event_count\":2,\"events\":["
+    "{\"step\":1,\"event\":\"...\"},{\"step\":2,\"event\":\"...\"}]}. "
+    "event_count must equal the events array length; timeline must be 'single' "
+    "iff event_count is 1 and 'multiple' iff event_count is greater than 1."
+)
+
+_TEMPORAL_REPAIR_SYSTEM_PROMPT = (
+    _TEMPORAL_SYSTEM_PROMPT
+    + "\nThe previous answer was rejected or suspicious. Re-read the ORIGINAL_QUERY, "
+    "rebuild its timeline from scratch, and return only the required JSON object. "
+    "Do not copy the previous event count without verifying every stated action/state."
 )
 
 _FUSION_SYSTEM_PROMPT = (
@@ -135,7 +165,7 @@ _FUSION_SYSTEM_PROMPT = (
 
 
 class _LRUCache:
-    """Tiny thread-safe LRU cache, same pattern as `translation/llm_translator.py`."""
+    """Tiny thread-safe LRU cache for query-enrichment responses."""
 
     def __init__(self, maxsize: int = 2048):
         self._maxsize = maxsize
@@ -182,11 +212,76 @@ def _parse_json_object(raw: str) -> dict[str, str] | None:
     return {str(k): str(v).strip() for k, v in data.items() if str(v or "").strip()}
 
 
+def _query_requires_multiple_events(query: str) -> bool:
+    """Return whether the source contains an unambiguous timeline boundary."""
+    query = str(query or "")
+    delimited_parts = [part.strip() for part in re.split(r"[.;\n]+", query) if part.strip()]
+    return len(delimited_parts) > 1 or bool(_STRONG_TEMPORAL_BOUNDARY_RE.search(query))
+
+
+def _query_may_contain_multiple_events(query: str) -> bool:
+    """Broader signal used to request a second opinion on a one-event answer."""
+    query = str(query or "")
+    return _query_requires_multiple_events(query) or bool(_POSSIBLE_MULTI_EVENT_RE.search(query))
+
+
+def _parse_temporal_events(raw: str, query: str = "") -> list[str] | None:
+    """Strictly validate the versioned temporal JSON contract."""
+    raw = (raw or "").strip()
+    raw = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, dict) or set(data) != {"timeline", "event_count", "events"}:
+        return None
+
+    timeline = data.get("timeline")
+    event_count = data.get("event_count")
+    items = data.get("events")
+    if timeline not in ("single", "multiple"):
+        return None
+    if isinstance(event_count, bool) or not isinstance(event_count, int) or event_count < 1:
+        return None
+    if not isinstance(items, list) or not items or event_count != len(items):
+        return None
+    if (timeline == "single") != (event_count == 1):
+        return None
+
+    parsed: list[tuple[int, str]] = []
+    for item in items:
+        if not isinstance(item, dict) or set(item) != {"step", "event"}:
+            return None
+        step = item.get("step")
+        event_value = item.get("event")
+        if isinstance(step, bool) or not isinstance(step, int):
+            return None
+        if not isinstance(event_value, str):
+            return None
+        event = event_value.strip()
+        if step < 1 or not event:
+            return None
+        parsed.append((step, event))
+
+    steps = [step for step, _ in parsed]
+    if len(set(steps)) != len(steps) or sorted(steps) != list(range(1, len(steps) + 1)):
+        return None
+    parsed.sort(key=lambda item: item[0])
+    events = [event for _, event in parsed]
+    normalized = [re.sub(r"\s+", " ", event).strip().casefold() for event in events]
+    if len(set(normalized)) != len(normalized):
+        return None
+    if event_count == 1 and _query_requires_multiple_events(query):
+        return None
+    if any(_STRONG_TEMPORAL_BOUNDARY_RE.search(event) for event in events):
+        return None
+    return events
+
+
 class LLMQueryEngine:
     """Singleton wrapper around an OpenAI-compatible chat-completions endpoint,
     used purely for query enrichment (paraphrase / temporal split / fusion
-    rewrite) — never for translation (see `translation/llm_translator.py`
-    for that) and never for OCR/ASR (those stay on raw-text Elasticsearch
+    rewrite) — never for translation and never for OCR/ASR (those stay on raw-text Elasticsearch
     matching, see module docstring).
     """
 
@@ -211,7 +306,7 @@ class LLMQueryEngine:
                 "configs/app.yaml -> query_enrichment.llm.api_key or the "
                 "QUERY_ENRICHMENT_API_KEY env var."
             )
-        from openai import OpenAI  # lazy import, same rationale as llm_translator.py
+        from openai import OpenAI  # lazy import: only needed when enrichment is enabled
 
         self._client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries)
         self._model = model
@@ -280,10 +375,43 @@ class LLMQueryEngine:
         query = str(query or "").strip()
         if not query:
             return []
-        cache_key = ("temporal", query.casefold(), self._model)
+        cache_key = ("temporal", _TEMPORAL_PROMPT_VERSION, query.casefold(), self._model)
         raw = self._chat(_TEMPORAL_SYSTEM_PROMPT, query, cache_key)
-        parsed = _parse_json_array(raw) if raw is not None else None
-        return parsed or []
+        parsed = _parse_temporal_events(raw, query) if raw is not None else None
+
+        # A one-event answer containing conjunctions or temporal language is
+        # syntactically valid but semantically risky. Ask once more rather than
+        # silently collapsing a multi-stage query into one temporal event.
+        needs_confirmation = bool(
+            parsed
+            and len(parsed) == 1
+            and _query_may_contain_multiple_events(query)
+        )
+        if parsed and not needs_confirmation:
+            return parsed
+
+        repair_input = json.dumps(
+            {
+                "ORIGINAL_QUERY": query,
+                "REJECTED_OR_SUSPICIOUS_RESPONSE": raw or "",
+            },
+            ensure_ascii=False,
+        )
+        repair_key = (
+            "temporal-repair",
+            _TEMPORAL_PROMPT_VERSION,
+            query.casefold(),
+            self._model,
+        )
+        repaired_raw = self._chat(
+            _TEMPORAL_REPAIR_SYSTEM_PROMPT, repair_input, repair_key
+        )
+        repaired = (
+            _parse_temporal_events(repaired_raw, query)
+            if repaired_raw is not None
+            else None
+        )
+        return repaired or []
 
     # -- fusion-focused rewrite -----------------------------------------------
 

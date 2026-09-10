@@ -22,6 +22,10 @@ from threading import RLock
 
 import numpy as np
 import pandas as pd
+from numba import njit, prange
+
+
+DEFAULT_MULTI_QUERY_BETA = 0.8
 
 
 def clean_queries(queries: list[str]) -> list[str]:
@@ -69,6 +73,8 @@ def aggregate_multi_query(
     queries: list[str],
     top_k: int,
     metadata_records: list[dict],
+    candidate_similarities: np.ndarray | None = None,
+    beta: float = DEFAULT_MULTI_QUERY_BETA,
 ) -> pd.DataFrame:
     """Aggregate and rank multi-query FAISS results using vectorized NumPy ops.
 
@@ -79,6 +85,13 @@ def aggregate_multi_query(
         top_k: Number of top results to return.
         metadata_records: `SemanticIndex._metadata_records` — one dict per
             FAISS row, keyed by FAISS id (positional).
+        candidate_similarities: Dense matrix with shape
+            ``(n_queries, n_unique_candidates)``.  Column order must match
+            the ascending FAISS IDs in ``indices``.  Supplying this matrix
+            lets every candidate be scored against every query, including
+            queries for which it did not enter the FAISS candidate pool.
+        beta: Exponential scaling factor in the multi-query score. Defaults
+            to ``0.8``.
 
     Returns:
         A DataFrame containing the aggregated, ranked metadata records.
@@ -119,7 +132,23 @@ def aggregate_multi_query(
     matched = 1 + extra_unique_q
 
     coverage = matched.astype(np.float32) / max(1, n_queries)
-    alignment = 0.8 * avg_score + 0.2 * coverage
+
+    # Smooth multi-query score requested by the retrieval policy:
+    #     score(I) = 1 / |Q| * sum(exp(beta * (sim(q, I) - 1)))  for q in Q
+    if candidate_similarities is None:
+        raise ValueError(
+            "candidate_similarities is required: sparse multi-query scores "
+            "are not comparable across candidates"
+        )
+
+    candidate_similarities = np.asarray(candidate_similarities, dtype=np.float32)
+    expected_shape = (n_queries, len(unique_ids))
+    if candidate_similarities.shape != expected_shape:
+        raise ValueError(
+            "candidate_similarities shape mismatch: "
+            f"got {candidate_similarities.shape}, expected {expected_shape}"
+        )
+    alignment = np.mean(np.exp(beta * (candidate_similarities - 1.0)), axis=0)
 
     rank_order = np.argsort(-alignment, kind="stable")[:top_k]
 
@@ -131,6 +160,7 @@ def aggregate_multi_query(
         item["max_score"] = float(max_score[pos])
         item["matched_queries"] = int(matched[pos])
         item["coverage_score"] = float(coverage[pos])
+        item["exp_mean_score"] = float(alignment[pos])
         item["alignment_score"] = float(alignment[pos])
         item["retrieval_score"] = float(alignment[pos])
         item["display_rank"] = display_rank
@@ -138,6 +168,110 @@ def aggregate_multi_query(
         rows.append(item)
 
     return pd.DataFrame.from_records(rows)
+
+
+@njit(parallel=True, fastmath=True, nogil=True, cache=True)
+def _fill_missing_similarities_numba(
+    query_embeddings: np.ndarray,
+    candidate_vectors: np.ndarray,
+    similarities: np.ndarray,
+    known: np.ndarray,
+) -> None:
+    """Fill unknown query/candidate dot products in parallel, in place."""
+    n_queries, dimension = query_embeddings.shape
+    n_candidates = candidate_vectors.shape[0]
+    for pair_idx in prange(n_queries * n_candidates):
+        query_idx = pair_idx // n_candidates
+        candidate_idx = pair_idx - query_idx * n_candidates
+        if known[query_idx, candidate_idx]:
+            continue
+
+        dot = np.float32(0.0)
+        for dim_idx in range(dimension):
+            dot += (
+                query_embeddings[query_idx, dim_idx]
+                * candidate_vectors[candidate_idx, dim_idx]
+            )
+        similarities[query_idx, candidate_idx] = dot
+
+
+def similarities_for_candidates(
+    index,
+    search_lock: RLock,
+    query_embeddings: np.ndarray,
+    candidate_ids: np.ndarray,
+    index_vectors: np.ndarray | np.memmap | None = None,
+    known_scores: np.ndarray | None = None,
+    known_indices: np.ndarray | None = None,
+) -> np.ndarray:
+    """Compute ``sim(q, I)`` for every query/candidate pair.
+
+    Candidate generation remains approximate/top-k FAISS search, but ranking
+    needs a dense score matrix so a candidate is evaluated against all of Q.
+    Scores already returned by FAISS are reused. A parallel Numba kernel only
+    computes the missing pairs in the query-by-candidate matrix. Prefer the
+    configured vector cache and reconstruct only the small union of candidates
+    when no cache is available.
+    """
+    candidate_ids = np.asarray(candidate_ids, dtype=np.int64)
+    query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
+    if candidate_ids.size == 0:
+        return np.empty((len(query_embeddings), 0), dtype=np.float32)
+
+    if index_vectors is not None:
+        if np.any(candidate_ids < 0) or np.any(candidate_ids >= len(index_vectors)):
+            raise IndexError("Invalid FAISS ID while scoring multi-query candidates")
+        candidate_vectors = np.asarray(index_vectors[candidate_ids], dtype=np.float32)
+    else:
+        candidate_vectors = np.empty((len(candidate_ids), index.d), dtype=np.float32)
+        with search_lock:
+            for row, candidate_id in enumerate(candidate_ids):
+                candidate_vectors[row] = index.reconstruct(int(candidate_id))
+
+    candidate_vectors = np.ascontiguousarray(candidate_vectors, dtype=np.float32)
+    if candidate_vectors.ndim != 2 or query_embeddings.ndim != 2:
+        raise ValueError("query_embeddings and candidate vectors must be 2-D")
+    if query_embeddings.shape[1] != candidate_vectors.shape[1]:
+        raise ValueError(
+            "Embedding dimension mismatch: "
+            f"queries={query_embeddings.shape[1]}, candidates={candidate_vectors.shape[1]}"
+        )
+
+    similarities = np.empty(
+        (len(query_embeddings), len(candidate_ids)), dtype=np.float32
+    )
+    known = np.zeros(similarities.shape, dtype=np.bool_)
+
+    if known_scores is not None or known_indices is not None:
+        if known_scores is None or known_indices is None:
+            raise ValueError("known_scores and known_indices must be provided together")
+        known_scores = np.asarray(known_scores, dtype=np.float32)
+        known_indices = np.asarray(known_indices, dtype=np.int64)
+        if known_scores.shape != known_indices.shape:
+            raise ValueError("known_scores and known_indices shape mismatch")
+        if known_indices.ndim != 2 or known_indices.shape[0] != len(query_embeddings):
+            raise ValueError("FAISS result rows must align 1:1 with query embeddings")
+
+        valid = known_indices >= 0
+        query_rows = np.broadcast_to(
+            np.arange(len(query_embeddings), dtype=np.int64)[:, None],
+            known_indices.shape,
+        )[valid]
+        candidate_columns = np.searchsorted(candidate_ids, known_indices[valid])
+        in_union = candidate_columns < len(candidate_ids)
+        in_union[in_union] &= (
+            candidate_ids[candidate_columns[in_union]] == known_indices[valid][in_union]
+        )
+        query_rows = query_rows[in_union]
+        candidate_columns = candidate_columns[in_union]
+        similarities[query_rows, candidate_columns] = known_scores[valid][in_union]
+        known[query_rows, candidate_columns] = True
+
+    if not np.all(known):
+        _fill_missing_similarities_numba(
+            query_embeddings, candidate_vectors, similarities, known
+        )
+    return similarities
 
 
 def multi_query_search(
@@ -148,6 +282,8 @@ def multi_query_search(
     embeddings: np.ndarray,
     top_k: int = 10,
     candidate_k: int | None = None,
+    index_vectors: np.ndarray | np.memmap | None = None,
+    beta: float = DEFAULT_MULTI_QUERY_BETA,
 ) -> pd.DataFrame:
     """Execute a multi-query FAISS search and aggregate the results.
 
@@ -173,7 +309,25 @@ def multi_query_search(
         return pd.DataFrame()
     candidate_k = max(int(candidate_k or top_k), int(top_k))
     scores, indices = results_for_queries(index, search_lock, embeddings, candidate_k)
-    return aggregate_multi_query(scores, indices, queries, int(top_k), metadata_records)
+    valid_candidate_ids = np.unique(indices[indices >= 0]).astype(np.int64, copy=False)
+    candidate_similarities = similarities_for_candidates(
+        index,
+        search_lock,
+        embeddings,
+        valid_candidate_ids,
+        index_vectors,
+        known_scores=scores,
+        known_indices=indices,
+    )
+    return aggregate_multi_query(
+        scores,
+        indices,
+        queries,
+        int(top_k),
+        metadata_records,
+        candidate_similarities=candidate_similarities,
+        beta=beta,
+    )
 
 
 def image_similarity_search(
@@ -233,6 +387,7 @@ class SearchPipeline:
         candidate_k: int | None = None,
         query_embeddings: np.ndarray | None = None,
         model_key: str | None = None,
+        beta: float = DEFAULT_MULTI_QUERY_BETA,
     ) -> pd.DataFrame:
         index = self._resolve(model_key)
         if query_embeddings is not None:
@@ -256,6 +411,8 @@ class SearchPipeline:
             embeddings,
             top_k,
             candidate_k,
+            index.index_vectors,
+            beta,
         )
         if not df.empty:
             df["model_key"] = index.model_key
@@ -279,6 +436,7 @@ class SearchPipeline:
         top_k: int = 10,
         candidate_k: int = 500,
         model_key: str | None = None,
+        beta: float = DEFAULT_MULTI_QUERY_BETA,
     ) -> pd.DataFrame:
         """Search theo danh sách event (mỗi event là list sub-query), dùng cho
         `mode="semantic"` của orchestrator.
@@ -291,8 +449,12 @@ class SearchPipeline:
             model_key: Model nào để search (chỉ có ý nghĩa khi pipeline được
                 build trên 1 `IndexManager` nhiều model); bỏ trống = model
                 mặc định.
+            beta: Hệ số điều chỉnh hàm mũ trong điểm multiple-query; mặc định
+                là ``0.8``.
         """
         index = self._resolve(model_key)
         queries = clean_queries([query for event in events for query in event])
         embeddings = index.encode_texts(queries)
-        return self.multi_query_search(queries, top_k, candidate_k, embeddings, model_key=model_key)
+        return self.multi_query_search(
+            queries, top_k, candidate_k, embeddings, model_key=model_key, beta=beta
+        )

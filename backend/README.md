@@ -4,6 +4,10 @@ Backend FastAPI cho hệ thống truy vấn/retrieval keyframe video theo nội 
 (semantic/CLIP), theo trình tự thời gian (temporal), theo chữ viết trên màn
 hình (OCR) và theo lời thoại (ASR).
 
+> Meta PE-Core (T/S/B/L/G) đã có backend cho extraction, text/image search và
+> multi-model fusion. Xem [`docs/PE_CORE.md`](./docs/PE_CORE.md) để cài package
+> chính thức, build FAISS index riêng và bật model trong runtime config.
+
 > 📘 **Tài liệu này là bản tóm tắt.** Bản đầy đủ — tech stack chi tiết, sơ đồ
 > luồng dữ liệu end-to-end, mã giả thuật toán cho từng pipeline (keyframe
 > extraction, embedding, temporal DP, OCR/ASR enrich...), danh sách đầy đủ
@@ -18,9 +22,9 @@ hình (OCR) và theo lời thoại (ASR).
 
 ```text
 backend/
-├── main.py                     # FastAPI app — entrypoint DUY NHẤT của API
-├── mock_api.py                 # server mock để FE dev không cần backend thật
-├── requirements.txt             # ⚠ không có trong bản zip hiện tại — xem ARCHITECTURE.md mục 1.1
+├── main.py                     # compatibility entrypoint, re-export src.api.main:app
+├── ../requirements.txt          # snapshot dependency Python ở repository root
+├── requirements-pe-core.txt     # dependency PE-Core tùy chọn, pin theo commit
 ├── configs/                    # 1 file YAML config / 1 subsystem
 │   ├── app.yaml                 # config chính: model, faiss, search, ui, paths...
 │   ├── ocr.yaml                 # config Elasticsearch cho OCR
@@ -51,9 +55,8 @@ backend/
     │
     ├── translation/              # dịch query VI->EN trước khi encode CLIP
     │   ├── base_translator.py    # interface BaseTranslator
-    │   ├── libre_translator.py   # backend: LibreTranslate server (HTTP)
-    │   ├── hy_mt2_translator.py  # backend: model GGUF local (llama_cpp)
-    │   └── factory.py            # get_translator(cfg) chọn theo `translate_agent`
+    │   ├── google_translator.py  # Google Cloud Translation Basic v2
+    │   └── factory.py            # dựng Google translator từ config/env
     │
     ├── retrieval/                # lõi retrieval — xem chi tiết mục 3
     │   ├── system.py             # FACADE DUY NHẤT giữa api/ và retriever/*
@@ -68,8 +71,8 @@ backend/
     │       ├── reranker/
     │       └── common/            # orchestrator.py, query_parser.py, scoring.py
     │
-    ├── api/                      # SCAFFOLD, hiện chưa dùng — xem mục 4
-    │   ├── routers/  schemas/  utils/
+    ├── api/                      # FastAPI app, routers, schemas và legacy adapters
+    │   ├── main.py  routers/  schemas/  legacy/  utils/
     │
     └── utils/                    # tiện ích dùng chung: config, logger, device, seed, video_io
 ```
@@ -202,27 +205,18 @@ retriever/<ten>_search/
   (`models/internvl_reranker.py` + `pipeline/rerank.py`), **chưa** được wire
   vào `system.py`/`orchestrator.py` (ghi chú rõ trong `system.py`) — không tự
   ý wire khi không được yêu cầu, tránh phá vỡ hành vi mặc định.
-- **`src/api/`**: hiện là **scaffold rỗng** (`routers/`, `schemas/`, `utils/`
-  chỉ có `__init__.py` trống). Toàn bộ route thật sự đang định nghĩa trực tiếp
-  trong `main.py` ở root. Nếu tách route ra khỏi `main.py` trong tương lai,
-  đây là nơi nên chuyển vào, theo đúng tên thư mục đã có sẵn.
-- **`main.py`**: entrypoint FastAPI duy nhất — khởi tạo `RetrievalSystem` qua
-  `build_system(SYSTEM_CONFIG)`, mount static files (`keyframes`, `videos`,
-  `map-keyframes`), định nghĩa các endpoint `/api/search`, `/api/health`,
-  `/api/config`, `/api/frame-info`, `/api/surrounding-frames`,
-  `/api/similarity-search`, `/api/speech/transcribe`, và tích hợp nộp bài
-  DRES (`/api/dres/login`, `/api/dres/submit`). Toàn bộ logic serialize
-  DataFrame -> JSON response (`dict_to_result_FAST`, `serialize_matched_sequence`…)
-  nằm ở đây, không nằm trong `src/`.
+- **`src/api/`**: API đang hoạt động. `main.py` quản lý lifespan và đăng ký
+  router; `routers/` chứa endpoint, `schemas/` chứa request/response model,
+  còn `legacy/` duy trì contract của giao diện cũ. `backend/main.py` chỉ là
+  compatibility entrypoint re-export cùng một ASGI app.
 - **`src/ocr_extraction/`**: pipeline offline trích chữ trên khung hình —
   PaddleOCR để phát hiện vùng chữ (`models/engine.py`), VietOCR để nhận dạng
   ký tự tiếng Việt trên từng vùng đã crop (`models/vietocr_engine.py`), điều
   phối bởi `ExtractOCRPipeline`. Output được `indexer/elasticsearch/ocr`
   bulk-index — xem `ARCHITECTURE.md` mục 3.3.
-- **`src/translation/`**: dịch câu query tiếng Việt sang tiếng Anh trước khi
-  encode CLIP (model CLIP train chủ yếu trên tiếng Anh), 2 backend hoán đổi
-  được qua config (`LibreTranslate` server hoặc model GGUF local `Hy-MT2`
-  qua `llama_cpp`) — xem `ARCHITECTURE.md` mục 8.
+- **`src/translation/`**: dịch câu query bằng Google Cloud Translation khi
+  người dùng bật tùy chọn dịch. Khóa được đọc từ biến môi trường
+  `GOOGLE_TRANSLATE_API_KEY`; mặc định tính năng này tắt.
 - **`src/utils/`**: các tiện ích nền tảng dùng chung
   (`config.py`, `logger.py`, `device.py`, `seed.py`, `video_io.py`) — module
   ổn định, các module khác phụ thuộc vào nó nên hạn chế thay đổi breaking.
