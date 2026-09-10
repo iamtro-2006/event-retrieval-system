@@ -25,16 +25,13 @@ import { X, GitMerge, Sparkles, Waves, ScanText, AudioLines } from "lucide-react
  */
 export default function FusionSettingsModal({
   open,
+  theme = "dark",
   models = [],
   value,
   onClose,
   onSave,
 }) {
   const [draft, setDraft] = useState(value);
-
-  useEffect(() => {
-    if (open) setDraft(value);
-  }, [open, value]);
 
   useEffect(() => {
     if (!open) return;
@@ -91,7 +88,10 @@ export default function FusionSettingsModal({
   };
 
   return createPortal(
-    <div className="fusion-modal-backdrop" onClick={onClose}>
+    <div
+      className={`fusion-modal-backdrop fusion-modal-backdrop--${theme}`}
+      onClick={onClose}
+    >
       <div className="fusion-modal" onClick={(e) => e.stopPropagation()}>
         <div className="fusion-modal-header">
           <div className="fusion-modal-header-icon">

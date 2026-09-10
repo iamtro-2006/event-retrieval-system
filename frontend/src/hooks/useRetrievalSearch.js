@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { searchRetrieval, searchFusion, similaritySearch } from "../api/retrievalAPI";
+import { searchRetrieval, searchFusion, searchMultimodalRetrieval, similaritySearch } from "../api/retrievalAPI";
 
 export function useRetrievalSearch() {
   const requestIdRef = useRef(0);
@@ -21,8 +21,8 @@ export function useRetrievalSearch() {
     useSplit = true,
     useTranslate = true,
     searchMode: requestedSearchMode = "semantic",
+    modelKey,
     durationLimit: requestedDurationLimit = -1,
-    translateProvider = "google",
     reasoning = false,
   }) {
     const cleanQuery = typeof query === "string" ? query.trim() : "";
@@ -44,8 +44,8 @@ export function useRetrievalSearch() {
         useSplit,
         useTranslate,
         searchMode: requestedSearchMode,
+        modelKey,
         durationLimit: requestedDurationLimit,
-        translateProvider,
         reasoning,
       });
 
@@ -88,7 +88,6 @@ export function useRetrievalSearch() {
     useSplit = true,
     useTranslate = true,
     fusionConfig,
-    translateProvider = "google",
     reasoning = false,
   }) {
     const cleanQuery = typeof query === "string" ? query.trim() : "";
@@ -110,7 +109,6 @@ export function useRetrievalSearch() {
         useSplit,
         useTranslate,
         fusionConfig,
-        translateProvider,
         reasoning,
       });
 
@@ -143,6 +141,34 @@ export function useRetrievalSearch() {
       if (requestId === requestIdRef.current) {
         setLoading(false);
       }
+    }
+  }
+
+  async function searchMultimodal(options) {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    setError("");
+    try {
+      const data = await searchMultimodalRetrieval(options);
+      if (requestId !== requestIdRef.current) return;
+      setResults(data.results ?? []);
+      setLatency(data.latencyMs ?? null);
+      setSubQueries(data.subQueries ?? []);
+      setCount(data.count ?? 0);
+      setLastQuery(data.query ?? "Image query");
+      setSearchMode(data.searchMode ?? options.searchMode);
+      setDurationLimit(data.durationLimit ?? options.durationLimit ?? -1);
+    } catch (err) {
+      if (err.name === "AbortError" || err.name === "StaleSearchError") return;
+      if (requestId !== requestIdRef.current) return;
+      setResults([]);
+      setLatency(null);
+      setSubQueries([]);
+      setCount(0);
+      setError(err.message || "Multimodal search failed");
+      throw err;
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }
 
@@ -216,6 +242,7 @@ export function useRetrievalSearch() {
     searchMode,
     durationLimit,
     search,
+    searchMultimodal,
     searchWithFusion,
     searchSimilar,
     reset,

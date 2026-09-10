@@ -62,6 +62,29 @@ function logApiResponse(label, requestId, data) {
   console.groupEnd();
 }
 
+function assertModelIsolation(data, requestedModelKey, label) {
+  if (!requestedModelKey) return;
+
+  const responseModelKey = String(data?.model_key || "");
+  if (responseModelKey !== requestedModelKey) {
+    throw new Error(
+      `${label}: backend trả model '${responseModelKey || "không xác định"}' ` +
+      `thay vì model đã chọn '${requestedModelKey}'. Hãy restart cả backend và frontend.`
+    );
+  }
+
+  const mismatched = (Array.isArray(data?.results) ? data.results : []).find((item) => {
+    const actual = String(item?.model_key || item?.raw?.model_key || "");
+    return actual !== requestedModelKey;
+  });
+  if (mismatched) {
+    const actual = mismatched?.model_key || mismatched?.raw?.model_key || "không xác định";
+    throw new Error(
+      `${label}: phát hiện kết quả từ model '${actual}' trong nhánh '${requestedModelKey}'.`
+    );
+  }
+}
+
 function joinBaseUrl(baseUrl, relPath) {
   if (!baseUrl || !relPath) {
     return "";
@@ -118,8 +141,8 @@ export async function searchRetrieval({
   useSplit = true,
   useTranslate = true,
   searchMode = "semantic",
+  modelKey,
   durationLimit = -1,
-  translateProvider = "google",
   reasoning = false,
 }) {
   if (activeSearchController) {
@@ -138,9 +161,9 @@ export async function searchRetrieval({
     use_split: useSplit,
     reasoning,
     use_translate: useTranslate,
-    translate_provider: translateProvider,
-    translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
+    translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
     search_mode: searchMode,
+    model_key: modelKey,
     duration_limit: durationLimit,
   };
 
@@ -174,6 +197,9 @@ export async function searchRetrieval({
     const t2 = performance.now();
 
     logApiResponse("search", requestId, data);
+    if (["semantic", "temporal", "auto"].includes(searchMode)) {
+      assertModelIsolation(data, modelKey, "Search");
+    }
 
     if (requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
@@ -233,6 +259,79 @@ export async function searchRetrieval({
   }
 }
 
+export async function searchMultimodalRetrieval({
+  query = "",
+  clauses = [],
+  clauseImages = [],
+  topK = 20,
+  candidateMultiplier,
+  useSplit = true,
+  useTranslate = true,
+  searchMode = "semantic",
+  durationLimit = -1,
+  modelKey,
+}) {
+  if (activeSearchController) activeSearchController.abort();
+  const controller = new AbortController();
+  activeSearchController = controller;
+  const requestId = ++activeSearchRequestId;
+  const formData = new FormData();
+  const flatImages = [];
+  const clausePayload = clauses.map((text, clauseIndex) => {
+    const imageIndices = [];
+    for (const attachment of clauseImages[clauseIndex] ?? []) {
+      imageIndices.push(flatImages.length);
+      flatImages.push(attachment.file);
+    }
+    return { text: String(text || "").trim(), image_indices: imageIndices };
+  });
+
+  formData.append("request_json", JSON.stringify({
+    query,
+    clauses: clausePayload,
+    top_k: topK,
+    candidate_multiplier: candidateMultiplier,
+    use_split: useSplit,
+    use_translate: useTranslate,
+    translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
+    search_mode: searchMode,
+    duration_limit: durationLimit,
+    model_key: modelKey,
+  }));
+  flatImages.forEach((file) => formData.append("images", file, file.name || "query-image"));
+
+  const t0 = performance.now();
+  try {
+    const response = await fetch(apiUrl("/api/search/multimodal"), {
+      method: "POST",
+      headers: NGROK_HEADER,
+      body: formData,
+      signal: controller.signal,
+    });
+    if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
+    if (!response.ok) {
+      let message = await response.text();
+      try { message = JSON.parse(message)?.detail || message; } catch { /* keep response text */ }
+      throw new Error(message || "Multimodal search failed");
+    }
+    const data = await response.json();
+    if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
+    assertModelIsolation(data, modelKey, "Multimodal search");
+    const results = normalizeResults(data.results ?? []);
+    return {
+      query: data.query || query || "Image query",
+      subQueries: data.sub_queries ?? [],
+      latencyMs: data.latency_ms ?? Math.round(performance.now() - t0),
+      count: data.count ?? results.length,
+      searchMode: data.search_mode ?? searchMode,
+      durationLimit: data.duration_limit ?? durationLimit,
+      results,
+    };
+  } finally {
+    if (activeSearchController === controller) activeSearchController = null;
+  }
+}
+
 function createStaleSearchError(requestId) {
   const error = new Error(`Stale search ignored: ${requestId}`);
   error.name = "StaleSearchError";
@@ -246,7 +345,6 @@ export async function searchFusion({
   useSplit = true,
   useTranslate = true,
   fusionConfig,
-  translateProvider = "google",
   reasoning = false,
 }) {
   if (activeSearchController) {
@@ -272,8 +370,7 @@ export async function searchFusion({
     weights: fusionConfig?.weights ?? undefined,
     reasoning,
     use_translate: useTranslate,
-    translate_provider: translateProvider,
-    translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
+    translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
     duration_limit: fusionConfig?.temporal ? Number(fusionConfig?.durationLimit ?? -1) : -1,
   };
 
@@ -431,6 +528,9 @@ function normalizeResults(results) {
       similarity: Number.isFinite(similarity) ? similarity : 0,
       caption: item.caption || "",
       rank: safeNumber(item.rank, index + 1),
+      model_key: item.model_key || raw.model_key || "",
+      search_mode: item.search_mode || raw.search_mode || "",
+      source_models: item.source_models ?? raw.source_models ?? [],
       matched_sequence: matchedSequence,
       // OCR/ASR-only: the on-screen text or transcript snippet that matched
       // the query. Empty for semantic/temporal results.
@@ -558,11 +658,13 @@ export async function similaritySearch({
   videoId,
   frameId,
   topK = 20,
+  modelKey,
 }) {
   const payload = {
     video_id: videoId,
     frame_id: Number(frameId),
     top_k: topK,
+    model_key: modelKey,
   };
 
   const t0 = performance.now();
@@ -583,7 +685,8 @@ export async function similaritySearch({
     throw new Error(errorText || "Similarity search failed");
   }
 
-  const data = await response.json();
+    const data = await response.json();
+  assertModelIsolation(data, modelKey, "Similarity search");
   const normalizedResults = normalizeResults(data.results ?? []);
 
   console.table({

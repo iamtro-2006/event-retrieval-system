@@ -33,29 +33,26 @@ const TemporalSequence = memo(function TemporalSequence({
   onSurroundingImages,
   query,
 }) {
-  const sequence = Array.isArray(result?.matched_sequence) ? result.matched_sequence : [];
+  const sequence = useMemo(
+    () => Array.isArray(result?.matched_sequence) ? result.matched_sequence : [],
+    [result?.matched_sequence]
+  );
   // ASR hits share ONE transcript across every frame in the sequence (see
   // FaissRetrievalSystem._enrich_asr_hits) and already show it once in the
   // header below, so the per-frame caption would just repeat it 3x. Real
   // temporal search hits don't set `matched_texts`, so this only affects ASR.
   const hasSharedSegmentText = Array.isArray(result?.matched_texts) && result.matched_texts.length > 0;
   const viewportRef = useRef(null);
+  const scrollRafRef = useRef(0);
   const [page, setPage] = useState(0);
   const frameResults = useMemo(
     () => sequence.map((frame, idx) => makeFrameResult(result, frame, idx)),
     [result, sequence]
   );
 
-  if (!sequence.length) return null;
-
   const isCarousel = sequence.length > 3;
   const visibleCount = Math.min(sequence.length, 3);
   const maxPage = Math.max(0, sequence.length - visibleCount);
-
-  useEffect(() => {
-    setPage(0);
-    viewportRef.current?.scrollTo({ left: 0, behavior: "auto" });
-  }, [result?.id, sequence.length]);
 
   function move(direction) {
     const viewport = viewportRef.current;
@@ -79,8 +76,6 @@ const TemporalSequence = memo(function TemporalSequence({
     const step = (firstCard?.getBoundingClientRect().width || viewport.clientWidth / visibleCount) + gap;
     viewport.scrollTo({ left: next * step, behavior: "smooth" });
   }
-
-  const scrollRafRef = useRef(0);
 
   function syncPageFromScroll() {
     // Scroll fires many times per frame; only do the DOM-measuring work once
@@ -111,6 +106,8 @@ const TemporalSequence = memo(function TemporalSequence({
   }
 
   useEffect(() => () => cancelAnimationFrame(scrollRafRef.current), []);
+
+  if (!sequence.length) return null;
 
   return (
     <section className={`temporal-sequence-block temporal-events-${Math.min(sequence.length, 6)}`} style={{ "--sequence-event-total": sequence.length, "--stagger-index": index }}>
