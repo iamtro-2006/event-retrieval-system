@@ -24,6 +24,42 @@ function apiUrl(path) {
   return `${API_BASE_URL}/${String(path).replace(/^\/+/, "")}`;
 }
 
+function explicitQueryPlan(query) {
+  const pieces = String(query || "").split(/\b(AND|THEN)\b/);
+  const clauses = [String(pieces[0] || "").trim()];
+  const connectors = [];
+  const events = [[]];
+  if (clauses[0]) events[0].push(clauses[0]);
+  for (let index = 1; index < pieces.length; index += 2) {
+    const connector = pieces[index];
+    const clause = String(pieces[index + 1] || "").trim();
+    connectors.push(connector);
+    clauses.push(clause);
+    if (connector === "THEN") events.push([]);
+    if (clause) events.at(-1).push(clause);
+  }
+  return { clauses, connectors, events: events.filter((event) => event.length) };
+}
+
+function logQueryInput(label, requestId, { query, mode, translate, multimodalClauses }) {
+  if (import.meta.env.VITE_DEBUG_API_RESPONSES === "false") return;
+  const plan = explicitQueryPlan(query);
+  console.groupCollapsed(`[QUERY ${label} ${requestId}] explicit plan`);
+  console.log("original_query", query);
+  console.log("mode_requested", mode);
+  console.log("connectors", plan.connectors);
+  console.log("clauses_before_translation", plan.clauses);
+  console.log("events_before_translation", plan.events);
+  console.log("translation", {
+    enabled: Boolean(translate),
+    requests: translate ? 1 : 0,
+    batch_size: translate ? plan.clauses.filter(Boolean).length : 0,
+  });
+  console.log("reasoning", "disconnected");
+  if (multimodalClauses) console.table(multimodalClauses);
+  console.groupEnd();
+}
+
 // Temporary diagnostic trace for the search contract.  Keep this at the API
 // boundary so every POST response can be inspected before normalization and
 // compared with the shape consumed by the UI (frame vs sequence, including
@@ -52,12 +88,20 @@ function logApiResponse(label, requestId, data) {
     matched_texts: Array.isArray(item?.matched_texts) ? item.matched_texts.join(" | ") : "",
   })));
   console.log("raw", data);
-  console.groupCollapsed("diagnostic: query reasoning / fusion");
+  console.groupCollapsed("diagnostic: explicit query plan");
+  console.log("original_query", data?.original_query ?? "not returned");
+  console.log("translated_query", data?.translated_query ?? "not translated");
+  console.log("effective_mode", data?.mode ?? data?.search_mode ?? "not returned");
   console.log("weights", data?.weights ?? data?.debug?.weights ?? "not returned");
   console.log("events", data?.events ?? data?.query_plan?.events ?? data?.debug?.events ?? "not returned");
   console.log("event_queries", data?.event_queries ?? data?.debug?.event_queries ?? "not returned");
+  console.log("candidate_pool", {
+    candidate_k: data?.candidate_k ?? data?.debug?.candidate_k ?? "not returned",
+    universe_size: data?.candidate_universe_size ?? data?.debug?.candidate_universe_size ?? "not returned",
+    per_event: data?.event_candidate_counts ?? data?.debug?.event_candidate_counts ?? "not returned",
+  });
   console.log("focused_queries", data?.focused_queries ?? data?.debug?.focused_queries ?? "not returned");
-  console.log("reasoning", data?.reasoning ?? data?.debug?.reasoning ?? "not returned");
+  console.log("reasoning", "disconnected");
   console.groupEnd();
   console.groupEnd();
 }
@@ -169,7 +213,12 @@ export async function searchRetrieval({
 
   const t0 = performance.now();
 
-  console.log(`[SEARCH ${requestId}] payload`, payload);
+  logQueryInput("search", requestId, {
+    query,
+    mode: searchMode,
+    translate: useTranslate,
+  });
+  console.log(`[SEARCH ${requestId}] payload`, { ...payload, translate_api_key: payload.translate_api_key ? "[configured]" : null });
 
   try {
     const response = await fetch(apiUrl("/api/search"), {
@@ -262,6 +311,7 @@ export async function searchRetrieval({
 export async function searchMultimodalRetrieval({
   query = "",
   clauses = [],
+  queryConnectors = [],
   clauseImages = [],
   topK = 20,
   candidateMultiplier,
@@ -283,7 +333,11 @@ export async function searchMultimodalRetrieval({
       imageIndices.push(flatImages.length);
       flatImages.push(attachment.file);
     }
-    return { text: String(text || "").trim(), image_indices: imageIndices };
+    return {
+      text: String(text || "").trim(),
+      image_indices: imageIndices,
+      connector_before: clauseIndex > 0 ? (queryConnectors[clauseIndex - 1] || "AND") : null,
+    };
   });
 
   formData.append("request_json", JSON.stringify({
@@ -301,6 +355,31 @@ export async function searchMultimodalRetrieval({
   flatImages.forEach((file) => formData.append("images", file, file.name || "query-image"));
 
   const t0 = performance.now();
+  let eventIndex = 0;
+  const multimodalDiagnostic = clausePayload.flatMap((clause, clauseIndex) => {
+    if (clauseIndex > 0 && clause.connector_before === "THEN") eventIndex += 1;
+    const rows = [{
+      event: eventIndex + 1,
+      position: clauseIndex + 1,
+      connector_before: clause.connector_before || "START",
+      type: "text",
+      value: clause.text || "(empty)",
+    }];
+    clause.image_indices.forEach((imageIndex) => rows.push({
+      event: eventIndex + 1,
+      position: clauseIndex + 1,
+      connector_before: "same clause",
+      type: "image",
+      value: `image-${imageIndex + 1}`,
+    }));
+    return rows;
+  });
+  logQueryInput("multimodal", requestId, {
+    query,
+    mode: searchMode,
+    translate: useTranslate,
+    multimodalClauses: multimodalDiagnostic,
+  });
   try {
     const response = await fetch(apiUrl("/api/search/multimodal"), {
       method: "POST",
@@ -317,6 +396,7 @@ export async function searchMultimodalRetrieval({
     const data = await response.json();
     if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
     assertModelIsolation(data, modelKey, "Multimodal search");
+    logApiResponse("multimodal", requestId, data);
     const results = normalizeResults(data.results ?? []);
     return {
       query: data.query || query || "Image query",
@@ -368,6 +448,7 @@ export async function searchFusion({
     candidate_multiplier: candidateMultiplier,
     use_split: useSplit,
     weights: fusionConfig?.weights ?? undefined,
+    semantic_lambda: Number(fusionConfig?.semanticLambda ?? 0.5),
     reasoning,
     use_translate: useTranslate,
     translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
@@ -375,9 +456,14 @@ export async function searchFusion({
   };
 
   const t0 = performance.now();
-  console.log(`[FUSION SEARCH ${requestId}] payload`, payload);
-  console.groupCollapsed(`[FUSION SEARCH ${requestId}] reasoning input`);
-  console.log("reasoning", reasoning);
+  logQueryInput("fusion", requestId, {
+    query,
+    mode: fusionConfig?.temporal ? "temporal fusion" : "fusion",
+    translate: useTranslate,
+  });
+  console.log(`[FUSION SEARCH ${requestId}] payload`, { ...payload, translate_api_key: payload.translate_api_key ? "[configured]" : null });
+  console.groupCollapsed(`[FUSION SEARCH ${requestId}] source configuration`);
+  console.log("reasoning", "disconnected");
   console.log("weights sent", payload.weights);
   console.log("enabled sources", { semantic: semanticModels.length > 0, ocr: payload.use_ocr, asr: payload.use_asr, temporal: payload.temporal });
   console.groupEnd();

@@ -60,26 +60,27 @@ function getErrorMessage(error, fallback = "Unexpected error") {
   return error?.message || String(error || fallback);
 }
 
-function clauseSeparator(mode) {
-  if (mode === "temporal" || mode === "auto") return "; ";
-  if (mode === "ocr" || mode === "asr") return " ";
-  return ", ";
-}
-
-function splitQueryIntoClauses(query, mode) {
+function parseExplicitQuery(query) {
   const text = String(query || "");
-  if (!text.trim()) return [""];
-  if (mode === "temporal" || mode === "auto") {
-    return text.split(/[;\n]+/).map((part) => part.trim());
+  if (!text.trim()) return { clauses: [""], connectors: [] };
+  const pieces = text.split(/\b(AND|THEN)\b/);
+  const clauses = [pieces[0].trim()];
+  const connectors = [];
+  for (let index = 1; index < pieces.length; index += 2) {
+    const clause = String(pieces[index + 1] || "").trim();
+    connectors.push(pieces[index]);
+    clauses.push(clause);
   }
-  if (mode === "text" || mode === "fusion") {
-    return text.split(",").map((part) => part.trim());
-  }
-  return [text];
+  return { clauses: clauses.length ? clauses : [""], connectors };
 }
 
-function composeQuery(clauses, mode) {
-  return clauses.map((clause) => String(clause || "").trim()).filter(Boolean).join(clauseSeparator(mode));
+function composeQuery(clauses, connectors = []) {
+  const normalized = clauses.map((clause) => String(clause || "").trim());
+  let value = normalized[0] || "";
+  for (let index = 1; index < normalized.length; index += 1) {
+    value += ` ${connectors[index - 1] || "AND"} ${normalized[index]}`;
+  }
+  return value.trim();
 }
 
 function createImageAttachment(file) {
@@ -106,9 +107,11 @@ export default function App() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [model, setModel] = useState("siglip2-so400m");
   const [availableModels, setAvailableModels] = useState([]);
+  const [semanticModelRoles, setSemanticModelRoles] = useState({ local: null, global: null });
   const [mode, setMode] = useState("text");
   const [query, setQuery] = useState("");
   const [queryClauses, setQueryClauses] = useState([""]);
+  const [queryConnectors, setQueryConnectors] = useState([]);
   const [clauseImages, setClauseImages] = useState([[]]);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [resultsHeaderCollapsed, setResultsHeaderCollapsed] = useState(false);
@@ -120,6 +123,7 @@ export default function App() {
     useOcr: false,
     useAsr: false,
     weights: { semantic: 0.8, ocr: 0.1, asr: 0.1 },
+    semanticLambda: 0.5,
     hasConfig: false,
   });
   const [columns, setColumns] = useState(4);
@@ -137,7 +141,6 @@ export default function App() {
   // ── Settings ─────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
-    useSplit: true,
     useTranslate: true,
     topK: 20,
     candidateMultiplier: 5,
@@ -205,23 +208,32 @@ export default function App() {
 
   const handleQueryChange = useCallback((nextQuery) => {
     const value = String(nextQuery ?? "");
-    const nextClauses = splitQueryIntoClauses(value, mode);
+    const { clauses: nextClauses, connectors: nextConnectors } = parseExplicitQuery(value);
     setQuery(value);
     setQueryClauses(nextClauses);
-    setClauseImages((previous) => nextClauses.map((_, index) => {
-      if (index !== nextClauses.length - 1) return previous[index] ?? [];
-      return previous.slice(index).flat();
-    }));
-  }, [mode]);
+    setQueryConnectors(nextConnectors);
+    setClauseImages((previous) => {
+      previous.slice(nextClauses.length).flat().forEach((item) => URL.revokeObjectURL(item.url));
+      return nextClauses.map((_, index) => previous[index] ?? []);
+    });
+  }, []);
 
   const handleModeChange = useCallback((nextMode) => {
     setMode(nextMode);
-    setQuery(composeQuery(queryClauses, nextMode));
-  }, [queryClauses]);
+  }, []);
 
   const handleClausesChange = useCallback((nextClauses, options = {}) => {
     const normalized = nextClauses?.length ? nextClauses : [""];
+    let nextConnectors = [...queryConnectors];
+    if (Number.isInteger(options.removedIndex)) {
+      const connectorIndex = options.removedIndex === 0 ? 0 : options.removedIndex - 1;
+      nextConnectors.splice(connectorIndex, 1);
+    } else if (normalized.length > queryClauses.length) {
+      nextConnectors.push(options.connector === "THEN" ? "THEN" : "AND");
+    }
+    nextConnectors = nextConnectors.slice(0, Math.max(0, normalized.length - 1));
     setQueryClauses(normalized);
+    setQueryConnectors(nextConnectors);
     setClauseImages((previous) => {
       if (Number.isInteger(options.removedIndex)) {
         previous[options.removedIndex]?.forEach((item) => URL.revokeObjectURL(item.url));
@@ -230,8 +242,8 @@ export default function App() {
       }
       return normalized.map((_, index) => previous[index] ?? []);
     });
-    setQuery(composeQuery(normalized, mode));
-  }, [mode]);
+    setQuery(composeQuery(normalized, nextConnectors));
+  }, [queryClauses.length, queryConnectors]);
 
   const handleAddClauseImages = useCallback((clauseIndex, files) => {
     const accepted = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
@@ -263,9 +275,10 @@ export default function App() {
       durationLimit,
       reasoningEnabled,
       availableModels,
+      semanticModelRoles,
       fusionConfig,
-      useSplit: settings.useSplit,
       queryClauses,
+      queryConnectors,
       clauseImages,
       onModelChange: setModel,
       onModeChange: handleModeChange,
@@ -276,7 +289,7 @@ export default function App() {
       onReasoningToggle: setReasoningEnabled,
       onFusionConfigChange: setFusionConfig,
     }),
-    [query, theme, model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, fusionConfig, settings.useSplit, queryClauses, clauseImages, handleModeChange, handleQueryChange, handleAddClauseImages, handleRemoveClauseImage]
+    [query, theme, model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, semanticModelRoles, fusionConfig, queryClauses, queryConnectors, clauseImages, handleModeChange, handleQueryChange, handleAddClauseImages, handleRemoveClauseImage]
   );
 
   // ── Bootstrap ────────────────────────────────────────
@@ -289,6 +302,7 @@ export default function App() {
         const config = await getBackendConfig();
 
         if (!alive) return;
+        setSemanticModelRoles(config.semantic_model_roles || { local: null, global: null });
 
         setSettings((prev) => ({
           ...prev,
@@ -413,6 +427,7 @@ export default function App() {
     setReranking(false);
     setQuery("");
     setQueryClauses([""]);
+    setQueryConnectors([]);
     setClauseImages((previous) => {
       previous.flat().forEach((item) => URL.revokeObjectURL(item.url));
       return [[]];
@@ -456,11 +471,12 @@ export default function App() {
           }
           await searchMultimodal({
             query: cleanQuery,
-            clauses: settings.useSplit ? queryClauses : [cleanQuery],
-            clauseImages: settings.useSplit ? clauseImages : [clauseImages.flat()],
+            clauses: queryClauses,
+            queryConnectors,
+            clauseImages,
             topK: settings.topK,
             candidateMultiplier: settings.candidateMultiplier,
-            useSplit: settings.useSplit,
+            useSplit: true,
             useTranslate: settings.useTranslate,
             searchMode,
             modelKey: model,
@@ -476,22 +492,22 @@ export default function App() {
             query: cleanQuery,
             topK: settings.topK,
             candidateMultiplier: settings.candidateMultiplier,
-            useSplit: settings.useSplit,
+            useSplit: true,
             useTranslate: settings.useTranslate,
              fusionConfig: cfg,
-             reasoning: Boolean(payload?.reasoning ?? reasoningEnabled),
+             reasoning: false,
           });
         } else {
           await search({
             query: cleanQuery,
             topK: settings.topK,
             candidateMultiplier: settings.candidateMultiplier,
-            useSplit: settings.useSplit,
+            useSplit: true,
             useTranslate: settings.useTranslate,
             searchMode,
             modelKey: model,
             durationLimit: nextDurationLimit,
-             reasoning: Boolean(payload?.reasoning ?? reasoningEnabled),
+             reasoning: false,
           });
         }
       } catch (err) {
@@ -503,7 +519,7 @@ export default function App() {
         pushToast("warning", "Search failed", getErrorMessage(err));
       }
     },
-    [backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, reasoningEnabled, resolvedMode, search, searchMultimodal, searchWithFusion, settings]
+    [backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, queryConnectors, resolvedMode, search, searchMultimodal, searchWithFusion, settings]
   );
 
   const handleSidebarSearch = useCallback(() => {
@@ -512,9 +528,9 @@ export default function App() {
       searchMode: resolvedMode,
       durationLimit: resolvedMode === "temporal" ? Number(durationLimit) : -1,
       fusionConfig: resolvedMode === "fusion" ? fusionConfig : null,
-      reasoning: resolvedMode === "temporal" || resolvedMode === "fusion" ? reasoningEnabled : false,
+      reasoning: false,
     });
-  }, [durationLimit, fusionConfig, handleSearch, query, reasoningEnabled, resolvedMode]);
+  }, [durationLimit, fusionConfig, handleSearch, query, resolvedMode]);
 
   // Auto-rerank tối ưu hơn: debounce + chống stale update
   useEffect(() => {
@@ -787,8 +803,8 @@ export default function App() {
           theme={theme}
           mode={mode}
           queryClauses={queryClauses}
+          queryConnectors={queryConnectors}
           clauseImages={clauseImages}
-          useSplit={settings.useSplit}
           expanded={sidebarExpanded}
           loading={loading}
           disabled={!backendReady}

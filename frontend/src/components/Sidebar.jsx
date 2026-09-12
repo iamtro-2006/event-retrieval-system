@@ -25,7 +25,7 @@ const getModeLabel = (mode) => SEARCH_MODES.find((item) => item.key === mode)?.l
 const getConnector = (mode) => mode === "temporal" || mode === "auto" ? "THEN" : "AND";
 
 export default function Sidebar({
-  theme, mode, queryClauses, clauseImages = [[]], useSplit = true, expanded, loading, disabled, onToggleExpanded,
+  theme, mode, queryClauses, queryConnectors = [], clauseImages = [[]], expanded, loading, disabled, onToggleExpanded,
   onModeChange, onClausesChange, onAddClauseImages, onRemoveClauseImage, onSearch, onToggleTheme, onReset,
   onOpenSettings, onOpenPreview,
 }) {
@@ -42,13 +42,12 @@ export default function Sidebar({
   const updateClause = (index, value) => onClausesChange?.(
     clauses.map((clause, clauseIndex) => clauseIndex === index ? value : clause)
   );
-  const addClause = () => onClausesChange?.([...clauses, ""]);
+  const addClause = (connector) => onClausesChange?.([...clauses, ""], { connector });
   const removeClause = (index) => onClausesChange?.(
     clauses.length === 1 ? [""] : clauses.filter((_, clauseIndex) => clauseIndex !== index),
     { removedIndex: index }
   );
   const imageQueryPosition = (clauseIndex, imageIndex) => {
-    if (!useSplit) return 1;
     let position = 1;
     for (let index = 0; index < clauseIndex; index += 1) {
       position += (clauses[index]?.trim() ? 1 : 0) + (clauseImages[index]?.length ?? 0);
@@ -122,17 +121,18 @@ export default function Sidebar({
               <div className="clause-builder-heading">
                 <div>
                   <p className="sidebar-section-label">QUERY BUILDER</p>
-                  <span>{useSplit
-                    ? (mode === "temporal" || mode === "auto" ? "Each text/image is an event" : "Each text/image is a query")
-                    : "Text and images are combined as one query"}</span>
+                  <span>Use AND for semantic alternatives, THEN for ordered events</span>
                 </div>
-                <button type="button" onClick={addClause} aria-label="Add query clause" title="Add clause"><Plus size={16} /></button>
+                <div className="clause-add-actions">
+                  <button type="button" onClick={() => addClause("AND")} aria-label="Add semantic clause" title="Add semantic clause (Shift + +)"><Plus size={14} /> AND</button>
+                  <button type="button" onClick={() => addClause("THEN")} aria-label="Add temporal clause" title="Add temporal clause (Shift + |)"><Plus size={14} /> THEN</button>
+                </div>
               </div>
 
               <div className="clause-stack">
                 {clauses.map((clause, index) => (
                   <div className="clause-block" key={index}>
-                    {index > 0 && <div className="clause-connector"><span /><strong>{getConnector(mode)}</strong><span /></div>}
+                    {index > 0 && <div className="clause-connector"><span /><strong>{queryConnectors[index - 1] || getConnector(mode)}</strong><span /></div>}
                     <div className="clause-input-shell">
                       <span className="clause-number">{String(index + 1).padStart(2, "0")}</span>
                       <textarea rows={2} value={clause}

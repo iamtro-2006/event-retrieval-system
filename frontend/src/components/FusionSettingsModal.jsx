@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, GitMerge, Sparkles, Waves, ScanText, AudioLines } from "lucide-react";
 
@@ -9,7 +9,8 @@ import { X, GitMerge, Sparkles, Waves, ScanText, AudioLines } from "lucide-react
  * Cho phép tick nhiều semantic model, bật/tắt temporal (kèm duration
  * limit), OCR, ASR và điều chỉnh weight theo nhóm nguồn. Backend
  * Khi temporal bật, nó chạy multimodal PER EVENT:
- * mỗi event tự fuse (bằng RRF) đúng các method đã tick ở trên (model(s) +
+ * mỗi event tự fuse các semantic model bằng weighted similarity, rồi kết hợp
+ * đúng các method đã tick ở trên (semantic +
  * OCR/ASR nếu bật) TRƯỚC khi DP alignment ghép chuỗi — dùng chung danh sách
  * model đã tick ở "Semantic models", không có checklist model riêng cho
  * temporal.
@@ -27,11 +28,13 @@ export default function FusionSettingsModal({
   open,
   theme = "dark",
   models = [],
+  modelRoles = {},
   value,
   onClose,
   onSave,
 }) {
   const [draft, setDraft] = useState(value);
+  const radarRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -80,12 +83,30 @@ export default function FusionSettingsModal({
   const hasAnyMethod =
     draft.semanticModels.length > 0 || draft.useOcr || draft.useAsr;
   const radarWeights = draft.weights || { semantic: 0, ocr: 0, asr: 0 };
+  const radarAxes = [["semantic", 0], ["ocr", 120], ["asr", 240]];
   const radarPoint = (key, angle) => {
     const value = Math.max(0, Math.min(1, Number(radarWeights[key] || 0)));
     const radius = 34 * value;
     const radians = (angle - 90) * Math.PI / 180;
     return `${50 + Math.cos(radians) * radius},${50 + Math.sin(radians) * radius}`;
   };
+  const radarHandle = (key, angle) => radarPoint(key, angle).split(",").map(Number);
+
+  function dragRadarWeight(key, angle, event) {
+    if (!radarRef.current) return;
+    const enabled = key === "semantic" ? draft.semanticModels.length > 0 : key === "ocr" ? draft.useOcr : draft.useAsr;
+    if (!enabled) return;
+    const rect = radarRef.current.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * 100 / rect.width - 50;
+    const y = (event.clientY - rect.top) * 100 / rect.height - 50;
+    const radians = (angle - 90) * Math.PI / 180;
+    updateWeight(key, Math.max(0, Math.min(1, (x * Math.cos(radians) + y * Math.sin(radians)) / 34)));
+  }
+
+  const selectedKeys = draft.semanticModels.map((item) => item.key);
+  const localModel = modelRoles?.local || models[0] || "Local";
+  const globalModel = modelRoles?.global || models[1] || "Global";
+  const canBlendSemantic = selectedKeys.length === 2 && selectedKeys.includes(localModel) && selectedKeys.includes(globalModel);
 
   return createPortal(
     <div
@@ -100,7 +121,7 @@ export default function FusionSettingsModal({
 
           <div className="fusion-modal-header-text">
             <h2>Fusion search — cấu hình</h2>
-            <p>Chọn model và method muốn kết hợp — kết quả được fuse theo rank (RRF), không cần chỉnh trọng số.</p>
+            <p>Semantic được trộn theo similarity; các modality được điều chỉnh trực tiếp trên radar.</p>
           </div>
 
           <button className="modal-close-btn" type="button" onClick={onClose} aria-label="Đóng">
@@ -137,21 +158,41 @@ export default function FusionSettingsModal({
 
           <div className="fusion-card">
             <div className="fusion-card-title"><GitMerge size={13} /><span>Fusion weights</span></div>
-            <p className="fusion-weight-total">Tổng nguồn đang bật luôn được chuẩn hoá = 1.0</p>
+            <p className="fusion-weight-total">Kéo trực tiếp các núm trên radar; tổng nguồn đang bật được chuẩn hoá = 1.0.</p>
             <div className="fusion-radar-wrap" aria-label="Biểu đồ trọng số fusion">
-              <svg viewBox="0 0 100 100" className="fusion-radar">
-                <polygon points="50,16 84,68 16,68" className="fusion-radar-grid" />
+              <svg ref={radarRef} viewBox="0 0 100 100" className="fusion-radar">
+                <g className="fusion-radar-grid" aria-hidden="true">
+                  {[1, 0.75, 0.5, 0.25].map((level) => (
+                    <polygon
+                      key={level}
+                      points={radarAxes.map(([, angle]) => {
+                        const radians = (angle - 90) * Math.PI / 180;
+                        return `${50 + Math.cos(radians) * 34 * level},${50 + Math.sin(radians) * 34 * level}`;
+                      }).join(" ")}
+                      className={level === 1 ? "fusion-radar-grid-ring is-outer" : "fusion-radar-grid-ring"}
+                    />
+                  ))}
+                  {radarAxes.map(([key, angle]) => {
+                    const radians = (angle - 90) * Math.PI / 180;
+                    return <line key={key} x1="50" y1="50" x2={50 + Math.cos(radians) * 34} y2={50 + Math.sin(radians) * 34} className="fusion-radar-grid-axis" />;
+                  })}
+                </g>
                 <polygon points={`${radarPoint("semantic", 0)} ${radarPoint("ocr", 120)} ${radarPoint("asr", 240)}`} className="fusion-radar-value" />
-                <text x="50" y="10">Semantic</text><text x="87" y="73">OCR</text><text x="3" y="73">ASR</text>
+                {radarAxes.map(([key, angle]) => {
+                  const [cx, cy] = radarHandle(key, angle);
+                  return <circle key={key} cx={cx} cy={cy} r="3" className="fusion-radar-handle" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); dragRadarWeight(key, angle, event); }} onPointerMove={(event) => { if (event.currentTarget.hasPointerCapture(event.pointerId)) dragRadarWeight(key, angle, event); }} />;
+                })}
+                <text x="50" y="7"><tspan x="50">Semantic</tspan><tspan x="50" dy="5">{Number(radarWeights.semantic || 0).toFixed(2)}</tspan></text>
+                <text x="91" y="72"><tspan x="91">OCR</tspan><tspan x="91" dy="5">{Number(radarWeights.ocr || 0).toFixed(2)}</tspan></text>
+                <text x="9" y="72"><tspan x="9">ASR</tspan><tspan x="9" dy="5">{Number(radarWeights.asr || 0).toFixed(2)}</tspan></text>
               </svg>
             </div>
-            {[["semantic", "Semantic", draft.semanticModels.length > 0], ["ocr", "OCR", draft.useOcr], ["asr", "ASR", draft.useAsr]].map(([key, label, enabled]) => (
-              <label className="fusion-weight-row" key={key}>
-                <span>{label}</span>
-                <input type="range" min="0" max="1" step="0.01" disabled={!enabled} value={Number(draft.weights?.[key] ?? 0)} onChange={(e) => updateWeight(key, e.target.value)} />
-                <input className="fusion-weight-number" type="number" min="0" max="1" step="0.01" disabled={!enabled} value={Number(draft.weights?.[key] ?? 0).toFixed(2)} onChange={(e) => updateWeight(key, e.target.value)} />
-              </label>
-            ))}
+            <label className="semantic-blend-row">
+              <span>Local · {localModel}</span>
+              <input type="range" min="0" max="1" step="0.01" disabled={!canBlendSemantic} value={Number(draft.semanticLambda ?? 0.5)} onChange={(e) => updateField("semanticLambda", Number(e.target.value))} />
+              <span>Global · {globalModel}</span>
+              <output>{canBlendSemantic ? Number(draft.semanticLambda ?? 0.5).toFixed(2) : "1 model"}</output>
+            </label>
           </div>
 
           {/* ── Method khác ────────────────────────────────────────── */}
@@ -165,7 +206,7 @@ export default function FusionSettingsModal({
               <MethodRow
                 icon={<Waves size={14} />}
                 label="Temporal"
-                sublabel="Chuỗi sự kiện — mỗi event tự fuse (RRF) các method đã tick ở trên rồi ghép chuỗi"
+                sublabel="Chuỗi sự kiện — mỗi event trộn semantic theo similarity rồi ghép chuỗi"
                 checked={draft.temporal}
                 onToggle={() => updateField("temporal", !draft.temporal)}
               />
