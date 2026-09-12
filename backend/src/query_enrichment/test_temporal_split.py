@@ -62,14 +62,15 @@ def test_temporal_parser_accepts_a_genuine_single_event() -> None:
     ]
 
 
-def test_temporal_fallback_splits_explicit_transitions_without_punctuation() -> None:
+def test_temporal_split_only_uses_uppercase_explicit_then() -> None:
     assert split_temporal_events(
-        "The man opens the door then enters the room and then sits down"
+        "The man opens the door THEN enters the room AND walks inside THEN sits down"
     ) == [
         "The man opens the door",
-        "enters the room",
+        "enters the room AND walks inside",
         "sits down",
     ]
+    assert split_temporal_events("A then B; C, D") == ["A then B; C, D"]
 
 
 def test_temporal_split_uses_versioned_cache_contract() -> None:

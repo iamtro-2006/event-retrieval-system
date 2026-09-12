@@ -120,6 +120,7 @@ class AdvancedSearchRequest(BaseSearchRequest):
         description="Weight theo nhóm nguồn: semantic, ocr, asr. Backend chuẩn hoá tổng weight về 1.0; "
         "nguồn tắt sẽ không được tính.",
     )
+    semantic_lambda: float = Field(0.5, ge=0.0, le=1.0)
     include_per_source: bool = Field(
         False,
         description="True = trả kèm breakdown từng nguồn riêng lẻ trước khi fuse (`per_source`, dùng để "

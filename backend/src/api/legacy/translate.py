@@ -17,4 +17,17 @@ def translate_query_if_needed(query: str, use_translate: bool, cfg: dict[str, An
     source = translate_cfg.get("source", "vi")
     target = translate_cfg.get("target", "en")
     translator = GoogleCloudTranslator(api_key) if api_key else get_translator(cfg, backend_dir)
+    if isinstance(translator, GoogleCloudTranslator):
+        return translator.translate_explicit_query(query, source=source, target=target)
     return translator.translate(query, source=source, target=target)
+
+
+def translate_queries_if_needed(queries: list[str], use_translate: bool, cfg: dict[str, Any], backend_dir: Path, api_key: str | None = None) -> list[str]:
+    """Translate already-split clauses in one Google request."""
+    if not use_translate:
+        return list(queries)
+    translate_cfg = cfg.get("translate", {})
+    source = translate_cfg.get("source", "vi")
+    target = translate_cfg.get("target", "en")
+    translator = GoogleCloudTranslator(api_key) if api_key else get_translator(cfg, backend_dir)
+    return translator.translate_batch(queries, source=source, target=target)

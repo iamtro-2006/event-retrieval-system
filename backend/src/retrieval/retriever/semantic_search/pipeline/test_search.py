@@ -9,6 +9,7 @@ from src.retrieval.retriever.semantic_search.pipeline.search import (
     DEFAULT_MULTI_QUERY_BETA,
     _fill_missing_similarities_numba,
     aggregate_multi_query,
+    semantic_alignment_scores,
     similarities_for_candidates,
 )
 
@@ -65,6 +66,20 @@ def test_aggregate_multi_query_accepts_custom_beta() -> None:
     result_by_id = result.set_index("candidate_id")
     np.testing.assert_allclose(
         result_by_id.loc[[0, 1, 2], "retrieval_score"].to_numpy(),
+        expected,
+    )
+
+
+def test_cross_model_scoring_uses_regular_semantic_formula() -> None:
+    similarities = np.array(
+        [[0.9, 0.7, 0.1], [0.2, 0.8, 0.6]], dtype=np.float32
+    )
+    beta = 1.25
+
+    expected = np.mean(np.exp(beta * (similarities - 1.0)), axis=0)
+
+    np.testing.assert_allclose(
+        semantic_alignment_scores(similarities, beta),
         expected,
     )
 

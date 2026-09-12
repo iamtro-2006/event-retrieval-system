@@ -38,7 +38,7 @@ from src.api.legacy.serializers import (
     resolve_keyframe_path_from_dict,
     safe_int,
 )
-from src.api.legacy.translate import translate_query_if_needed
+from src.api.legacy.translate import translate_queries_if_needed, translate_query_if_needed
 from src.api.schemas.legacy import (
     FusionSearchRequest,
     MultimodalSearchRequest,
@@ -416,21 +416,16 @@ async def search_multimodal_api(
     )
     started = time.perf_counter()
 
-    translated_clause_texts: list[str] = []
+    original_clause_texts = [clause.text.strip() for clause in payload.clauses]
     try:
-        for clause in payload.clauses:
-            original_text = clause.text.strip()
-            if not original_text:
-                translated_clause_texts.append("")
-                continue
-            translated_clause_texts.append(await run_in_threadpool(
-                translate_query_if_needed,
-                query=original_text,
-                use_translate=use_translate,
-                cfg=cfg,
-                backend_dir=paths.backend_dir,
-                api_key=payload.translate_api_key,
-            ))
+        translated_clause_texts = await run_in_threadpool(
+            translate_queries_if_needed,
+            queries=original_clause_texts,
+            use_translate=use_translate,
+            cfg=cfg,
+            backend_dir=paths.backend_dir,
+            api_key=payload.translate_api_key,
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
 
@@ -447,18 +442,28 @@ async def search_multimodal_api(
 
             labels: list[str] = []
             clause_embeddings: list[np.ndarray] = []
+            temporal_events: list[list[str]] = []
             for clause_index, clause in enumerate(payload.clauses):
                 original_text = clause.text.strip()
                 text_value = translated_clause_texts[clause_index]
                 if payload.use_split:
                     # A text fragment and every image occupy independent
                     # positions, exactly like individual multi-query terms.
+                    current_labels: list[str] = []
+                    current_embeddings: list[np.ndarray] = []
                     if text_value:
-                        labels.append(original_text)
-                        clause_embeddings.append(index.encode_texts([text_value]))
+                        current_labels.append(original_text)
+                        current_embeddings.append(index.encode_texts([text_value]))
                     for image_index in clause.image_indices:
-                        labels.append(f"Image query {image_index + 1}")
-                        clause_embeddings.append(image_embeddings[image_index])
+                        current_labels.append(f"Image query {image_index + 1}")
+                        current_embeddings.append(image_embeddings[image_index])
+                    if current_labels:
+                        if clause_index > 0 and clause.connector_before == "AND" and temporal_events:
+                            temporal_events[-1].extend(current_labels)
+                        else:
+                            temporal_events.append(current_labels)
+                        labels.extend(current_labels)
+                        clause_embeddings.extend(current_embeddings)
                 else:
                     # Split OFF means the complete text/image input is one
                     # query representation and therefore one temporal event.
@@ -470,12 +475,20 @@ async def search_multimodal_api(
                         continue
                     labels.append(original_text or f"Image query {clause_index + 1}")
                     clause_embeddings.append(_normalize_embedding(vectors))
+                    temporal_events.append([labels[-1]])
 
             if not clause_embeddings:
                 raise ValueError("Every query clause is empty")
 
             embeddings = np.ascontiguousarray(np.vstack(clause_embeddings), dtype=np.float32)
-            effective_mode = "temporal" if mode == "auto" and len(labels) > 1 else ("semantic" if mode == "auto" else mode)
+            # Auto switches to temporal only when the explicit grammar created
+            # more than one THEN event. Multiple AND alternatives (including
+            # text + image in one event) remain a semantic multi-query.
+            effective_mode = (
+                "temporal"
+                if mode == "auto" and len(temporal_events) > 1
+                else ("semantic" if mode == "auto" else mode)
+            )
             if effective_mode == "temporal":
                 results_df = temporal_search_from_events(
                     index.index,
@@ -483,7 +496,7 @@ async def search_multimodal_api(
                     index.metadata_records,
                     index.index_vectors,
                     index.allow_npy_fallback,
-                    [[label] for label in labels],
+                    temporal_events,
                     embeddings,
                     top_k,
                     candidate_k,
@@ -499,10 +512,10 @@ async def search_multimodal_api(
                 )
             if not results_df.empty:
                 results_df["model_key"] = index.model_key
-            return results_df, effective_mode, labels, index.model_key
+            return results_df, effective_mode, labels, temporal_events, index.model_key
 
     try:
-        results_df, effective_mode, labels, resolved_model_key = await run_in_threadpool(_search)
+        results_df, effective_mode, labels, temporal_events, resolved_model_key = await run_in_threadpool(_search)
         results = [] if results_df.empty else await run_in_threadpool(_serialize_result_frame, results_df, paths)
     except (ValueError, OSError) as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image query: {exc}")
@@ -526,7 +539,7 @@ async def search_multimodal_api(
         "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k,
         "latency_ms": latency_ms,
-        "events": [[label] for label in labels] if effective_mode == "temporal" else [labels],
+        "events": temporal_events if effective_mode == "temporal" else [labels],
         "event_queries": labels,
         "sub_queries": labels,
         "count": len(results),
@@ -593,6 +606,7 @@ async def search_fusion_api(
             translate=use_translate,
             translate_api_key=payload.translate_api_key,
             reasoning=payload.reasoning,
+            semantic_lambda=payload.semantic_lambda,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
@@ -618,6 +632,9 @@ async def search_fusion_api(
         "weights": (fused_df.attrs.get("weights") if fused_df is not None else None) or payload.weights or {},
         "events": fused_df.attrs.get("events", []) if fused_df is not None else [],
         "event_queries": fused_df.attrs.get("event_queries", []) if fused_df is not None else [],
+        "candidate_k": fused_df.attrs.get("candidate_k") if fused_df is not None else None,
+        "candidate_universe_size": fused_df.attrs.get("candidate_universe_size") if fused_df is not None else None,
+        "event_candidate_counts": fused_df.attrs.get("event_candidate_counts", {}) if fused_df is not None else {},
         "focused_queries": fused_df.attrs.get("focused_queries", {}) if fused_df is not None else {},
     }
 

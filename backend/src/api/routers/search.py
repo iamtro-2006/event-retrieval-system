@@ -251,6 +251,7 @@ def search_advanced(payload: AdvancedSearchRequest, request: Request) -> Advance
             duration_limit=payload.duration_limit,
             weights=payload.weights,
             reasoning=payload.reasoning,
+            semantic_lambda=payload.semantic_lambda,
         ),
         feature_name="Advanced search",
     )

@@ -5,7 +5,7 @@ semantic:
   default_model_key: pe-core
   models:
     - model_key: siglip2-so400m
-      enabled: false
+      enabled: true
       model_name: ViT-SO400M-16-SigLIP2-384
       index_path: ../data/database/faiss_hnsw_siglip2_so400m_384/keyframes.faiss
       metadata_path: ../data/database/faiss_hnsw_siglip2_so400m_384/metadata.csv
@@ -133,9 +133,13 @@ query_enrichment:
 
 # Fusion weights are independent from query enrichment. They are loaded at
 # backend startup and apply whether or not the optional LLM is enabled.
-# Semantic model scores are first fused with RRF; the resulting semantic
-# score is then combined with OCR/ASR using these weights.
+# Semantic models are fused by dense weighted similarity on their candidate
+# union; the resulting semantic source is then combined with OCR/ASR.
 fusion:
+  # These are role assignments, not implementation-specific model names.
+  # Any loaded semantic model_key can be used here.
+  local_semantic_model: pe-core
+  global_semantic_model: siglip2-so400m
   default_weights:
     semantic: 0.8
     ocr: 0.1

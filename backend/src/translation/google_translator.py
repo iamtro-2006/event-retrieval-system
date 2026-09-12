@@ -6,6 +6,7 @@ from typing import List
 import requests
 
 from .base_translator import BaseTranslator
+from src.retrieval.retriever.common.query_parser import explicit_query_clauses, rebuild_explicit_query
 
 
 class GoogleCloudTranslator(BaseTranslator):
@@ -43,3 +44,11 @@ class GoogleCloudTranslator(BaseTranslator):
         if not text or not text.strip():
             return text
         return self.translate_batch([text], source, target)[0]
+
+    def translate_explicit_query(self, text: str, source="vi", target="en") -> str:
+        """Translate explicit clauses as one Google batch, preserving connectors."""
+        clauses = explicit_query_clauses(text)
+        if not clauses:
+            return text
+        translated = self.translate_batch(clauses, source, target)
+        return rebuild_explicit_query(text, translated)

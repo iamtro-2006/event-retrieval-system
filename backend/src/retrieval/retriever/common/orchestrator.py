@@ -25,6 +25,7 @@ from src.retrieval.index.index_manager import IndexManager
 from src.retrieval.retriever.common.scoring import reciprocal_rank_fusion
 from src.retrieval.retriever.temporal_search.pipeline.search import temporal_search_from_score_candidates
 from src.retrieval.retriever.semantic_search.pipeline.search import clean_queries
+from src.retrieval.retriever.common.query_parser import parse_explicit_query
 
 if TYPE_CHECKING:
     from src.retrieval.retriever.semantic_search.pipeline.search import SearchPipeline as SemanticSearchPipeline
@@ -39,10 +40,9 @@ SearchMode = Literal["semantic", "temporal", "ocr", "asr", "auto"]
 def split_temporal_events(query: str) -> list[str]:
     """Split a complex query into distinct temporal events.
 
-    Semicolons, full-stops, newlines, and explicit chronological transition
-    phrases act as temporal separators, while commas remain semantic
-    subqueries within an event. This is also the deterministic fallback when
-    the reasoning LLM fails the strict temporal-output contract.
+    Only the case-sensitive ``THEN`` token starts a new event. ``AND`` joins
+    semantic alternatives inside an event; punctuation and natural-language
+    transition words are preserved as ordinary query text.
 
     Args:
         query: The raw input query string.
@@ -50,30 +50,21 @@ def split_temporal_events(query: str) -> list[str]:
     Returns:
         A list of cleaned temporal event strings.
     """
-    return clean_queries(
-        re.split(
-            r"[.;\n]+|\b(?:and\s+then|then|after\s+that|before\s+that|"
-            r"followed\s+by|subsequently|next|later|finally|rồi|sau\s+đó|"
-            r"trước\s+đó|tiếp\s+theo|kế\s+tiếp|cuối\s+cùng)\b",
-            str(query or ""),
-            flags=re.IGNORECASE,
-        )
-    )
+    events, _ = parse_explicit_query(query)
+    return [" AND ".join(event) for event in events]
 
 
 def split_semantic_queries(event: str) -> list[str]:
-    """Split a temporal event into semantic subqueries.
+    """Split a temporal event on uppercase ``AND`` only.
 
     Args:
         event: A single temporal event string.
 
     Returns:
-        A list containing the full event and its comma-separated semantic parts.
+        Ordered semantic alternatives within the event.
     """
-    event = str(event or "").strip()
-    if not event:
-        return []
-    return clean_queries([event, *(part.strip() for part in event.split(","))])
+    events, _ = parse_explicit_query(event)
+    return clean_queries(events[0] if events else [])
 
 
 @dataclass(frozen=True)
@@ -119,6 +110,8 @@ class Orchestrator:
         min_len_for_paraphrase: int = 12,
         max_subqueries: int = 4,
         default_source_weights: dict[str, float] | None = None,
+        local_semantic_model: str | None = None,
+        global_semantic_model: str | None = None,
     ) -> None:
         """Compose an orchestrator from an already-built `FaissIndex`/`IndexManager` +
         4 `SearchPipeline` instances (build all via their respective
@@ -179,43 +172,32 @@ class Orchestrator:
         self.min_len_for_paraphrase = max(1, int(min_len_for_paraphrase))
         self.max_subqueries = max(1, int(max_subqueries))
         self.default_source_weights = default_source_weights or {"semantic": 0.8, "ocr": 0.1, "asr": 0.1}
+        self.local_semantic_model = local_semantic_model
+        self.global_semantic_model = global_semantic_model
 
     def _split_events(self, query: str, mode: SearchMode, use_split: bool) -> list[str]:
         """Split `query` into temporal events/scenes.
 
-        Regex `.`/`;` splitting (`split_temporal_events`) is always the
-        fallback. When an `llm_query_engine` is wired in, `use_split=True`,
-        and `mode` is "temporal" or "auto", the LLM is asked to segment the
-        query by MEANING (handles run-on sentences with no punctuation,
-        merges clauses that describe one simultaneous scene, drops bare
-        event labels/numbering) instead. OCR/ASR never reach this path with
-        an LLM engine active (`run_search` calls `ocr_search`/`asr_search`
-        directly on `plan.query`, not through event splitting).
+        Event boundaries are controlled exclusively by uppercase ``THEN``.
+        This keeps the structure stable across translation and search modes.
         """
-        if self.llm_query_engine is not None and use_split and mode in ("temporal", "auto"):
-            llm_events = self.llm_query_engine.split_temporal_events(query)
-            if llm_events:
-                return llm_events
         return split_temporal_events(query)
 
     def _split_semantic(self, text: str, use_split: bool) -> list[str]:
-        """Split semantic sub-queries with the deterministic legacy splitter.
-
-        `use_split` no longer triggers semantic paraphrasing. LLM enrichment
-        is reserved for temporal scene/order reasoning and source-focused
-        fusion rewrites, both of which are explicitly bounded by the UI
-        request and do not expand every ordinary semantic query.
-        """
-        return split_semantic_queries(text) if use_split else clean_queries([text])
+        """Split only explicit uppercase ``AND`` semantic alternatives."""
+        if not use_split:
+            return clean_queries([text])
+        events, _ = parse_explicit_query(text)
+        return clean_queries(events[0] if events else [text])
 
     def build_query_plan(self, query: str, mode: SearchMode = "semantic", use_split: bool = True, reasoning: bool = False) -> QueryPlan:
         """Parse and structure a raw query into a QueryPlan object."""
         query = str(query or "").strip()
-        events = []
-        for text in (self._split_events(query, mode, use_split) if reasoning else split_temporal_events(query)):
-            parts = self._split_semantic(text, use_split)
-            if parts:
-                events.append(parts)
+        if use_split:
+            parsed_events, _ = parse_explicit_query(query)
+            events = [clean_queries(event) for event in parsed_events if event]
+        else:
+            events = [clean_queries([query])] if query else []
         return QueryPlan(query=query, mode=mode, use_split=use_split, events=events)
 
     def _enrich_ocr_hits(self, hits: list[dict], top_k: int) -> pd.DataFrame:
@@ -521,6 +503,14 @@ class Orchestrator:
             return [self.index.model_key]
         return self.index_manager.text_search_keys()
 
+    def semantic_model_roles(self) -> dict[str, str | None]:
+        """Configured local/global roles, restricted to models actually loaded."""
+        available = set(self.available_semantic_models())
+        return {
+            "local": self.local_semantic_model if self.local_semantic_model in available else None,
+            "global": self.global_semantic_model if self.global_semantic_model in available else None,
+        }
+
     def advanced_search(
         self,
         query: str,
@@ -536,6 +526,7 @@ class Orchestrator:
         rrf_k: int = 60,
         raw_query: str | None = None,
         reasoning: bool = False,
+        semantic_lambda: float = 0.5,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
         """"Advanced search": chạy đồng thời nhiều method (semantic/temporal/
         ocr/asr), rồi hợp nhất bằng Reciprocal Rank Fusion — tương ứng UI
@@ -592,7 +583,14 @@ class Orchestrator:
             các key `"temporal_candidates:<model_key>"` là breakdown TRƯỚC
             khi fuse, chỉ để debug, không tham gia fuse cuối cùng.
         """
-        semantic_models = list(semantic_models or [])
+        requested_semantic_models = list(dict.fromkeys(semantic_models or []))
+        roles = self.semantic_model_roles()
+        role_order = [roles["local"], roles["global"]]
+        semantic_models = [m for m in role_order if m in requested_semantic_models]
+        if not semantic_models:
+            semantic_models = [m for m in requested_semantic_models if m in self.available_semantic_models()]
+        semantic_models = semantic_models[:2]
+        semantic_lambda = min(1.0, max(0.0, float(semantic_lambda)))
         weights = weights or {}
         # Normalize group weights against sources enabled for this request.
         # Disabled OCR/ASR are forced to zero; this also protects direct
@@ -696,6 +694,50 @@ class Orchestrator:
             ranked_lists.append(df)
             list_weights.append(self._effective_weight(weight_key, semantic_models, weights))
 
+        def _fuse_semantic_candidates(
+            model_frames: list[tuple[str, pd.DataFrame]],
+            queries_by_model: dict[str, list[str]],
+            limit: int,
+        ) -> pd.DataFrame:
+            """Weighted score fusion after dense cross-model rescoring."""
+            non_empty = [(model, frame) for model, frame in model_frames if frame is not None and not frame.empty]
+            if not non_empty:
+                return pd.DataFrame()
+            union = pd.concat([frame for _, frame in non_empty], ignore_index=True)
+            identity = [c for c in ("dataset", "video_id", "keyframe_id") if c in union.columns]
+            union = union.drop_duplicates(identity or ["video_id", "keyframe_id"]).reset_index(drop=True)
+
+            scored: list[tuple[str, pd.DataFrame]] = []
+            for model, _ in non_empty:
+                frame = self.semantic_search.score_candidates(queries_by_model[model], union, model_key=model)
+                if not frame.empty:
+                    scored.append((model, frame))
+            if not scored:
+                return pd.DataFrame()
+
+            model_weights = [1.0] if len(scored) == 1 else [1.0 - semantic_lambda, semantic_lambda]
+            pieces = []
+            for (model, frame), model_weight in zip(scored, model_weights):
+                part = frame.copy()
+                part["_identity"] = list(zip(part["video_id"].astype(str), pd.to_numeric(part["keyframe_id"], errors="coerce").fillna(-1).astype(int)))
+                part["_weighted_semantic_score"] = pd.to_numeric(part["retrieval_score"], errors="coerce").fillna(0.0) * model_weight
+                part[f"semantic_score:{model}"] = pd.to_numeric(part["retrieval_score"], errors="coerce").fillna(0.0)
+                pieces.append(part)
+            combined = pd.concat(pieces, ignore_index=True)
+            totals = combined.groupby("_identity", sort=False)["_weighted_semantic_score"].sum()
+            best = combined.sort_values("_weighted_semantic_score", ascending=False).drop_duplicates("_identity").set_index("_identity")
+            result = best.loc[totals.index].copy()
+            result["retrieval_score"] = totals
+            result["alignment_score"] = totals
+            result["rrf_score"] = totals
+            result["source_models"] = [list(model for model, _ in scored)] * len(result)
+            result["matched_sources"] = len(scored)
+            result["model_key"] = "+".join(model for model, _ in scored)
+            result = result.sort_values("retrieval_score", ascending=False).head(int(limit)).reset_index(drop=True)
+            result["rank"] = np.arange(1, len(result) + 1)
+            result["display_rank"] = result["rank"]
+            return result.drop(columns=["_weighted_semantic_score"], errors="ignore")
+
         def _sequence_to_frames(df: pd.DataFrame) -> pd.DataFrame:
             """Expand sequence hits into frame candidates for temporal fusion."""
             if df is None or df.empty or "matched_sequence" not in df.columns:
@@ -735,15 +777,23 @@ class Orchestrator:
             return frames
 
         def _weighted_event_fusion(
-            semantic_sources: list[tuple[str, pd.DataFrame]],
+            event_idx: int,
+            candidate_universe: pd.DataFrame,
             auxiliary_sources: list[tuple[str, pd.DataFrame]],
         ) -> pd.DataFrame:
-            """RRF semantic models first, then weighted-fuse OCR/ASR."""
-            semantic_rrf = reciprocal_rank_fusion(
-                [df for _, df in semantic_sources],
-                weights=[1.0] * len(semantic_sources),
-                rrf_k=rrf_k,
-                top_k=candidate_k,
+            """Score one event densely over the shared temporal universe.
+
+            Every event receives the same frame identities. This mirrors the
+            normal temporal path, where DP gets a dense event x frame score
+            matrix instead of treating a frame absent from one event's
+            initial top-k as an impossible (``-inf``) match.
+            """
+            if candidate_universe.empty:
+                return pd.DataFrame()
+            semantic_rrf = _fuse_semantic_candidates(
+                [(model, candidate_universe) for model in semantic_models],
+                {model: plan.events[event_idx] for model in semantic_models},
+                len(candidate_universe),
             )
             source_lists: list[tuple[str, pd.DataFrame, float]] = []
             if not semantic_rrf.empty:
@@ -772,7 +822,6 @@ class Orchestrator:
                 combined.groupby(identity, as_index=False)
                 .agg(rrf_score=("_fusion_score", "sum"), matched_sources=("_fusion_source", "nunique"))
                 .sort_values("rrf_score", ascending=False)
-                .head(candidate_k)
                 .reset_index(drop=True)
             )
             best_rows = combined.sort_values("_fusion_score", ascending=False).drop_duplicates(identity)
@@ -816,6 +865,8 @@ class Orchestrator:
             "focused_queries": {**focused_semantic, **focused_flat},
             "weights": debug_weights,
             "reasoning": bool(reasoning),
+            "semantic_lambda": semantic_lambda,
+            "semantic_model_roles": roles,
         }
 
         def _plan_for(base_plan: QueryPlan, focused_query: str | None) -> QueryPlan:
@@ -823,6 +874,8 @@ class Orchestrator:
                 return base_plan
             return self.build_query_plan(focused_query, mode="semantic", use_split=use_split)
 
+        semantic_frames: list[tuple[str, pd.DataFrame]] = []
+        semantic_queries_by_model: dict[str, list[str]] = {}
         for model_key in semantic_models:
             if temporal:
                 for event_idx, event in enumerate(plan.events):
@@ -842,8 +895,16 @@ class Orchestrator:
                         )
             else:
                 model_plan = _plan_for(plan, focused_semantic.get(f"semantic:{model_key}"))
-                df = self.semantic_search.search(model_plan.events, top_k, candidate_k, model_key=model_key)
-                _add(f"semantic:{model_key}", model_key, df)
+                df = self.semantic_search.search(model_plan.events, candidate_k, candidate_k, model_key=model_key)
+                per_source[f"semantic:{model_key}"] = df
+                semantic_frames.append((model_key, df))
+                semantic_queries_by_model[model_key] = model_plan.flat_queries
+
+        if not temporal and semantic_frames:
+            semantic_fused = _fuse_semantic_candidates(
+                semantic_frames, semantic_queries_by_model, top_k
+            )
+            _add("semantic", "semantic", semantic_fused)
 
         if temporal:
             for event_idx, event in enumerate(plan.events):
@@ -872,14 +933,41 @@ class Orchestrator:
                             ("asr", asr_df, self._effective_weight("asr", semantic_models, weights))
                         )
 
+            # Build one shared frame universe across every event and source.
+            # The previous implementation fused/cut each event independently,
+            # producing a sparse DP matrix with many artificial -inf cells.
+            universe_parts = [
+                df
+                for sources in source_frames_by_event.values()
+                for _, df, _ in sources
+                if df is not None and not df.empty
+            ]
+            if universe_parts:
+                candidate_universe = pd.concat(universe_parts, ignore_index=True)
+                universe_identity = [
+                    column
+                    for column in ("dataset", "video_id", "keyframe_id")
+                    if column in candidate_universe.columns
+                ]
+                candidate_universe = candidate_universe.drop_duplicates(
+                    universe_identity or ["video_id", "keyframe_id"]
+                ).reset_index(drop=True)
+            else:
+                candidate_universe = pd.DataFrame()
+
+            debug_metadata["candidate_k"] = candidate_k
+            debug_metadata["candidate_universe_size"] = len(candidate_universe)
+
             fused_event_frames = []
+            event_candidate_counts: dict[str, int] = {}
             for event_idx, sources in source_frames_by_event.items():
-                semantic_sources = [(label, df) for label, df, _ in sources if label.startswith("semantic:")]
                 auxiliary_sources = [(label, df) for label, df, _ in sources if label in ("ocr", "asr")]
-                fused = _weighted_event_fusion(semantic_sources, auxiliary_sources)
+                fused = _weighted_event_fusion(event_idx, candidate_universe, auxiliary_sources)
                 if not fused.empty:
                     fused["sub_query_idx"] = event_idx
                     fused_event_frames.append(fused)
+                    event_candidate_counts[str(event_idx)] = len(fused)
+            debug_metadata["event_candidate_counts"] = event_candidate_counts
 
             candidate_pool = pd.concat(fused_event_frames, ignore_index=True) if fused_event_frames else pd.DataFrame()
             if not candidate_pool.empty:

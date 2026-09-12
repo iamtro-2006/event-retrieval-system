@@ -51,6 +51,7 @@ def health(
             "normalize": bool(clip_index.normalize),
         },
         "available_models": orchestrator.available_semantic_models(),
+        "semantic_model_roles": orchestrator.semantic_model_roles(),
         "ocr": {
             "config_path": str(cfg.get("ocr", {}).get("config_path", "")) if isinstance(cfg.get("ocr"), dict) else "",
             "available": orchestrator.ocr_search_pipeline is not None,
@@ -94,6 +95,7 @@ def get_public_config(
             "normalize": bool(clip_index.normalize),
         },
         "available_models": orchestrator.available_semantic_models(),
+        "semantic_model_roles": orchestrator.semantic_model_roles(),
         # `configs/app.yaml` giờ khai báo ef_search/threads/vector_cache_* theo
         # TỪNG model (`semantic.models[i]`, xem `index_manager.py`), không còn
         # 1 khoá `faiss` phẳng dùng chung ở root config như bản cũ nữa -> lấy

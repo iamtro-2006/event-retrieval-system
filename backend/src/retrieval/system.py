@@ -135,9 +135,11 @@ class RetrievalSystem:
                 )
             return query
         translator = GoogleCloudTranslator(api_key) if api_key else self._translator
-        return translator.translate(
-            query, source=str(cfg.get("source", "vi")), target=str(cfg.get("target", "en"))
-        )
+        source = str(cfg.get("source", "vi"))
+        target = str(cfg.get("target", "en"))
+        if isinstance(translator, GoogleCloudTranslator):
+            return translator.translate_explicit_query(query, source=source, target=target)
+        return translator.translate(query, source=source, target=target)
 
     def _assert_visual_model_isolation(
         self,
@@ -267,6 +269,7 @@ class RetrievalSystem:
         translate: bool | None = None,
         translate_api_key: str | None = None,
         reasoning: bool = False,
+        semantic_lambda: float = 0.5,
     ) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
         """Advanced search: combine several ticked semantic models + an
         on/off `temporal` toggle (temporal search runs on that same ticked
@@ -296,6 +299,7 @@ class RetrievalSystem:
             weights=weights,
             raw_query=raw_query,
             reasoning=reasoning,
+            semantic_lambda=semantic_lambda,
         )
         fused_df, per_source = result
         for selected_key in semantic_models or []:
@@ -424,6 +428,7 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
     enrichment_cfg = config.get("query_enrichment") or {}
     llm_query_engine = build_query_engine_or_none(enrichment_cfg)
 
+    fusion_cfg = config.get("fusion") or {}
     orchestrator = Orchestrator(
         index=index,
         semantic_search=semantic_search,
@@ -433,6 +438,8 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
         llm_query_engine=llm_query_engine,
         min_len_for_paraphrase=int(enrichment_cfg.get("min_len_for_paraphrase", 12)),
         max_subqueries=int(enrichment_cfg.get("max_subqueries", 4)),
-        default_source_weights=(config.get("fusion") or {}).get("default_weights"),
+        default_source_weights=fusion_cfg.get("default_weights"),
+        local_semantic_model=fusion_cfg.get("local_semantic_model"),
+        global_semantic_model=fusion_cfg.get("global_semantic_model"),
     )
     return RetrievalSystem(orchestrator, translator=translator, translate_cfg=config.get("translate"))

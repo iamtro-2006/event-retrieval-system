@@ -36,6 +36,7 @@ class MultimodalClause(BaseModel):
 
     text: str = ""
     image_indices: list[int] = []
+    connector_before: str | None = None
 
 
 class MultimodalSearchRequest(BaseModel):
@@ -75,6 +76,7 @@ class FusionSearchRequest(BaseModel):
     use_translate: bool | None = None
     duration_limit: float | None = -1
     weights: dict[str, float] | None = None
+    semantic_lambda: float = 0.5
     translate_api_key: str | None = None
 
 
