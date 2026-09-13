@@ -233,7 +233,8 @@ function RetrievalApp() {
         try {
           const message = JSON.parse(event.data);
           if (message.evaluation_id !== settings.evaluationId) return;
-          if (message.type === "snapshot") merge(message.results || []);
+          // God Mode is scoped to the current search. Historical relay snapshots
+          // belong to older queries and must not be restored after a refresh.
           if (message.type === "verified_result" && message.result) merge([message.result]);
         } catch { /* ignore malformed relay messages */ }
       };
@@ -527,6 +528,7 @@ function RetrievalApp() {
   const handleColorSearch = useCallback(async () => {
     const cells = selectedColorCells(colorGrid);
     if (!cells.length || loading || !backendReady) return;
+    setGodModeResults([]);
     setMode("color");
     setSelected(null);
     setRerankResultsData(null);
@@ -583,6 +585,7 @@ function RetrievalApp() {
     similarReqRef.current += 1;
 
     reset();
+    setGodModeResults([]);
     setSelected(null);
     setGrouped(false);
     setSurroundModal(DEFAULT_SURROUND_MODAL);
@@ -609,6 +612,7 @@ function RetrievalApp() {
       const hasImages = clauseImages.some((items) => items.length > 0);
       if ((!cleanQuery && !hasImages) || loading || !backendReady) return;
 
+      setGodModeResults([]);
       const searchId = ++searchIdRef.current;
       rerankRunRef.current += 1;
 
