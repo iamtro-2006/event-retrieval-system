@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Images, Play, Search, Send } from "lucide-react";
 import HighlightedSnippet from "./HighlightedSnippet";
+import { VideoVotes } from "./VideoFilter";
 
 function makeFrameResult(result, frame, idx) {
   const frameId = Number(frame.frame_id ?? frame.keyframe_id ?? frame.keyframe_id_int ?? idx);
@@ -138,6 +139,7 @@ const TemporalSequence = memo(function TemporalSequence({
             query={query}
             maxLength={200}
             quoted
+            highlight={false}
           />
         </div>
       )}
@@ -165,9 +167,21 @@ const TemporalSequence = memo(function TemporalSequence({
                 onClick={() => onSelect?.(frameResult)}
               >
                 <div className="temporal-frame-thumb">
+                  <VideoVotes videoId={frameResult.video_id} />
                   <img src={frameResult.image_url} alt={`Event ${idx + 1}`} loading="lazy" decoding="async" />
                   <span className="temporal-query-badge">E{idx + 1}</span>
                   <span className="temporal-score-badge">{Number(frameResult.similarity).toFixed(3)}</span>
+                  <button
+                    className="play-button"
+                    type="button"
+                    aria-label={`Play ${frameResult.video_id} from ${frameResult.timestamp.toFixed(2)} seconds`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onPlay?.(frameResult);
+                    }}
+                  >
+                    <Play size={18} fill="currentColor" />
+                  </button>
                 </div>
                 <div className="temporal-frame-footer">
                   <strong>{frameResult.video_id}/{String(frameResult.frame_id).padStart(6, "0")}</strong>
@@ -186,7 +200,12 @@ const TemporalSequence = memo(function TemporalSequence({
                 </div>
                 {!hasSharedSegmentText && frame.sub_query && (
                   <div className="temporal-frame-query">
-                    <HighlightedSnippet text={frame.sub_query} query={query} maxLength={90} />
+                    <HighlightedSnippet
+                      text={frame.sub_query}
+                      query={query}
+                      maxLength={90}
+                      highlight={false}
+                    />
                   </div>
                 )}
               </article>

@@ -9,6 +9,7 @@ import {
   useTransition,
 } from "react";
 import Sidebar from "./components/Sidebar";
+import { VideoFilterProvider, VideoFilterBar, useVideoFilter } from "./components/VideoFilter";
 import SearchBar from "./components/SearchBar";
 import ResultToolbar from "./components/ResultToolbar";
 import ResultGrid from "./components/ResultGrid";
@@ -20,6 +21,8 @@ import SurroundingFramesModal from "./components/SurroundingFramesModal";
 import SimilarityFramesModal from "./components/SimilarityFramesModal";
 import VideoModal from "./components/VideoModal";
 import PreviewVideoModal from "./components/PreviewVideoModal";
+import ColorSearchModal from "./components/ColorSearch";
+import { EMPTY_COLOR_GRID, selectedColorCells } from "./utils/colorGrid";
 import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
 import {
   checkBackendHealth,
@@ -28,12 +31,14 @@ import {
   getSurroundingFrames,
   similaritySearch,
   rerankResults,
+  normalizeResults,
 } from "./api/retrievalAPI";
 import {
   getDefaultSubmissionSettings,
   loginDresViaBackend,
   submitDresViaBackend,
 } from "./api/submissionAPI";
+import { getGodModeEndpoint, godModeSocketUrl, submitDresViaGodMode } from "./api/godmodeAPI";
 import { playNotifySound } from "./utils/notifySound";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
@@ -93,7 +98,13 @@ function createImageAttachment(file) {
 }
 
 export default function App() {
+  return <VideoFilterProvider><RetrievalApp /></VideoFilterProvider>;
+}
+
+function RetrievalApp() {
+  const { activeIds } = useVideoFilter();
   const defaultSubmission = useMemo(() => getDefaultSubmissionSettings(), []);
+  const defaultGodModeEndpoint = useMemo(() => getGodModeEndpoint(), []);
   const searchIdRef = useRef(0);
   const toastTimersRef = useRef(new Map());
   const surroundReqRef = useRef(0);
@@ -105,6 +116,8 @@ export default function App() {
   // ── UI state ──────────────────────────────────────────
   const [theme, setTheme] = useState("dark");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [colorModalOpen, setColorModalOpen] = useState(false);
+  const [colorGrid, setColorGrid] = useState(() => [...EMPTY_COLOR_GRID]);
   const [model, setModel] = useState("siglip2-so400m");
   const [availableModels, setAvailableModels] = useState([]);
   const [semanticModelRoles, setSemanticModelRoles] = useState({ local: null, global: null });
@@ -148,7 +161,11 @@ export default function App() {
     evaluationId: defaultSubmission.evaluationId,
     username: defaultSubmission.teamId,
     password: defaultSubmission.teamPassword,
+    godMode: false,
+    godModeEndpoint: defaultGodModeEndpoint,
   });
+  const [godModeResults, setGodModeResults] = useState([]);
+  const [godModeConnected, setGodModeConnected] = useState(false);
 
   // ── Backend ──────────────────────────────────────────
   const [backendReady, setBackendReady] = useState(false);
@@ -181,13 +198,57 @@ export default function App() {
     search,
     searchMultimodal,
     searchWithFusion,
+    searchByColor,
     reset,
   } = useRetrievalSearch();
 
-  const results = rerankResultsData ?? rawResults;
+  const baseResults = rerankResultsData ?? rawResults;
+  const results = useMemo(() => {
+    if (!settings.godMode) return baseResults;
+    const verifiedKeys = new Set(godModeResults.map((item) => `${item.video_id}:${item.frame_id}`));
+    return [...godModeResults, ...baseResults.filter((item) => !verifiedKeys.has(`${item.video_id}:${item.frame_id}`))];
+  }, [baseResults, godModeResults, settings.godMode]);
   const deferredResults = useDeferredValue(results);
   const hasResults = deferredResults.length > 0;
   const selectedId = selected?.id ?? null;
+
+  useEffect(() => {
+    if (!settings.godMode || !settings.godModeEndpoint || !settings.evaluationId) {
+      return undefined;
+    }
+    let disposed = false;
+    let retryTimer;
+    let socket;
+    const merge = (incoming) => setGodModeResults((previous) => {
+      const key = (item) => `${item.evaluation_id}:${item.video_id}:${item.frame_id}`;
+      const byId = new Map(previous.map((item) => [key(item), item]));
+      normalizeResults(incoming).forEach((item) => byId.set(key(item), item));
+      return [...byId.values()].sort((a, b) => Number(b.verified_at) - Number(a.verified_at));
+    });
+    const connect = () => {
+      if (disposed) return;
+      socket = new WebSocket(godModeSocketUrl(settings.godModeEndpoint, settings.evaluationId));
+      socket.onopen = () => setGodModeConnected(true);
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.evaluation_id !== settings.evaluationId) return;
+          if (message.type === "snapshot") merge(message.results || []);
+          if (message.type === "verified_result" && message.result) merge([message.result]);
+        } catch { /* ignore malformed relay messages */ }
+      };
+      socket.onclose = () => {
+        setGodModeConnected(false);
+        if (!disposed) retryTimer = window.setTimeout(connect, 2000);
+      };
+    };
+    connect();
+    return () => {
+      disposed = true;
+      window.clearTimeout(retryTimer);
+      socket?.close();
+    };
+  }, [settings.evaluationId, settings.godMode, settings.godModeEndpoint]);
 
   const resolvedMode = useMemo(() => {
     return mode === "temporal" ||
@@ -195,6 +256,7 @@ export default function App() {
       mode === "ocr" ||
       mode === "asr" ||
       mode === "fusion"
+      || mode === "color"
       ? mode
       : "semantic";
   }, [mode]);
@@ -221,6 +283,61 @@ export default function App() {
   const handleModeChange = useCallback((nextMode) => {
     setMode(nextMode);
   }, []);
+
+  const handleInlineClauseChange = useCallback((clauseIndex, value) => {
+    const pieces = String(value ?? "").split(/\b(AND|THEN)\b/);
+    const typedConnectors = [];
+    const typedClauses = [pieces[0]];
+    for (let index = 1; index < pieces.length; index += 2) {
+      typedConnectors.push(pieces[index]);
+      typedClauses.push(pieces[index + 1] || "");
+    }
+
+    if (!typedConnectors.length) {
+      const previousConnector = queryConnectors[clauseIndex - 1];
+      const followsVisibleConnector = clauseIndex > 0 && !(
+        previousConnector === "AND" && (clauseImages[clauseIndex - 1] || []).length > 0
+      );
+      const normalizedValue = followsVisibleConnector && !String(queryClauses[clauseIndex] || "").trim()
+        ? String(value ?? "").trimStart()
+        : value;
+      const next = queryClauses.map((clause, index) => index === clauseIndex ? normalizedValue : clause);
+      setQueryClauses(next);
+      setQuery(composeQuery(next, queryConnectors));
+      return;
+    }
+
+    // Spaces around a connector belong to layout, not either text fragment.
+    const normalizedTypedClauses = typedClauses.map((clause, index) => {
+      if (index === 0) return clause.trimEnd();
+      if (index === typedClauses.length - 1) return clause.trimStart();
+      return clause.trim();
+    });
+    const nextClauses = [
+      ...queryClauses.slice(0, clauseIndex),
+      ...normalizedTypedClauses,
+      ...queryClauses.slice(clauseIndex + 1),
+    ];
+    const nextConnectors = [
+      ...queryConnectors.slice(0, clauseIndex),
+      ...typedConnectors,
+      ...queryConnectors.slice(clauseIndex),
+    ];
+    const currentImages = clauseImages[clauseIndex] || [];
+    const splitImages = normalizedTypedClauses.map((_, index) =>
+      index === normalizedTypedClauses.length - 1 ? currentImages : []
+    );
+    const nextImages = [
+      ...clauseImages.slice(0, clauseIndex),
+      ...splitImages,
+      ...clauseImages.slice(clauseIndex + 1),
+    ];
+
+    setQueryClauses(nextClauses);
+    setQueryConnectors(nextConnectors);
+    setClauseImages(nextImages);
+    setQuery(composeQuery(nextClauses, nextConnectors));
+  }, [clauseImages, queryClauses, queryConnectors]);
 
   const handleClausesChange = useCallback((nextClauses, options = {}) => {
     const normalized = nextClauses?.length ? nextClauses : [""];
@@ -255,6 +372,38 @@ export default function App() {
     });
   }, [queryClauses]);
 
+  const handleInsertClauseImages = useCallback((clauseIndex, offset, files) => {
+    const accepted = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
+    if (!accepted.length) return;
+
+    const index = Math.max(0, Math.min(Number(clauseIndex) || 0, queryClauses.length - 1));
+    const clause = String(queryClauses[index] || "");
+    const splitAt = Math.max(0, Math.min(Number(offset) || 0, clause.length));
+    const nextClauses = [
+      ...queryClauses.slice(0, index),
+      clause.slice(0, splitAt),
+      clause.slice(splitAt),
+      ...queryClauses.slice(index + 1),
+    ];
+    const nextConnectors = [
+      ...queryConnectors.slice(0, index),
+      "AND",
+      ...queryConnectors.slice(index),
+    ];
+    const attachments = accepted.map(createImageAttachment);
+    const nextImages = [
+      ...clauseImages.slice(0, index),
+      attachments,
+      [...(clauseImages[index] || [])],
+      ...clauseImages.slice(index + 1),
+    ];
+
+    setQueryClauses(nextClauses);
+    setQueryConnectors(nextConnectors);
+    setClauseImages(nextImages);
+    setQuery(composeQuery(nextClauses, nextConnectors));
+  }, [clauseImages, queryClauses, queryConnectors]);
+
   const handleRemoveClauseImage = useCallback((clauseIndex, imageId) => {
     setClauseImages((previous) => previous.map((items, index) => {
       if (index !== clauseIndex) return items;
@@ -283,13 +432,16 @@ export default function App() {
       onModelChange: setModel,
       onModeChange: handleModeChange,
       onQueryChange: handleQueryChange,
+      onInlineClauseChange: handleInlineClauseChange,
       onAddClauseImages: handleAddClauseImages,
+      onInsertClauseImages: handleInsertClauseImages,
+      onOpenColorSearch: () => setColorModalOpen(true),
       onRemoveClauseImage: handleRemoveClauseImage,
       onDurationLimitChange: setDurationLimit,
       onReasoningToggle: setReasoningEnabled,
       onFusionConfigChange: setFusionConfig,
     }),
-    [query, theme, model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, semanticModelRoles, fusionConfig, queryClauses, queryConnectors, clauseImages, handleModeChange, handleQueryChange, handleAddClauseImages, handleRemoveClauseImage]
+    [query, theme, model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, semanticModelRoles, fusionConfig, queryClauses, queryConnectors, clauseImages, handleModeChange, handleQueryChange, handleInlineClauseChange, handleAddClauseImages, handleInsertClauseImages, handleRemoveClauseImage]
   );
 
   // ── Bootstrap ────────────────────────────────────────
@@ -371,6 +523,20 @@ export default function App() {
     },
     [dismissToast]
   );
+
+  const handleColorSearch = useCallback(async () => {
+    const cells = selectedColorCells(colorGrid);
+    if (!cells.length || loading || !backendReady) return;
+    setMode("color");
+    setSelected(null);
+    setRerankResultsData(null);
+    try {
+      await searchByColor({ cells, topK: settings.topK });
+      setColorModalOpen(false);
+    } catch (err) {
+      pushToast("warning", "Color search failed", getErrorMessage(err));
+    }
+  }, [backendReady, colorGrid, loading, pushToast, searchByColor, settings.topK]);
 
   // ── Stable UI handlers ───────────────────────────────
   const handleToggleTheme = useCallback(() => {
@@ -642,6 +808,7 @@ export default function App() {
 
       try {
         const data = await similaritySearch({
+          videoIds: activeIds,
           videoId: result.video_id,
           frameId: result.frame_id,
           topK: settings.topK,
@@ -669,7 +836,7 @@ export default function App() {
         pushToast("warning", "Similarity search failed", getErrorMessage(err));
       }
     },
-    [model, pushToast, settings.topK]
+    [activeIds, model, pushToast, settings.topK]
   );
 
   const handleDresLogin = useCallback(async () => {
@@ -748,16 +915,25 @@ export default function App() {
           }
         }
 
-        const response = await submitDresViaBackend({
-          dresUrl: settings.submitUrl,
-          sessionId,
-          evaluationId,
-          result,
-        });
+        if (settings.godMode && !settings.godModeEndpoint) {
+          throw new Error("God Mode endpoint chưa được cấu hình");
+        }
+        if (settings.godMode && !evaluationId) {
+          throw new Error("God Mode cần Evaluation ID đang hoạt động");
+        }
+        const response = settings.godMode
+          ? await submitDresViaGodMode({ endpoint: settings.godModeEndpoint, dresUrl: settings.submitUrl, sessionId, evaluationId, result })
+          : await submitDresViaBackend({ dresUrl: settings.submitUrl, sessionId, evaluationId, result });
 
         const label = getResultLabel(result);
 
         if (response.status === "correct") {
+          if (response.verified_result) {
+            const verified = normalizeResults([response.verified_result])[0];
+            setGodModeResults((previous) => [verified, ...previous.filter((item) =>
+              item.evaluation_id !== verified.evaluation_id || item.video_id !== verified.video_id || item.frame_id !== verified.frame_id
+            )]);
+          }
           pushToast("correct", "Correct", label);
         } else if (response.status === "wrong") {
           pushToast("wrong", "Wrong", response.message || label);
@@ -818,9 +994,13 @@ export default function App() {
           onReset={handleReset}
           onOpenSettings={handleOpenSettings}
           onOpenPreview={() => setPreviewOpen(true)}
+          colorGrid={colorGrid}
+          onColorGridChange={setColorGrid}
+          onColorSearch={handleColorSearch}
         />
 
         <main className={hasResults ? "main-layout has-results" : "main-layout is-home"}>
+          <VideoFilterBar />
           {!hasResults && (
             <section className="home-panel">
               <div className="backend-status">
@@ -929,6 +1109,9 @@ export default function App() {
 
         <PreviewVideoModal open={previewOpen} onClose={() => setPreviewOpen(false)} onSubmit={handleSubmitResult} />
 
+        <ColorSearchModal open={colorModalOpen} value={colorGrid} onChange={setColorGrid}
+          loading={loading} onClose={() => setColorModalOpen(false)} onSearch={handleColorSearch} />
+
         <SettingsPanel
           open={settingsOpen}
           settings={settings}
@@ -937,6 +1120,7 @@ export default function App() {
           onClose={handleCloseSettings}
           onDresLogin={handleDresLogin}
           onDresLogout={handleDresLogout}
+          godModeConnected={godModeConnected}
         />
 
         <SurroundingFramesModal

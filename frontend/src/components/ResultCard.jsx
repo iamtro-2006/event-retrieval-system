@@ -1,5 +1,6 @@
 import { memo, useCallback } from "react";
-import { Play, ThumbsDown, ThumbsUp, Send, Search, Images } from "lucide-react";
+import { Play, Send, Search, Images } from "lucide-react";
+import { VideoVotes } from "./VideoFilter";
 import HighlightedSnippet from "./HighlightedSnippet";
 
 const ResultCard = memo(function ResultCard({
@@ -53,7 +54,7 @@ const ResultCard = memo(function ResultCard({
 
   return (
     <article
-      className={`result-card${selected ? " selected" : ""}`}
+      className={`result-card${selected ? " selected" : ""}${result.godmode_verified ? " godmode-verified" : ""}`}
       style={{ "--stagger-index": index }}
       onClick={() => onSelect?.(result)}
     >
@@ -67,16 +68,12 @@ const ResultCard = memo(function ResultCard({
         />
 
         <span className="score-badge">{score}%</span>
+        {result.godmode_verified && <span className="godmode-badge">DRES ✓</span>}
 
-        <button className="vote-button like" type="button" onClick={(e) => e.stopPropagation()} aria-label="Like">
-          <ThumbsUp size={12} />
-        </button>
+        <VideoVotes videoId={result.video_id} />
 
-        <button className="vote-button dislike" type="button" onClick={(e) => e.stopPropagation()} aria-label="Dislike">
-          <ThumbsDown size={12} />
-        </button>
-
-        <button className="play-button" type="button" onClick={handlePlay} aria-label="Play video">
+        <button className="play-button" type="button" onClick={handlePlay}
+          aria-label={`Play ${result.video_id} from ${Number(result.temporal?.start_time ?? result.timestamp ?? 0).toFixed(2)} seconds`}>
           <Play size={16} fill="currentColor" />
         </button>
       </div>

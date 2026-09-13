@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
-import { searchRetrieval, searchFusion, searchMultimodalRetrieval, similaritySearch } from "../api/retrievalAPI";
+import { useVideoFilter } from "../components/VideoFilter";
+import { searchRetrieval, searchFusion, searchMultimodalRetrieval, similaritySearch, searchColorRetrieval } from "../api/retrievalAPI";
 
 export function useRetrievalSearch() {
+  const { activeIds } = useVideoFilter();
   const requestIdRef = useRef(0);
 
   const [results, setResults] = useState([]);
@@ -38,6 +40,7 @@ export function useRetrievalSearch() {
 
     try {
       const data = await searchRetrieval({
+        videoIds: activeIds,
         query: cleanQuery,
         topK,
         candidateMultiplier,
@@ -103,6 +106,7 @@ export function useRetrievalSearch() {
 
     try {
       const data = await searchFusion({
+        videoIds: activeIds,
         query: cleanQuery,
         topK,
         candidateMultiplier,
@@ -149,7 +153,7 @@ export function useRetrievalSearch() {
     setLoading(true);
     setError("");
     try {
-      const data = await searchMultimodalRetrieval(options);
+      const data = await searchMultimodalRetrieval({ ...options, videoIds: activeIds });
       if (requestId !== requestIdRef.current) return;
       setResults(data.results ?? []);
       setLatency(data.latencyMs ?? null);
@@ -184,6 +188,7 @@ export function useRetrievalSearch() {
 
     try {
       const data = await similaritySearch({
+        videoIds: activeIds,
         videoId,
         frameId,
         topK,
@@ -217,6 +222,29 @@ export function useRetrievalSearch() {
     }
   }
 
+  async function searchByColor({ cells, topK = 20 }) {
+    if (!cells?.length) return;
+    const requestId = ++requestIdRef.current;
+    setLoading(true); setError("");
+    try {
+      const data = await searchColorRetrieval({ cells, topK, videoIds: activeIds });
+      if (requestId !== requestIdRef.current) return;
+      setResults(data.results ?? []);
+      setLatency(data.latencyMs ?? null);
+      setSubQueries([]);
+      setCount(data.count ?? 0);
+      setLastQuery(data.query);
+      setSearchMode("color");
+      setDurationLimit(-1);
+    } catch (err) {
+      if (err.name === "AbortError" || err.name === "StaleSearchError" || requestId !== requestIdRef.current) return;
+      setResults([]); setLatency(null); setCount(0); setError(err.message || "Color search failed");
+      throw err;
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false);
+    }
+  }
+
   function reset() {
     requestIdRef.current += 1;
 
@@ -245,6 +273,7 @@ export function useRetrievalSearch() {
     searchMultimodal,
     searchWithFusion,
     searchSimilar,
+    searchByColor,
     reset,
   };
 }

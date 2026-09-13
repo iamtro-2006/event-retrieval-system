@@ -10,6 +10,7 @@ const HighlightedSnippet = memo(function HighlightedSnippet({
   maxLength = 160,
   className = "",
   quoted = false,
+  highlight = true,
 }) {
   const snippet = useMemo(
     () => buildHighlightedSnippet(text, query, { maxLength }),
@@ -25,7 +26,7 @@ const HighlightedSnippet = memo(function HighlightedSnippet({
       {snippet.truncatedStart && <span className="snippet-ellipsis" aria-hidden="true">…</span>}
       {quoted && "\u201c"}
       {snippet.segments.map((seg, i) =>
-        seg.match ? (
+        highlight && seg.match ? (
           <mark key={i} className="match-highlight">{seg.text}</mark>
         ) : (
           <span key={i}>{seg.text}</span>

@@ -1,4 +1,4 @@
-import { X, SlidersHorizontal, ShieldCheck, LogIn, LogOut } from "lucide-react";
+import { X, SlidersHorizontal, ShieldCheck, LogIn, LogOut, Crown } from "lucide-react";
 
 export default function SettingsPanel({
   open,
@@ -8,6 +8,7 @@ export default function SettingsPanel({
   onClose,
   onDresLogin,
   onDresLogout,
+  godModeConnected,
 }) {
   function updateField(key, value) {
     onChange({
@@ -47,11 +48,39 @@ export default function SettingsPanel({
           <input
             type="range"
             min="1"
-            max="200"
+            max="500"
             value={settings.topK}
             onChange={(e) => updateField("topK", Number(e.target.value))}
           />
         </label>
+      </div>
+
+      <div className="settings-section">
+        <h4><Crown size={15} /> Collaborative rerank</h4>
+
+        <SwitchRow
+          label="God Mode"
+          checked={settings.godMode}
+          onChange={(value) => updateField("godMode", value)}
+        />
+
+        <div className={settings.godMode && godModeConnected ? "dres-status connected" : "dres-status"}>
+          <span />
+          {settings.godMode ? (godModeConnected ? "Relay connected" : "Relay disconnected") : "God Mode disabled"}
+        </div>
+
+        <label className="setting-field">
+          <span>God Mode endpoint</span>
+          <input
+            value={settings.godModeEndpoint}
+            placeholder="https://independent-relay.example.com"
+            onChange={(e) => updateField("godModeEndpoint", e.target.value.replace(/\/+$/, ""))}
+          />
+        </label>
+
+        <p className="settings-warning">
+          Chỉ verdict DRES đúng mới được relay và ghim vào rerank của các máy cùng evaluation.
+        </p>
       </div>
 
       <div className="settings-section">

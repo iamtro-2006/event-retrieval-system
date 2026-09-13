@@ -1,9 +1,11 @@
 import {
   AudioLines, Blend, ChevronLeft, ChevronRight, Clock3, Flame, Gem, Menu, Moon,
   ImagePlus, Orbit, Plus, ScanText, Search, Settings, Sparkles, Sun, Trash2, Video, X,
-  WandSparkles,
+  WandSparkles, History, Palette,
 } from "lucide-react";
 import { useState } from "react";
+import { useVideoFilter } from "./VideoFilter";
+import { ColorGridEditor } from "./ColorSearch";
 
 const SEARCH_MODES = [
   { key: "text", label: "Semantic", hint: "Visual meaning", icon: Search },
@@ -12,6 +14,7 @@ const SEARCH_MODES = [
   { key: "ocr", label: "OCR", hint: "On-screen text", icon: ScanText },
   { key: "asr", label: "ASR", hint: "Spoken content", icon: AudioLines },
   { key: "fusion", label: "Fusion", hint: "Combine sources", icon: Blend },
+  { key: "color", label: "Color", hint: "Dominant colour grid", icon: Palette },
 ];
 
 const BRAND_VARIANTS = [
@@ -28,8 +31,10 @@ export default function Sidebar({
   theme, mode, queryClauses, queryConnectors = [], clauseImages = [[]], expanded, loading, disabled, onToggleExpanded,
   onModeChange, onClausesChange, onAddClauseImages, onRemoveClauseImage, onSearch, onToggleTheme, onReset,
   onOpenSettings, onOpenPreview,
+  colorGrid, onColorGridChange, onColorSearch,
 }) {
   const clauses = queryClauses?.length ? queryClauses : [""];
+  const videoFilter = useVideoFilter();
   const [brandVariant, setBrandVariant] = useState(0);
   const activeBrand = BRAND_VARIANTS[brandVariant];
   const BrandIcon = activeBrand.icon;
@@ -58,6 +63,10 @@ export default function Sidebar({
   return (
     <aside className={`sidebar ${expanded ? "is-expanded" : ""}`}>
       <div className="sidebar-top">
+        {videoFilter && <button className="sidebar-button" type="button" title="Video ID cache" aria-label="Lịch sử video ID cache"
+          aria-expanded={videoFilter.open} onClick={() => videoFilter.setOpen(!videoFilter.open)}>
+          <History size={20} />{expanded && <span>Video cache ({videoFilter.ids.length})</span>}
+        </button>}
         <div className="sidebar-brand-row">
           <button
             className={`logo-button brand-variant ${activeBrand.className}`}
@@ -117,7 +126,12 @@ export default function Sidebar({
               </div>
             </section>
 
-            <section className="sidebar-section clause-builder">
+            {mode === "color" && <section className="sidebar-section sidebar-color-search">
+              <p className="sidebar-section-label">COLOR CANVAS</p>
+              <ColorGridEditor compact value={colorGrid} onChange={onColorGridChange} onSearch={onColorSearch} loading={loading} />
+            </section>}
+
+            {mode !== "color" && <section className="sidebar-section clause-builder">
               <div className="clause-builder-heading">
                 <div>
                   <p className="sidebar-section-label">QUERY BUILDER</p>
@@ -176,7 +190,7 @@ export default function Sidebar({
                 disabled={loading || disabled || (!clauses.some((clause) => clause.trim()) && !clauseImages.some((items) => items.length > 0))}>
                 <Search size={17} /><span>{loading ? "Searching..." : "Run search"}</span>
               </button>
-            </section>
+            </section>}
 
             <button className="sidebar-preview-wide" type="button" onClick={onOpenPreview}><Video size={17} /> Preview video</button>
           </div>

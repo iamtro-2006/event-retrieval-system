@@ -15,7 +15,8 @@ export default function GroupedResults({
   onSurroundingImages,
   query,
 }) {
-  const groups = useMemo(() => groupByVideoSorted(results), [results]);
+  const verified = useMemo(() => results.filter((item) => item.godmode_verified), [results]);
+  const groups = useMemo(() => groupByVideoSorted(results.filter((item) => !item.godmode_verified)), [results]);
   const [pageByVideo, setPageByVideo] = useState({});
 
   function getCurrentPage(videoId) {
@@ -34,6 +35,19 @@ export default function GroupedResults({
 
   return (
     <div className="grouped-results">
+      {verified.length > 0 && (
+        <section className="video-strip-group godmode-rerank-group">
+          <div className="video-strip-label"><span>RERANK</span></div>
+          <div className="video-strip-main">
+            <div className="video-strip-topbar"><span>Verified correct · {verified.length} frames</span></div>
+            <div className="godmode-rerank-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+              {verified.map((result) => <ResultCard key={result.id} result={result} selected={result.id === selectedId}
+                onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch}
+                onSurroundingImages={onSurroundingImages} query={query} />)}
+            </div>
+          </div>
+        </section>
+      )}
       {groups.map(({ videoId, items }) => {
         const hasTemporal = items.some(
           (item) => Array.isArray(item.matched_sequence) && item.matched_sequence.length > 0

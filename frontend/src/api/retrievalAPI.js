@@ -178,7 +178,42 @@ export async function getAvailableModels() {
   return Array.isArray(data.models) ? data.models : [];
 }
 
+export async function getVideoIds() {
+  const response = await fetch(apiUrl("/api/video-ids"), { headers: NGROK_HEADER });
+  if (!response.ok) throw new Error("Không thể tải video ID metadata. Hãy thử lại.");
+  const data = await response.json();
+  return Array.isArray(data.video_ids) ? data.video_ids : [];
+}
+
+export async function searchColorRetrieval({ cells, topK = 20, videoIds = [] }) {
+  if (activeSearchController) activeSearchController.abort();
+  const controller = new AbortController();
+  activeSearchController = controller;
+  const requestId = ++activeSearchRequestId;
+  const response = await fetch(apiUrl("/api/search/color"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...NGROK_HEADER },
+    body: JSON.stringify({ cells, top_k: topK, video_ids: videoIds }),
+    signal: controller.signal,
+  });
+  if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
+  if (!response.ok) {
+    let message = await response.text();
+    try { message = JSON.parse(message)?.detail || message; } catch { /* keep body */ }
+    throw new Error(message || "Color search failed");
+  }
+  const data = await response.json();
+  return {
+    query: data.query || "Dominant colour search",
+    searchMode: "color",
+    latencyMs: data.latency_ms ?? null,
+    count: data.count ?? 0,
+    results: normalizeResults(data.results ?? []),
+  };
+}
+
 export async function searchRetrieval({
+  videoIds = [],
   query,
   topK = 20,
   candidateMultiplier,
@@ -200,6 +235,7 @@ export async function searchRetrieval({
 
   const payload = {
     query,
+    video_ids: videoIds,
     top_k: topK,
     candidate_multiplier: candidateMultiplier,
     use_split: useSplit,
@@ -309,6 +345,7 @@ export async function searchRetrieval({
 }
 
 export async function searchMultimodalRetrieval({
+  videoIds = [],
   query = "",
   clauses = [],
   queryConnectors = [],
@@ -341,6 +378,7 @@ export async function searchMultimodalRetrieval({
   });
 
   formData.append("request_json", JSON.stringify({
+    video_ids: videoIds,
     query,
     clauses: clausePayload,
     top_k: topK,
@@ -419,6 +457,7 @@ function createStaleSearchError(requestId) {
 }
 
 export async function searchFusion({
+  videoIds = [],
   query,
   topK = 20,
   candidateMultiplier,
@@ -441,6 +480,7 @@ export async function searchFusion({
   const payload = {
     query,
     semantic_models: semanticModels,
+    video_ids: videoIds,
     temporal: Boolean(fusionConfig?.temporal),
     use_ocr: Boolean(fusionConfig?.useOcr),
     use_asr: Boolean(fusionConfig?.useAsr),
@@ -551,7 +591,7 @@ export async function searchFusion({
   }
 }
 
-function normalizeResults(results) {
+export function normalizeResults(results) {
   if (!Array.isArray(results)) {
     return [];
   }
@@ -625,6 +665,9 @@ function normalizeResults(results) {
         : [],
       ocr_score: item.ocr_score ?? raw.ocr_score ?? null,
       asr_score: item.asr_score ?? raw.asr_score ?? null,
+      godmode_verified: Boolean(item.godmode_verified),
+      evaluation_id: item.evaluation_id || "",
+      verified_at: safeNumber(item.verified_at, 0),
       temporal: {
         video_score: safeNumber(item.temporal?.video_score ?? raw.video_score, 0),
         start_time: safeNumber(
@@ -741,6 +784,7 @@ export async function getSurroundingFrames(videoId, keyframeId, radius = 10) {
 }
 
 export async function similaritySearch({
+  videoIds = [],
   videoId,
   frameId,
   topK = 20,
@@ -748,6 +792,7 @@ export async function similaritySearch({
 }) {
   const payload = {
     video_id: videoId,
+    video_ids: videoIds,
     frame_id: Number(frameId),
     top_k: topK,
     model_key: modelKey,

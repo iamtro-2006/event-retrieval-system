@@ -1,6 +1,7 @@
-import { Plus, Search, Mic, Zap, Settings2, X } from "lucide-react";
+import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import FusionSettingsModal from "./FusionSettingsModal";
+import { useVideoFilter } from "./VideoFilter";
 
 const FALLBACK_MODELS = ["siglip2-so400m", "vitH-378-quickgelu"];
 
@@ -25,13 +26,17 @@ export default function SearchBar({
   onReasoningToggle,
   onFusionConfigChange,
   onQueryChange,
-  onAddClauseImages,
+  onInlineClauseChange,
+  onInsertClauseImages,
+  onOpenColorSearch,
   onRemoveClauseImage,
   expandedByDefault = false,
   onSearch,
 }) {
   const [recording, setRecording] = useState(false);
+  const videoFilter = useVideoFilter();
   const [fusionModalOpen, setFusionModalOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   // The home composer starts expanded; the bottom composer starts compact
   // and expands only when the query wraps past the normal height.
   const [isExpanded, setIsExpanded] = useState(expandedByDefault);
@@ -50,6 +55,7 @@ export default function SearchBar({
   const isOcr = mode === "ocr";
   const isAsr = mode === "asr";
   const isFusion = mode === "fusion";
+  const isColor = mode === "color";
   const hasQueryImages = clauseImages.some((items) => items.length > 0);
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -105,6 +111,7 @@ export default function SearchBar({
   }
 
   function runSearch(nextQuery) {
+    if (isColor) { onOpenColorSearch?.(); return; }
     const cleanQuery = String(nextQuery || "").trim();
     if ((!cleanQuery && !hasQueryImages) || loading || disabled) return;
     const searchMode = resolveSearchMode();
@@ -117,27 +124,37 @@ export default function SearchBar({
     });
   }
 
-  function activeClauseIndex() {
+  function activeInsertionPoint() {
     if (hasQueryImages) {
-      return Math.max(0, Math.min(activeInlineClauseRef.current, queryClauses.length - 1));
+      const clauseIndex = Math.max(0, Math.min(activeInlineClauseRef.current, queryClauses.length - 1));
+      const input = inlineInputRefs.current[clauseIndex];
+      return { clauseIndex, offset: input?.selectionStart ?? queryClauses[clauseIndex]?.length ?? 0 };
     }
     const caret = textareaRef.current?.selectionStart ?? query.length;
     const beforeCaret = query.slice(0, caret);
     const separatorPattern = /\b(?:AND|THEN)\b/g;
     const separators = beforeCaret.match(separatorPattern);
     const clauseIndex = Math.min(separators?.length ?? 0, Math.max(0, queryClauses.length - 1));
-    const lastAnd = beforeCaret.lastIndexOf(" AND ");
-    const lastThen = beforeCaret.lastIndexOf(" THEN ");
-    const segmentStart = Math.max(lastAnd, lastThen) + 1;
-    // Pasting immediately after a delimiter means “insert before the next
-    // text clause”. Store it after the previous clause so the flattened
-    // query order is text → image → next text.
-    if (!beforeCaret.slice(segmentStart).trim() && clauseIndex > 0) return clauseIndex - 1;
-    return clauseIndex;
+    let prefixLength = 0;
+    for (let index = 0; index < clauseIndex; index += 1) {
+      prefixLength += String(queryClauses[index] || "").length;
+      prefixLength += ` ${queryConnectors[index] || "AND"} `.length;
+    }
+    return {
+      clauseIndex,
+      offset: Math.max(0, Math.min(caret - prefixLength, String(queryClauses[clauseIndex] || "").length)),
+    };
   }
 
-  function attachFiles(files) {
-    onAddClauseImages?.(activeClauseIndex(), files);
+  function insertFiles(files, point = activeInsertionPoint()) {
+    if (!files?.length) return;
+    onInsertClauseImages?.(point.clauseIndex, point.offset, files);
+    activeInlineClauseRef.current = point.clauseIndex + 1;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const input = inlineInputRefs.current[point.clauseIndex + 1];
+      input?.focus();
+      input?.setSelectionRange(0, 0);
+    }));
   }
 
   function imageQueryPosition(clauseIndex, imageIndex) {
@@ -155,14 +172,25 @@ export default function SearchBar({
       nextQuery += ` ${queryConnectors[index - 1] || "AND"} ${nextClauses[index] || ""}`;
     }
     committedTranscriptRef.current = nextQuery;
-    onQueryChange?.(nextQuery);
+    onInlineClauseChange?.(clauseIndex, value);
+    const connectorCount = (value.match(/\b(?:AND|THEN)\b/g) || []).length;
+    if (connectorCount) {
+      const nextIndex = clauseIndex + connectorCount;
+      activeInlineClauseRef.current = nextIndex;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const input = inlineInputRefs.current[nextIndex];
+        if (!input) return;
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }));
+    }
   }
 
   function handlePaste(event) {
     const images = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
     if (!images.length) return;
     event.preventDefault();
-    attachFiles(images);
+    insertFiles(images, activeInsertionPoint());
   }
 
   function handleSubmit(e) {
@@ -305,7 +333,10 @@ export default function SearchBar({
           <div className="inline-query-composer" aria-label="Ordered text and image query">
             {queryClauses.map((clause, clauseIndex) => (
               <div className="inline-query-clause" key={`clause-${clauseIndex}`}>
-                {clauseIndex > 0 && (
+                {clauseIndex > 0 && !(
+                  (queryConnectors[clauseIndex - 1] || "AND") === "AND" &&
+                  (clauseImages[clauseIndex - 1] || []).length > 0
+                ) && (
                   <span className={`inline-query-connector is-${(queryConnectors[clauseIndex - 1] || "AND").toLowerCase()}`}>
                     {queryConnectors[clauseIndex - 1] || "AND"}
                   </span>
@@ -313,8 +344,9 @@ export default function SearchBar({
                 <input
                   ref={(element) => { inlineInputRefs.current[clauseIndex] = element; }}
                   className="inline-query-text-input"
+                  style={{ width: `${Math.max(1, Math.min(42, clause.length + 1))}ch` }}
                   value={clause}
-                  placeholder={clauseIndex === 0 ? "Nhập query..." : "Query tiếp theo..."}
+                  placeholder={clauseIndex === 0 && !(clauseImages[0] || []).length ? "Nhập query..." : ""}
                   onFocus={() => { activeInlineClauseRef.current = clauseIndex; }}
                   onChange={(event) => updateInlineClause(clauseIndex, event.target.value)}
                   onKeyDown={handleKeyDown}
@@ -322,7 +354,10 @@ export default function SearchBar({
                     const images = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
                     if (!images.length) return;
                     event.preventDefault();
-                    onAddClauseImages?.(clauseIndex, images);
+                    insertFiles(images, {
+                      clauseIndex,
+                      offset: event.currentTarget.selectionStart ?? clause.length,
+                    });
                   }}
                 />
                 {(clauseImages[clauseIndex] ?? []).map((item, imageIndex) => (
@@ -341,11 +376,22 @@ export default function SearchBar({
 
         <div className="search-chat-footer">
           <input ref={fileInputRef} className="query-image-input" type="file" accept="image/*" multiple
-            onChange={(event) => { attachFiles(event.target.files); event.target.value = ""; }} />
-          <button type="button" className="search-icon-button" aria-label="Attach query image"
-            title="Upload image query" onClick={() => fileInputRef.current?.click()}>
+
+            onChange={(event) => { insertFiles(event.target.files); event.target.value = ""; }} />
+          <div className="search-add-menu-host">
+          <button type="button" className="search-icon-button" aria-label="Add image or colour canvas"
+            aria-expanded={addMenuOpen} title="Add query input" onClick={() => setAddMenuOpen((value) => !value)}>
             <Plus size={20} />
           </button>
+          {addMenuOpen && <div className="search-add-menu" role="menu">
+            <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }}>
+              <ImagePlus size={16} /><span>Image query</span>
+            </button>
+            <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); onOpenColorSearch?.(); }}>
+              <Palette size={16} /><span>Colour canvas</span>
+            </button>
+          </div>}
+          </div>
 
           <div className="search-chat-controls">
             {!isFusion && (
@@ -363,6 +409,7 @@ export default function SearchBar({
               <option value="ocr">OCR (on-screen text)</option>
               <option value="asr">ASR (speech)</option>
               <option value="fusion">Fusion</option>
+              <option value="color">Color</option>
             </select>
 
             {isTemporal && (
@@ -378,6 +425,13 @@ export default function SearchBar({
             )}
 
             {/* ── LLM reasoning toggle ─────────────────────────────────── */}
+            {videoFilter && <button type="button"
+              className={`rerank-tag ${videoFilter.enabled ? "rerank-tag--active" : ""}`}
+              aria-pressed={videoFilter.enabled}
+              title="Bật để giới hạn lần tìm kiếm tiếp theo theo video trong cache; cache trống tìm toàn bộ"
+              onClick={() => videoFilter.setEnabled(!videoFilter.enabled)}>
+              Filter {videoFilter.ids.length > 0 && `(${videoFilter.ids.length})`}
+            </button>}
             {(
               <button
                 type="button"
@@ -423,7 +477,7 @@ export default function SearchBar({
             <button
               type="submit"
               className="search-submit"
-              disabled={loading || disabled || (!query.trim() && !hasQueryImages)}
+              disabled={loading || disabled || (!isColor && !query.trim() && !hasQueryImages)}
               aria-label="Search"
             >
               <Search size={18} />
