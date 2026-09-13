@@ -215,6 +215,7 @@ def search_auto(payload: AutoSearchRequest, request: Request) -> SearchResponse:
             top_k=payload.top_k,
             use_split=payload.use_split,
             candidate_multiplier=payload.candidate_multiplier,
+            model_key=payload.model_key,
             translate=payload.translate,
         ),
         feature_name="Auto search",
@@ -250,6 +251,7 @@ def search_advanced(payload: AdvancedSearchRequest, request: Request) -> Advance
             duration_limit=payload.duration_limit,
             weights=payload.weights,
             reasoning=payload.reasoning,
+            semantic_lambda=payload.semantic_lambda,
         ),
         feature_name="Advanced search",
     )

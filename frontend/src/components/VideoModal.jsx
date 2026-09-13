@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Copy, Download, Send, Star, X } from "lucide-react";
 import { getFrameIdxAtTimestamp, getVideoKeyframes } from "../api/retrievalAPI";
 
@@ -11,6 +11,7 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
   const panRef = useRef(null);
   const panMovedRef = useRef(false);
   const manualSeekRef = useRef(false);
+  const seekTimerRef = useRef(0);
   const autoLocatedRef = useRef(false);
   const initialMs = useMemo(() => {
     if (result?.is_preview_frame && Number(result?.fps) > 0 && result?.frame_idx != null) return Math.max(0, Math.round(Number(result.frame_idx) / Number(result.fps) * 1000));
@@ -24,29 +25,43 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
   const [csvTitle, setCsvTitle] = useState("answers.csv"), [csvRows, setCsvRows] = useState([]), [copyState, setCopyState] = useState("");
   const [dragHandle, setDragHandle] = useState(null);
   const [videoKeyframes, setVideoKeyframes] = useState([]);
-  useEffect(() => { if (open) { autoLocatedRef.current = false; setCurrentMs(initialMs); setRange([0, 100]); setQueue([]); setMarkers([]); setAnswer(""); setCsvRows([]); } }, [open, initialMs]);
+  const seekTo = useCallback((value) => {
+    const nextMs = Math.max(0, Math.min(Number(value) || 0, durationMs));
+    manualSeekRef.current = true;
+    setCurrentMs(Math.round(nextMs));
+    if (videoRef.current) videoRef.current.currentTime = nextMs / 1000;
+    requestAnimationFrame(() => {
+      const node = timelineViewportRef.current;
+      if (!node || node.scrollWidth <= node.clientWidth) return;
+      const x = nextMs / Math.max(1, durationMs) * node.scrollWidth;
+      const margin = Math.max(70, node.clientWidth * .18);
+      if (x < node.scrollLeft + margin) node.scrollLeft = Math.max(0, x - margin);
+      else if (x > node.scrollLeft + node.clientWidth - margin) node.scrollLeft = Math.min(node.scrollWidth - node.clientWidth, x - node.clientWidth + margin);
+    });
+    window.clearTimeout(seekTimerRef.current);
+    seekTimerRef.current = window.setTimeout(() => { manualSeekRef.current = false; }, 180);
+  }, [durationMs]);
   useEffect(() => {
     if (!open || !result?.video_id) return;
     let alive = true;
     getVideoKeyframes(result.video_id).then((data) => { if (alive) setVideoKeyframes(data.keyframes || []); }).catch(() => { if (alive) setVideoKeyframes([]); });
     return () => { alive = false; };
   }, [open, result?.video_id]);
-  const centerTimelineAt = (ms, nextDuration, nextZoom = zoom) => {
+  const centerTimelineAt = useCallback((ms, nextDuration) => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const node = timelineViewportRef.current;
       if (!node) return;
       const ratio = Math.max(0, Math.min(1, ms / Math.max(1, nextDuration)));
       node.scrollLeft = Math.max(0, ratio * node.scrollWidth - node.clientWidth / 2);
     }));
-    void nextZoom;
-  };
+  }, []);
   useEffect(() => {
     if (!open || autoLocatedRef.current || durationMs <= 1000) return;
     autoLocatedRef.current = true;
     const targetZoom = Math.max(1, Math.min(50, durationMs / 40000));
     setZoom(targetZoom);
-    centerTimelineAt(initialMs, durationMs, targetZoom);
-  }, [open, durationMs, initialMs]);
+    centerTimelineAt(initialMs, durationMs);
+  }, [open, durationMs, initialMs, centerTimelineAt]);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { currentMsRef.current = currentMs; durationMsRef.current = durationMs; }, [currentMs, durationMs]);
   useEffect(() => {
@@ -86,7 +101,7 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
     node.addEventListener("click", seekClickedKeyframe, true);
     node.addEventListener("pointerdown", seekClickedKeyframe, true);
     return () => { node.removeEventListener("wheel", blockBrowserZoom); node.removeEventListener("pointerdown", pauseWhileEditing, true); node.removeEventListener("pointerup", finishEditing, true); node.removeEventListener("pointercancel", finishEditing, true); node.removeEventListener("click", seekClickedKeyframe, true); node.removeEventListener("pointerdown", seekClickedKeyframe, true); };
-  }, [open]);
+  }, [open, seekTo]);
   if (!open || !result) return null;
   const frameId = Math.max(0, Math.round(currentMs / 1000 * Number(result.fps || 25))), videoId = result.video_id;
   const listedKeyframeTimes = [...(result.keyframes || result.raw?.keyframes || result.matched_sequence || [])].map((item) => Number(item.timestamp ?? item.timestamp_sec ?? item.time ?? 0) * 1000).filter((ms) => ms >= 0 && ms <= durationMs);
@@ -106,7 +121,6 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
   })();
   const rulerCount = Math.min(20000, Math.ceil(durationMs / rulerStepMs) + 1);
   const rulerLabelEvery = zoom >= 50 ? 10 : zoom >= 45 ? 5 : zoom >= 35 ? 3 : 3;
-  const seekTo = (v) => { const n = Math.max(0, Math.min(Number(v) || 0, durationMs)); manualSeekRef.current = true; setCurrentMs(Math.round(n)); if (videoRef.current) videoRef.current.currentTime = n / 1000; requestAnimationFrame(() => { const node = timelineViewportRef.current; if (node && node.scrollWidth > node.clientWidth) { const x = n / Math.max(1, durationMs) * node.scrollWidth; const margin = Math.max(70, node.clientWidth * .18); if (x < node.scrollLeft + margin) node.scrollLeft = Math.max(0, x - margin); else if (x > node.scrollLeft + node.clientWidth - margin) node.scrollLeft = Math.min(node.scrollWidth - node.clientWidth, x - node.clientWidth + margin); } }); window.clearTimeout(seekTo.clearTimer); seekTo.clearTimer = window.setTimeout(() => { manualSeekRef.current = false; }, 180); };
   const updateHandle = (e) => { if (!dragHandle) return; const rect = e.currentTarget.getBoundingClientRect(); const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)); if (dragHandle === "current") { seekTo(pct / 100 * durationMs); return; } setRange(([start, end]) => dragHandle === "start" ? [Math.min(pct, end), end] : [start, Math.max(pct, start)]); };
   const releaseHandle = () => setDragHandle(null);
   const beginPan = (e) => {
@@ -121,21 +135,6 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
     timelineViewportRef.current.scrollLeft = panRef.current.scrollLeft - (e.clientX - panRef.current.x);
   };
   const endPan = () => { panRef.current = null; setTimeout(() => { panMovedRef.current = false; }, 250); };
-  const handleTimelineWheel = (e) => {
-    // Trackpad pinch is reported as ctrl+wheel. Keep browser/page zoom untouched
-    // by consuming it only while the pointer is inside this timeline.
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      setZoom((z) => Math.max(1, Math.min(20, z * (e.deltaY < 0 ? 1.12 : 0.89))));
-      return;
-    }
-    // Two-finger scrolling navigates horizontally through the zoomed timeline.
-    if (timelineViewportRef.current && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.preventDefault();
-      timelineViewportRef.current.scrollLeft += e.deltaY;
-    }
-  };
   const boundedPlayback = (ms) => { if (manualSeekRef.current || dragHandle) return ms; if ((ms < startMs || ms >= endMs) && videoRef.current?.paused === false) { const reset = startMs; setCurrentMs(Math.round(reset)); if (videoRef.current) { videoRef.current.currentTime = reset / 1000; void videoRef.current.play(); } return reset; } return ms; };
   const addMarker = (ms = currentMs, exactFrameId = null) => setMarkers((p) => [...p, { ms, frameId: exactFrameId, type: "star" }]);
   async function submit() { const exactFrameId = await getFrameIdxAtTimestamp(videoId, currentMs); const ids = task === "trake" ? [...queue].sort((a, b) => a - b) : [exactFrameId]; if (task === "trake") setCsvRows((p) => [...p, `${videoId}, ${ids.join(", ")}`]); else if (endpoint === "csv") setCsvRows((p) => [...p, task === "qa" ? `${videoId}, ${exactFrameId}, "${answer.replaceAll('"', '""')}"` : `${videoId}, ${exactFrameId}`]); else onSubmit?.({ ...result, frame_idx: exactFrameId, timestamp: currentMs / 1000, submit_timestamp_ms: currentMs, raw: { ...result.raw, frame_idx: exactFrameId, submit_timestamp_ms: currentMs } }); addMarker(); }

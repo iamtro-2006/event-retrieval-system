@@ -1,1 +1,1 @@
-# embedding backends: open_clip, hf_clip, blip2, beit3
+# Embedding backends: OpenCLIP, BLIP-2, and Meta Perception Encoder Core.

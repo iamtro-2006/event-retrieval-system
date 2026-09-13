@@ -1,5 +1,5 @@
-input_keyframes_root: D:/event-retrieval-system/data/keyframes
-output_embeddings_root: D:/event-retrieval-system/data
+input_keyframes_root: ../data/keyframes
+output_embeddings_root: ../data
 
 image:
   extensions: [".jpg", ".jpeg", ".png", ".webp"]
@@ -13,6 +13,24 @@ save:
 # aren't installed on this machine yet). Every model writes to its own
 # subfolder: <output_embeddings_root>/<key>/<dataset>/<video>/<frame>.npy
 models:
+
+  # Meta Perception Encoder Core. All PE-Core sizes use the same backend;
+  # change `name` to T16-384 / S16-384 / B16-224 / L14-336 / G14-448.
+  # Disabled by default because the official perception_models package and
+  # checkpoint weights are large optional dependencies.
+  - key: pe_core_l14_336
+    enabled: false
+    backend: perception_encoder
+    name: PE-Core-L14-336
+    pretrained: true          # downloads the official checkpoint from HF
+    device: auto
+    precision: amp
+    batch_size: 8
+    normalize: true
+    perception_encoder:
+      center_crop: false      # official default: resize/squash to model size
+      # repo_path: D:/path/to/perception_models  # alternative to pip install
+      # checkpoint_path: D:/path/to/PE-Core-L14-336.pt
 
   # ViT-SO400M-16-SigLIP2-384
   - key: siglip2_so400m_384
@@ -47,20 +65,3 @@ models:
     batch_size: 16
     normalize: true
     pooling: first            # first (default, matches text[:,0,:] later for retrieval) | none (32x256, best recall but needs late-interaction search) | mean
-
-  # --- BEiT-3 (microsoft/unilm, external repo + checkpoint required) ---
-  - key: beit3_large_itc
-    enabled: false            # flip to true once repo + checkpoint are set up
-    backend: beit3
-    name: BEiT3-Large-Retrieval
-    device: auto
-    precision: fp32
-    batch_size: 16
-    normalize: true
-    beit3:
-      repo_path: D:/event-retrieval-system/backend/external\unilm/beit3        # local clone of microsoft/unilm's beit3 folder
-      model_arch: beit3_large_patch16_384_retrieval    # must be a task-suffixed arch (see backends/beit3.py) - no bare "beit3_large_patch16_384"
-      checkpoint_path: D:/event-retrieval-system/backend/weights/beit3_large_patch16_384_coco_retrieval.pth
-      input_size: 384
-      spm_path: D:/event-retrieval-system/backend/weights/beit3.spm            # optional: enables encode_text() / text search for this model. Omit to keep it image-only.
-      max_text_len: 64

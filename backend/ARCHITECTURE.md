@@ -46,7 +46,7 @@ Hệ thống retrieval video theo 4 kiểu truy vấn trên cùng 1 tập keyfra
 |---|---|---|
 | Web framework | **FastAPI** + Pydantic (`BaseModel`) | REST API, validate request |
 | Vector search | **FAISS** (`faiss`), HNSW index | ANN search trên embedding CLIP |
-| Embedding model | **OpenCLIP** (`open_clip`) — `ViT-L-16-SigLIP-256`, pretrained `webli` | encode text/ảnh thành vector |
+| Embedding model | **PE-Core**, **OpenCLIP**, **BLIP-2** qua model registry | encode text/ảnh thành vector |
 | Deep learning runtime | **PyTorch** (`torch`, `torchvision`) | chạy CLIP, TransNet, reranker |
 | Numeric tăng tốc | **NumPy**, **SciPy**, **scikit-learn** (`sklearn`), **Numba** (`@njit`) | xử lý ma trận, DP tốc độ C |
 | Dữ liệu bảng | **pandas** | toàn bộ kết quả search là `pd.DataFrame` |
@@ -57,15 +57,13 @@ Hệ thống retrieval video theo 4 kiểu truy vấn trên cùng 1 tập keyfra
 | Scene/keyframe detection | **TransNetV2** (custom, load qua `torch.hub`-style loader trong `detector.py`) + thuật toán cluster riêng | phát hiện chuyển cảnh, chọn keyframe đại diện |
 | Video I/O | **decord**, **ffmpeg-python**, **OpenCV** (`cv2`) | đọc frame video hiệu quả |
 | Rerank (tuỳ chọn, CHƯA wire) | **InternVL** qua `transformers` | rerank kết quả bằng VLM — xem mục 10 |
-| Dịch câu truy vấn | LibreTranslate (HTTP server) hoặc **Hy-MT2** GGUF model qua `llama_cpp` (chạy local, CPU/GPU) | dịch query VI→EN trước khi encode CLIP (CLIP train trên tiếng Anh) |
+| Dịch câu truy vấn | Google Cloud Translation Basic v2 | dịch query VI→EN khi người dùng chủ động bật; khóa lấy từ biến môi trường |
 | Config | YAML (`pyyaml`) + `python-dotenv` | mỗi subsystem 1 file config riêng |
 | Nộp bài đánh giá | **DRES** (Distributed Retrieval Evaluation Server, qua `requests`) | tích hợp thi đấu dạng competition (AI Challenge / VBS) |
 
-> Không tìm thấy `requirements.txt` trong bản zip được cung cấp — danh sách
-> trên được suy ra trực tiếp từ `import` trong mã nguồn. **Việc đầu tiên team
-> kế tiếp nên làm là `pip freeze` môi trường đang chạy production và thêm
-> `requirements.txt`/`pyproject.toml` vào repo**, vì hiện không có cách nào
-> khác để biết version chính xác của từng thư viện.
+> `requirements.txt` ở repository root là snapshot môi trường Python hiện tại.
+> PE-Core được tách thành `backend/requirements-pe-core.txt` vì là dependency
+> upstream tùy chọn có license riêng.
 
 ### 1.2 Nguyên tắc kiến trúc xuyên suốt (bắt buộc phải hiểu trước khi sửa code)
 
@@ -379,8 +377,11 @@ for mỗi keyframe id xuất hiện trong candidate pool của >=1 query:
     max_score   = score cao nhất
     matched     = số query khác nhau match được id đó
     coverage    = matched / tổng_số_query
-    alignment   = 0.8 * avg_score + 0.2 * coverage        # trade-off: điểm cao NHƯNG cũng
-                                                            # nên match được nhiều cách diễn đạt
+    alignment   = (1 / tổng_số_query) * sum(exp(beta * (sim(q, I) - 1)) for q in Q), beta mặc định = 0.8
+                  # Q gồm query gốc và toàn bộ subquery; sim được tính cho
+                  # mọi cặp (q, I), kể cả khi I không vào candidate top-k của q
+                  # điểm FAISS đã có được tái sử dụng; các cặp còn thiếu được
+                  # tính bằng kernel Numba JIT song song trên candidate union
 sort theo alignment giảm dần, lấy top_k
 ```
 
@@ -571,12 +572,11 @@ tương đương `ClipFaissIndex` (hoặc mở rộng nó) + retriever tương �
 
 ---
 
-## 7. Tầng API (`main.py`)
+## 7. Tầng API (`src/api/`)
 
-`main.py` là **entrypoint FastAPI duy nhất** (808 dòng, single file — xem
-mục 10 về việc tách route). Khởi tạo `RetrievalSystem` 1 lần (lifespan) qua
-`build_system(SYSTEM_CONFIG)`, mount static files (`keyframes`, `videos`,
-`map-keyframes`).
+`src/api/main.py` là entrypoint FastAPI. Nó khởi tạo `RetrievalSystem` đúng
+một lần trong lifespan, mount static files và đăng ký router theo domain.
+`backend/main.py` chỉ là compatibility entrypoint mỏng.
 
 ### 7.1 Danh sách endpoint
 
@@ -585,6 +585,8 @@ mục 10 về việc tách route). Khởi tạo `RetrievalSystem` 1 lần (lifes
 | GET | `/api/health` | health check | |
 | GET | `/api/config` | trả config public cho FE (search modes khả dụng, top_k mặc định...) | FE dùng để biết `available_modes` (semantic/temporal/ocr/asr/auto) — OCR/ASR sẽ KHÔNG xuất hiện ở đây nếu pipeline optional bị vô hiệu hoá lúc khởi động |
 | POST | `/api/search` | endpoint search chính | body = `SearchRequest`, xem 7.2 |
+| POST | `/api/search/multimodal` | text/ảnh hỗn hợp | multipart; metadata JSON + image files |
+| POST | `/api/search/fusion` | RRF fusion | semantic model(s), temporal, OCR, ASR |
 | GET | `/api/frame-info` | lấy metadata 1 frame theo `video_id + keyframe_id` | dùng `find_metadata_row` |
 | GET | `/api/surrounding-frames` | lấy các frame lân cận 1 frame (trước/sau `radius`) | dùng cho UI xem ngữ cảnh quanh 1 kết quả; giới hạn `ui.max_surrounding_radius` trong `app.yaml` |
 | POST | `/api/similarity-search` | "more like this": tìm ảnh tương tự 1 keyframe cho trước | gọi `semantic_search.SearchPipeline.similarity_search_by_image` |
@@ -610,7 +612,7 @@ Luồng xử lý `/api/search` (mã giả, `search_api`):
 ```
 payload -> áp dụng default từ configs/app.yaml (top_k, candidate_multiplier...)
 query = translate_query_if_needed(payload.query, payload.use_translate)
-        # nếu use_translate=True: gọi translator (Libre/Hy-MT2) dịch VI->EN
+        # nếu use_translate=True: gọi Google Cloud Translation dịch VI->EN
         # trước khi encode CLIP (model CLIP train chủ yếu trên tiếng Anh)
 df, plan = retrieval_system.<search_mode tương ứng>(query, top_k, ...)
           # ví dụ search_mode="temporal" -> retrieval_system.search_temporal(...)
@@ -641,28 +643,21 @@ FastAPI phục vụ qua `StaticFiles`).
   theo `(video_id, keyframe_id)` — dùng cho `/api/frame-info` và
   `/api/surrounding-frames`, độc lập với pha search.
 
-### 7.4 `src/api/` — scaffold rỗng
+### 7.4 Cấu trúc `src/api/`
 
-`routers/`, `schemas/`, `utils/` hiện chỉ có `__init__.py` trống. Đây là nơi
-dự kiến sẽ chuyển route/schema/util ra khỏi `main.py` trong tương lai (xem
-đề xuất refactor ở mục 10). Cấu trúc thư mục đã được chuẩn bị sẵn theo đúng
-convention FastAPI phổ biến (routers theo domain, schemas Pydantic tách
-riêng, utils dùng chung).
+`routers/` chứa search, legacy search, health, speech, translation và DRES;
+`schemas/` chứa request/response Pydantic; `legacy/` giữ dependency, path và
+serializer tương thích với frontend hiện tại. Router chỉ lấy singleton từ
+`app.state`, không tự load model/index.
 
 ---
 
 ## 8. Translation subsystem (`src/translation/`)
 
-Vì OpenCLIP text encoder hoạt động tốt nhất với tiếng Anh, mọi câu query
-tiếng Việt cần dịch trước khi encode. `BaseTranslator` (ABC) + 2 hiện thực:
-
-| Translator | Cơ chế | Khi nên dùng |
-|---|---|---|
-| `LibreTranslator` | gọi HTTP tới 1 LibreTranslate server (`base_url`, `api_key`, `timeout` từ `configs/app.yaml -> translate.libre`) | có sẵn server LibreTranslate (self-host hoặc public); độ trễ phụ thuộc network |
-| `HyMT2Translator` | load model GGUF `Hy-MT2-1.8B-2Bit` local qua `llama_cpp` (`n_gpu_layers` cấu hình được, 0 = CPU) | muốn chạy hoàn toàn offline / không phụ thuộc network, đánh đổi RAM/VRAM và thời gian load model |
-
-Chọn qua `translate_agent: libre|hymt2` trong `app.yaml`, dựng bằng
-`get_translator(cfg, backend_dir)` (`factory.py`). `main.py` gọi
+Vì OpenCLIP text encoder hoạt động tốt nhất với tiếng Anh, query tiếng Việt
+có thể được dịch trước khi encode. Hệ thống chỉ hỗ trợ Google Cloud
+Translation Basic v2, dựng bằng `get_translator(cfg, backend_dir)`
+(`factory.py`). `main.py` gọi
 `translate_query_if_needed(query, use_translate)` — nếu FE gửi
 `use_translate=false` hoặc `translate.enabled_default=false`, bỏ qua bước
 dịch (query được dùng nguyên văn — hữu ích khi query vốn đã là tiếng Anh
@@ -674,7 +669,7 @@ hoặc muốn test CLIP trực tiếp).
 
 | File | Subsystem | Trường quan trọng |
 |---|---|---|
-| `app.yaml` | Runtime chính (main.py + system.py) | `faiss.*` (path, `ef_search`, cache mode), `model.*` (phải khớp model lúc train embedding), `search.*` (`default_top_k`, `max_top_k`, `candidate_multiplier`), `ui.*` (surrounding radius), `translate_agent` + `translate.*`, `speech.*` (Whisper cho `/api/speech/transcribe`), `debug.profile` |
+| `app.yaml` | Runtime chính (main.py + system.py) | `faiss.*` (path, `ef_search`, cache mode), `model.*` (phải khớp model lúc train embedding), `search.*` (`default_top_k`, `max_top_k`, `candidate_multiplier`), `ui.*` (surrounding radius), `translate.google.*`, `speech.*` (Whisper cho `/api/speech/transcribe`), `debug.profile` |
 | `ocr_extraction.yaml` | offline OCR pipeline | tham số PaddleOCR/VietOCR |
 | `asr_extraction.yaml` | offline ASR pipeline | tham số faster-whisper cho batch transcribe |
 | `embeddings.yaml` | offline embedding pipeline | model CLIP, batch size, device |
@@ -713,23 +708,16 @@ không phải suy đoán — cộng với quan sát cấu trúc thư mục:
    `retriever`/`index` nào đọc từ đó — hoặc là nhánh thử nghiệm dang dở, hoặc
    dự định thay thế FAISS trong tương lai. Cần làm rõ ý định trước khi
    xoá/tiếp tục.
-4. **`main.py` là 1 file 808 dòng ôm toàn bộ route + schema + serialize
-   helper.** `src/api/{routers,schemas,utils}` đã có sẵn thư mục trống — nên
-   tách dần theo domain (search, dres, frame-info, speech) khi có thời gian,
-   **nhưng không phải ưu tiên khẩn** vì `main.py` vẫn tuân thủ đúng ranh giới
-   quan trọng nhất (chỉ import qua `system.py`).
-5. **Thiếu `requirements.txt`/lockfile** trong bản giao — xem mục 1.1.
-6. **`configs/ocr.yaml`/`configs/asr.yaml` (config kết nối ES lúc search)
+4. **Requirements hiện là snapshot lớn**, chưa phải lockfile đa nền tảng;
+   nên dựng môi trường sạch và kiểm thử khi thay CUDA/PyTorch hoặc hệ điều hành.
+5. **`configs/ocr.yaml`/`configs/asr.yaml` (config kết nối ES lúc search)
    không có trong bản zip** — xem mục 9. Cần xác nhận với hạ tầng
    triển khai thật.
-7. **README con lỗi thời**: `src/README.md`, `src/utils/README.md` mô tả tên
+6. **README con lỗi thời**: `src/README.md`, `src/utils/README.md` mô tả tên
    thư mục cũ (`embeddings/`, `keyframes/`, `logic/`) — đã ghi chú trong
    README gốc, nhắc lại ở đây để tránh nhầm khi đọc các file đó.
-8. **Không có test suite tự động** được tìm thấy trong bản zip (không có
-   thư mục `tests/`). Việc thêm test là ưu tiên cao khi mở rộng thêm search
-   mode, vì `Orchestrator`/`aggregate_multi_query`/DP temporal đều là logic
-   tính toán thuần rất dễ unit-test (input/output rõ ràng, không cần mock
-   hạ tầng) nhưng hiện chưa có test nào bảo vệ.
+7. **Test coverage chưa đầy đủ.** Đã có test cạnh module và mock UI scenarios,
+   nhưng vẫn thiếu integration test end-to-end với index/model thật.
 
 ---
 

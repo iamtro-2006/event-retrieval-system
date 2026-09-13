@@ -18,7 +18,7 @@ class ExtractEmbeddingPipeline:
 
     `cfg["model"]` holds the config for that single model (name, backend,
     pretrained, batch_size, ...). To extract embeddings for several models
-    (e.g. SigLIP2 + DFN + LongCLIP-L + BLIP-2 + BEiT-3) in one go, see
+    (e.g. SigLIP2 + DFN + LongCLIP-L + BLIP-2 + PE-Core) in one go, see
     `run_multi_model()` at the bottom of this file / `scripts/embedding_extraction/run.py`,
     which just constructs one `ExtractEmbeddingPipeline` per entry in
     `cfg["models"]` and writes each one to its own output subfolder.
@@ -43,9 +43,9 @@ class ExtractEmbeddingPipeline:
         self.overwrite = bool(cfg["save"].get("overwrite", True))
         self.output_ext = str(cfg["save"].get("extension", ".npy"))
 
-        # Backend-specific extras (e.g. `pooling` for blip2, `beit3` dict
-        # for beit3) are passed straight through without needing this
-        # pipeline class to know about them.
+        # Backend-specific extras (e.g. `pooling` for BLIP-2 or the
+        # `perception_encoder` dict for PE-Core) pass straight through, so
+        # this pipeline class does not need model-specific branches.
         known_keys = {
             "key", "name", "backend", "pretrained", "device", "precision",
             "batch_size", "normalize",
@@ -214,4 +214,4 @@ def run_multi_model(
             )
             pipeline.run()
         except Exception as e:
-            logger.exception("Model '%s' failed, skipping: %s", model_key,)
+            logger.exception("Model '%s' failed, skipping: %s", model_key, e)

@@ -1,11 +1,9 @@
 from .base_translator import BaseTranslator
-from .envit5_translator import EnviT5Translator
 from .factory import get_translator
-from .llm_translator import LLMTranslator
+from .google_translator import GoogleCloudTranslator
 
 __all__ = [
     "BaseTranslator",
-    "EnviT5Translator",
-    "LLMTranslator",
+    "GoogleCloudTranslator",
     "get_translator",
 ]

@@ -78,10 +78,13 @@ class ElasticsearchService:
     # ------------------------------------------------------------------
 
     def search(self, query: str, size: int = 10) -> list[dict]:
+        from src.retrieval.retriever.common.video_filter import video_ids_context
+        video_ids = video_ids_context.get()
         response = self.client.search(
             index=self.index_name,
             query={
                 "bool": {
+                    "filter": [{"terms": {"video_id": sorted(video_ids)}}] if video_ids else [],
                     # =========================================================
                     # TẦNG 1 — RECALL FILTER (bắt buộc)
                     # Chỉ cần khớp 50% số token là lọt vào tập kết quả.

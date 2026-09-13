@@ -1,6 +1,6 @@
-"""Evaluate a configured vi->en backend on the small ground-truth set.
+"""Evaluate Google vi->en translation on the small ground-truth set.
 Reports corpus BLEU-4 (with add-one smoothing) and character F-score.
-Usage: python scripts/evaluate_translation.py --agent vi2en
+Usage: python scripts/evaluate_translation.py
 """
 from __future__ import annotations
 import argparse, json, math, re, sys
@@ -31,13 +31,14 @@ def chrf(refs, hyps):
         fs.append(2*p*q/max(p+q,1e-12))
     return 100*sum(fs)/len(fs)
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument("--agent",default="vi2en"); ap.add_argument("--data",default=str(ROOT/"data/translation/vi_en_ground_truth.jsonl")); args=ap.parse_args()
+    ap=argparse.ArgumentParser(); ap.add_argument("--data",default=str(ROOT/"data/translation/vi_en_ground_truth.jsonl")); args=ap.parse_args()
     from src.translation.factory import get_translator
     rows=[json.loads(x) for x in Path(args.data).read_text(encoding="utf-8").splitlines() if x.strip()]
-    # Keep evaluator independent of yaml parser details while using the production factory.
-    cfg={"translate_agent":args.agent,"translate":{"vi2en":{}}}
+    # Use the same Google-only production factory. The API key is read from
+    # GOOGLE_TRANSLATE_API_KEY.
+    cfg={"translate":{"google":{}}}
     translator=get_translator(cfg, ROOT)
     hyps=translator.translate_batch([r["vi"] for r in rows])
     refs=[r["en"] for r in rows]
-    print(json.dumps({"agent":args.agent,"samples":len(rows),"BLEU":round(bleu(refs,hyps),2),"chrF":round(chrf(refs,hyps),2)},ensure_ascii=False))
+    print(json.dumps({"provider":"google","samples":len(rows),"BLEU":round(bleu(refs,hyps),2),"chrF":round(chrf(refs,hyps),2)},ensure_ascii=False))
 if __name__ == "__main__": main()

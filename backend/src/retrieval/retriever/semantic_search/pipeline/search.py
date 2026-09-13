@@ -22,6 +22,20 @@ from threading import RLock
 
 import numpy as np
 import pandas as pd
+from numba import njit, prange
+from src.retrieval.retriever.common.video_filter import video_ids_context, filtered_faiss_search
+
+
+DEFAULT_MULTI_QUERY_BETA = 0.8
+
+
+def semantic_alignment_scores(
+    candidate_similarities: np.ndarray,
+    beta: float = DEFAULT_MULTI_QUERY_BETA,
+) -> np.ndarray:
+    """Apply the canonical semantic scoring policy to a dense query/candidate matrix."""
+    similarities = np.asarray(candidate_similarities, dtype=np.float32)
+    return np.mean(np.exp(float(beta) * (similarities - 1.0)), axis=0)
 
 
 def clean_queries(queries: list[str]) -> list[str]:
@@ -42,7 +56,7 @@ def clean_queries(queries: list[str]) -> list[str]:
     return cleaned
 
 
-def faiss_search(index, search_lock: RLock, embeddings: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+def faiss_search(index, search_lock: RLock, embeddings: np.ndarray, k: int, metadata_records=None) -> tuple[np.ndarray, np.ndarray]:
     """Execute a thread-safe FAISS similarity search against an already-built index.
 
     Pure search-algorithm step: takes the already-loaded `faiss.Index` and an
@@ -50,17 +64,19 @@ def faiss_search(index, search_lock: RLock, embeddings: np.ndarray, k: int) -> t
     """
     k = min(max(1, int(k)), index.ntotal)
     embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
+    if video_ids_context.get():
+        return filtered_faiss_search(index, search_lock, embeddings, k, metadata_records)
     with search_lock:
         return index.search(embeddings, k)
 
 
 def results_for_queries(
-    index, search_lock: RLock, embeddings: np.ndarray, candidate_k: int
+    index, search_lock: RLock, embeddings: np.ndarray, candidate_k: int, metadata_records=None
 ) -> tuple[np.ndarray, np.ndarray]:
     """Retrieve raw FAISS scores and indices for a batch of query embeddings."""
     if embeddings.size == 0:
         return np.empty((0, 0), np.float32), np.empty((0, 0), np.int64)
-    return faiss_search(index, search_lock, embeddings, candidate_k)
+    return faiss_search(index, search_lock, embeddings, candidate_k, metadata_records)
 
 
 def aggregate_multi_query(
@@ -69,6 +85,8 @@ def aggregate_multi_query(
     queries: list[str],
     top_k: int,
     metadata_records: list[dict],
+    candidate_similarities: np.ndarray | None = None,
+    beta: float = DEFAULT_MULTI_QUERY_BETA,
 ) -> pd.DataFrame:
     """Aggregate and rank multi-query FAISS results using vectorized NumPy ops.
 
@@ -79,6 +97,13 @@ def aggregate_multi_query(
         top_k: Number of top results to return.
         metadata_records: `SemanticIndex._metadata_records` — one dict per
             FAISS row, keyed by FAISS id (positional).
+        candidate_similarities: Dense matrix with shape
+            ``(n_queries, n_unique_candidates)``.  Column order must match
+            the ascending FAISS IDs in ``indices``.  Supplying this matrix
+            lets every candidate be scored against every query, including
+            queries for which it did not enter the FAISS candidate pool.
+        beta: Exponential scaling factor in the multi-query score. Defaults
+            to ``0.8``.
 
     Returns:
         A DataFrame containing the aggregated, ranked metadata records.
@@ -119,7 +144,23 @@ def aggregate_multi_query(
     matched = 1 + extra_unique_q
 
     coverage = matched.astype(np.float32) / max(1, n_queries)
-    alignment = 0.8 * avg_score + 0.2 * coverage
+
+    # Smooth multi-query score requested by the retrieval policy:
+    #     score(I) = 1 / |Q| * sum(exp(beta * (sim(q, I) - 1)))  for q in Q
+    if candidate_similarities is None:
+        raise ValueError(
+            "candidate_similarities is required: sparse multi-query scores "
+            "are not comparable across candidates"
+        )
+
+    candidate_similarities = np.asarray(candidate_similarities, dtype=np.float32)
+    expected_shape = (n_queries, len(unique_ids))
+    if candidate_similarities.shape != expected_shape:
+        raise ValueError(
+            "candidate_similarities shape mismatch: "
+            f"got {candidate_similarities.shape}, expected {expected_shape}"
+        )
+    alignment = semantic_alignment_scores(candidate_similarities, beta)
 
     rank_order = np.argsort(-alignment, kind="stable")[:top_k]
 
@@ -131,6 +172,7 @@ def aggregate_multi_query(
         item["max_score"] = float(max_score[pos])
         item["matched_queries"] = int(matched[pos])
         item["coverage_score"] = float(coverage[pos])
+        item["exp_mean_score"] = float(alignment[pos])
         item["alignment_score"] = float(alignment[pos])
         item["retrieval_score"] = float(alignment[pos])
         item["display_rank"] = display_rank
@@ -138,6 +180,110 @@ def aggregate_multi_query(
         rows.append(item)
 
     return pd.DataFrame.from_records(rows)
+
+
+@njit(parallel=True, fastmath=True, nogil=True, cache=True)
+def _fill_missing_similarities_numba(
+    query_embeddings: np.ndarray,
+    candidate_vectors: np.ndarray,
+    similarities: np.ndarray,
+    known: np.ndarray,
+) -> None:
+    """Fill unknown query/candidate dot products in parallel, in place."""
+    n_queries, dimension = query_embeddings.shape
+    n_candidates = candidate_vectors.shape[0]
+    for pair_idx in prange(n_queries * n_candidates):
+        query_idx = pair_idx // n_candidates
+        candidate_idx = pair_idx - query_idx * n_candidates
+        if known[query_idx, candidate_idx]:
+            continue
+
+        dot = np.float32(0.0)
+        for dim_idx in range(dimension):
+            dot += (
+                query_embeddings[query_idx, dim_idx]
+                * candidate_vectors[candidate_idx, dim_idx]
+            )
+        similarities[query_idx, candidate_idx] = dot
+
+
+def similarities_for_candidates(
+    index,
+    search_lock: RLock,
+    query_embeddings: np.ndarray,
+    candidate_ids: np.ndarray,
+    index_vectors: np.ndarray | np.memmap | None = None,
+    known_scores: np.ndarray | None = None,
+    known_indices: np.ndarray | None = None,
+) -> np.ndarray:
+    """Compute ``sim(q, I)`` for every query/candidate pair.
+
+    Candidate generation remains approximate/top-k FAISS search, but ranking
+    needs a dense score matrix so a candidate is evaluated against all of Q.
+    Scores already returned by FAISS are reused. A parallel Numba kernel only
+    computes the missing pairs in the query-by-candidate matrix. Prefer the
+    configured vector cache and reconstruct only the small union of candidates
+    when no cache is available.
+    """
+    candidate_ids = np.asarray(candidate_ids, dtype=np.int64)
+    query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
+    if candidate_ids.size == 0:
+        return np.empty((len(query_embeddings), 0), dtype=np.float32)
+
+    if index_vectors is not None:
+        if np.any(candidate_ids < 0) or np.any(candidate_ids >= len(index_vectors)):
+            raise IndexError("Invalid FAISS ID while scoring multi-query candidates")
+        candidate_vectors = np.asarray(index_vectors[candidate_ids], dtype=np.float32)
+    else:
+        candidate_vectors = np.empty((len(candidate_ids), index.d), dtype=np.float32)
+        with search_lock:
+            for row, candidate_id in enumerate(candidate_ids):
+                candidate_vectors[row] = index.reconstruct(int(candidate_id))
+
+    candidate_vectors = np.ascontiguousarray(candidate_vectors, dtype=np.float32)
+    if candidate_vectors.ndim != 2 or query_embeddings.ndim != 2:
+        raise ValueError("query_embeddings and candidate vectors must be 2-D")
+    if query_embeddings.shape[1] != candidate_vectors.shape[1]:
+        raise ValueError(
+            "Embedding dimension mismatch: "
+            f"queries={query_embeddings.shape[1]}, candidates={candidate_vectors.shape[1]}"
+        )
+
+    similarities = np.empty(
+        (len(query_embeddings), len(candidate_ids)), dtype=np.float32
+    )
+    known = np.zeros(similarities.shape, dtype=np.bool_)
+
+    if known_scores is not None or known_indices is not None:
+        if known_scores is None or known_indices is None:
+            raise ValueError("known_scores and known_indices must be provided together")
+        known_scores = np.asarray(known_scores, dtype=np.float32)
+        known_indices = np.asarray(known_indices, dtype=np.int64)
+        if known_scores.shape != known_indices.shape:
+            raise ValueError("known_scores and known_indices shape mismatch")
+        if known_indices.ndim != 2 or known_indices.shape[0] != len(query_embeddings):
+            raise ValueError("FAISS result rows must align 1:1 with query embeddings")
+
+        valid = known_indices >= 0
+        query_rows = np.broadcast_to(
+            np.arange(len(query_embeddings), dtype=np.int64)[:, None],
+            known_indices.shape,
+        )[valid]
+        candidate_columns = np.searchsorted(candidate_ids, known_indices[valid])
+        in_union = candidate_columns < len(candidate_ids)
+        in_union[in_union] &= (
+            candidate_ids[candidate_columns[in_union]] == known_indices[valid][in_union]
+        )
+        query_rows = query_rows[in_union]
+        candidate_columns = candidate_columns[in_union]
+        similarities[query_rows, candidate_columns] = known_scores[valid][in_union]
+        known[query_rows, candidate_columns] = True
+
+    if not np.all(known):
+        _fill_missing_similarities_numba(
+            query_embeddings, candidate_vectors, similarities, known
+        )
+    return similarities
 
 
 def multi_query_search(
@@ -148,6 +294,8 @@ def multi_query_search(
     embeddings: np.ndarray,
     top_k: int = 10,
     candidate_k: int | None = None,
+    index_vectors: np.ndarray | np.memmap | None = None,
+    beta: float = DEFAULT_MULTI_QUERY_BETA,
 ) -> pd.DataFrame:
     """Execute a multi-query FAISS search and aggregate the results.
 
@@ -172,8 +320,26 @@ def multi_query_search(
     if not queries:
         return pd.DataFrame()
     candidate_k = max(int(candidate_k or top_k), int(top_k))
-    scores, indices = results_for_queries(index, search_lock, embeddings, candidate_k)
-    return aggregate_multi_query(scores, indices, queries, int(top_k), metadata_records)
+    scores, indices = results_for_queries(index, search_lock, embeddings, candidate_k, metadata_records)
+    valid_candidate_ids = np.unique(indices[indices >= 0]).astype(np.int64, copy=False)
+    candidate_similarities = similarities_for_candidates(
+        index,
+        search_lock,
+        embeddings,
+        valid_candidate_ids,
+        index_vectors,
+        known_scores=scores,
+        known_indices=indices,
+    )
+    return aggregate_multi_query(
+        scores,
+        indices,
+        queries,
+        int(top_k),
+        metadata_records,
+        candidate_similarities=candidate_similarities,
+        beta=beta,
+    )
 
 
 def image_similarity_search(
@@ -185,7 +351,7 @@ def image_similarity_search(
     top_k: int = 20,
 ) -> pd.DataFrame:
     """Execute an image-to-image similarity search from an already-encoded query embedding."""
-    scores, indices = faiss_search(index, search_lock, image_embedding, top_k)
+    scores, indices = faiss_search(index, search_lock, image_embedding, top_k, metadata_records)
     rows = []
     for rank, idx in enumerate(indices[0], 1):
         if idx < 0:
@@ -226,6 +392,67 @@ class SearchPipeline:
         get = getattr(self.index, "get", None)
         return get(model_key) if callable(get) else self.index
 
+    def score_candidates(
+        self,
+        queries: list[str],
+        candidates: pd.DataFrame,
+        model_key: str | None = None,
+        beta: float = DEFAULT_MULTI_QUERY_BETA,
+    ) -> pd.DataFrame:
+        """Score an externally supplied frame pool with one semantic model.
+
+        This is used for cross-model fusion: candidates are generated by the
+        union of all models, then every model evaluates every candidate in its
+        own embedding space.  Frame identities are resolved through metadata,
+        so FAISS row ordering need not match between model indexes.
+        """
+        index = self._resolve(model_key)
+        queries = clean_queries(queries)
+        if not queries or candidates is None or candidates.empty:
+            return pd.DataFrame()
+
+        frame_col = "keyframe_id_int" if "keyframe_id_int" in candidates.columns else "keyframe_id"
+        if "video_id" not in candidates.columns or frame_col not in candidates.columns:
+            raise ValueError("semantic candidates require video_id and keyframe_id")
+
+        rows: list[dict] = []
+        candidate_ids: list[int] = []
+        seen: set[tuple[str, int]] = set()
+        for record in candidates.to_dict(orient="records"):
+            try:
+                frame_id = int(float(record.get(frame_col)))
+            except (TypeError, ValueError):
+                continue
+            identity = (str(record.get("video_id")), frame_id)
+            if identity in seen:
+                continue
+            row_id = index._row_by_video_frame.get(identity)
+            if row_id is None:
+                continue
+            seen.add(identity)
+            candidate_ids.append(int(row_id))
+            rows.append(index.metadata_records[int(row_id)].copy())
+
+        if not candidate_ids:
+            return pd.DataFrame()
+        query_embeddings = index.encode_texts(queries)
+        similarities = similarities_for_candidates(
+            index.index,
+            index.search_lock,
+            query_embeddings,
+            np.asarray(candidate_ids, dtype=np.int64),
+            index.index_vectors,
+        )
+        # Use exactly the same exponential-mean policy as regular semantic
+        # search before applying cross-model weights in the orchestrator.
+        fused_scores = semantic_alignment_scores(similarities, beta)
+        result = pd.DataFrame.from_records(rows)
+        result["retrieval_score"] = fused_scores.astype(float)
+        result["alignment_score"] = result["retrieval_score"]
+        result["model_key"] = index.model_key
+        result["search_mode"] = "semantic"
+        return result
+
     def multi_query_search(
         self,
         queries: list[str],
@@ -233,6 +460,7 @@ class SearchPipeline:
         candidate_k: int | None = None,
         query_embeddings: np.ndarray | None = None,
         model_key: str | None = None,
+        beta: float = DEFAULT_MULTI_QUERY_BETA,
     ) -> pd.DataFrame:
         index = self._resolve(model_key)
         if query_embeddings is not None:
@@ -256,6 +484,8 @@ class SearchPipeline:
             embeddings,
             top_k,
             candidate_k,
+            index.index_vectors,
+            beta,
         )
         if not df.empty:
             df["model_key"] = index.model_key
@@ -279,6 +509,7 @@ class SearchPipeline:
         top_k: int = 10,
         candidate_k: int = 500,
         model_key: str | None = None,
+        beta: float = DEFAULT_MULTI_QUERY_BETA,
     ) -> pd.DataFrame:
         """Search theo danh sách event (mỗi event là list sub-query), dùng cho
         `mode="semantic"` của orchestrator.
@@ -291,8 +522,12 @@ class SearchPipeline:
             model_key: Model nào để search (chỉ có ý nghĩa khi pipeline được
                 build trên 1 `IndexManager` nhiều model); bỏ trống = model
                 mặc định.
+            beta: Hệ số điều chỉnh hàm mũ trong điểm multiple-query; mặc định
+                là ``0.8``.
         """
         index = self._resolve(model_key)
         queries = clean_queries([query for event in events for query in event])
         embeddings = index.encode_texts(queries)
-        return self.multi_query_search(queries, top_k, candidate_k, embeddings, model_key=model_key)
+        return self.multi_query_search(
+            queries, top_k, candidate_k, embeddings, model_key=model_key, beta=beta
+        )

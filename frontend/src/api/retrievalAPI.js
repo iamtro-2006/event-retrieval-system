@@ -24,6 +24,42 @@ function apiUrl(path) {
   return `${API_BASE_URL}/${String(path).replace(/^\/+/, "")}`;
 }
 
+function explicitQueryPlan(query) {
+  const pieces = String(query || "").split(/\b(AND|THEN)\b/);
+  const clauses = [String(pieces[0] || "").trim()];
+  const connectors = [];
+  const events = [[]];
+  if (clauses[0]) events[0].push(clauses[0]);
+  for (let index = 1; index < pieces.length; index += 2) {
+    const connector = pieces[index];
+    const clause = String(pieces[index + 1] || "").trim();
+    connectors.push(connector);
+    clauses.push(clause);
+    if (connector === "THEN") events.push([]);
+    if (clause) events.at(-1).push(clause);
+  }
+  return { clauses, connectors, events: events.filter((event) => event.length) };
+}
+
+function logQueryInput(label, requestId, { query, mode, translate, multimodalClauses }) {
+  if (import.meta.env.VITE_DEBUG_API_RESPONSES === "false") return;
+  const plan = explicitQueryPlan(query);
+  console.groupCollapsed(`[QUERY ${label} ${requestId}] explicit plan`);
+  console.log("original_query", query);
+  console.log("mode_requested", mode);
+  console.log("connectors", plan.connectors);
+  console.log("clauses_before_translation", plan.clauses);
+  console.log("events_before_translation", plan.events);
+  console.log("translation", {
+    enabled: Boolean(translate),
+    requests: translate ? 1 : 0,
+    batch_size: translate ? plan.clauses.filter(Boolean).length : 0,
+  });
+  console.log("reasoning", "disconnected");
+  if (multimodalClauses) console.table(multimodalClauses);
+  console.groupEnd();
+}
+
 // Temporary diagnostic trace for the search contract.  Keep this at the API
 // boundary so every POST response can be inspected before normalization and
 // compared with the shape consumed by the UI (frame vs sequence, including
@@ -52,14 +88,45 @@ function logApiResponse(label, requestId, data) {
     matched_texts: Array.isArray(item?.matched_texts) ? item.matched_texts.join(" | ") : "",
   })));
   console.log("raw", data);
-  console.groupCollapsed("diagnostic: query reasoning / fusion");
+  console.groupCollapsed("diagnostic: explicit query plan");
+  console.log("original_query", data?.original_query ?? "not returned");
+  console.log("translated_query", data?.translated_query ?? "not translated");
+  console.log("effective_mode", data?.mode ?? data?.search_mode ?? "not returned");
   console.log("weights", data?.weights ?? data?.debug?.weights ?? "not returned");
   console.log("events", data?.events ?? data?.query_plan?.events ?? data?.debug?.events ?? "not returned");
   console.log("event_queries", data?.event_queries ?? data?.debug?.event_queries ?? "not returned");
+  console.log("candidate_pool", {
+    candidate_k: data?.candidate_k ?? data?.debug?.candidate_k ?? "not returned",
+    universe_size: data?.candidate_universe_size ?? data?.debug?.candidate_universe_size ?? "not returned",
+    per_event: data?.event_candidate_counts ?? data?.debug?.event_candidate_counts ?? "not returned",
+  });
   console.log("focused_queries", data?.focused_queries ?? data?.debug?.focused_queries ?? "not returned");
-  console.log("reasoning", data?.reasoning ?? data?.debug?.reasoning ?? "not returned");
+  console.log("reasoning", "disconnected");
   console.groupEnd();
   console.groupEnd();
+}
+
+function assertModelIsolation(data, requestedModelKey, label) {
+  if (!requestedModelKey) return;
+
+  const responseModelKey = String(data?.model_key || "");
+  if (responseModelKey !== requestedModelKey) {
+    throw new Error(
+      `${label}: backend trả model '${responseModelKey || "không xác định"}' ` +
+      `thay vì model đã chọn '${requestedModelKey}'. Hãy restart cả backend và frontend.`
+    );
+  }
+
+  const mismatched = (Array.isArray(data?.results) ? data.results : []).find((item) => {
+    const actual = String(item?.model_key || item?.raw?.model_key || "");
+    return actual !== requestedModelKey;
+  });
+  if (mismatched) {
+    const actual = mismatched?.model_key || mismatched?.raw?.model_key || "không xác định";
+    throw new Error(
+      `${label}: phát hiện kết quả từ model '${actual}' trong nhánh '${requestedModelKey}'.`
+    );
+  }
 }
 
 function joinBaseUrl(baseUrl, relPath) {
@@ -118,8 +185,8 @@ export async function searchRetrieval({
   useSplit = true,
   useTranslate = true,
   searchMode = "semantic",
+  modelKey,
   durationLimit = -1,
-  translateProvider = "google",
   reasoning = false,
 }) {
   if (activeSearchController) {
@@ -138,15 +205,20 @@ export async function searchRetrieval({
     use_split: useSplit,
     reasoning,
     use_translate: useTranslate,
-    translate_provider: translateProvider,
-    translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
+    translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
     search_mode: searchMode,
+    model_key: modelKey,
     duration_limit: durationLimit,
   };
 
   const t0 = performance.now();
 
-  console.log(`[SEARCH ${requestId}] payload`, payload);
+  logQueryInput("search", requestId, {
+    query,
+    mode: searchMode,
+    translate: useTranslate,
+  });
+  console.log(`[SEARCH ${requestId}] payload`, { ...payload, translate_api_key: payload.translate_api_key ? "[configured]" : null });
 
   try {
     const response = await fetch(apiUrl("/api/search"), {
@@ -174,6 +246,9 @@ export async function searchRetrieval({
     const t2 = performance.now();
 
     logApiResponse("search", requestId, data);
+    if (["semantic", "temporal", "auto"].includes(searchMode)) {
+      assertModelIsolation(data, modelKey, "Search");
+    }
 
     if (requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
@@ -233,6 +308,110 @@ export async function searchRetrieval({
   }
 }
 
+export async function searchMultimodalRetrieval({
+  query = "",
+  clauses = [],
+  queryConnectors = [],
+  clauseImages = [],
+  topK = 20,
+  candidateMultiplier,
+  useSplit = true,
+  useTranslate = true,
+  searchMode = "semantic",
+  durationLimit = -1,
+  modelKey,
+}) {
+  if (activeSearchController) activeSearchController.abort();
+  const controller = new AbortController();
+  activeSearchController = controller;
+  const requestId = ++activeSearchRequestId;
+  const formData = new FormData();
+  const flatImages = [];
+  const clausePayload = clauses.map((text, clauseIndex) => {
+    const imageIndices = [];
+    for (const attachment of clauseImages[clauseIndex] ?? []) {
+      imageIndices.push(flatImages.length);
+      flatImages.push(attachment.file);
+    }
+    return {
+      text: String(text || "").trim(),
+      image_indices: imageIndices,
+      connector_before: clauseIndex > 0 ? (queryConnectors[clauseIndex - 1] || "AND") : null,
+    };
+  });
+
+  formData.append("request_json", JSON.stringify({
+    query,
+    clauses: clausePayload,
+    top_k: topK,
+    candidate_multiplier: candidateMultiplier,
+    use_split: useSplit,
+    use_translate: useTranslate,
+    translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
+    search_mode: searchMode,
+    duration_limit: durationLimit,
+    model_key: modelKey,
+  }));
+  flatImages.forEach((file) => formData.append("images", file, file.name || "query-image"));
+
+  const t0 = performance.now();
+  let eventIndex = 0;
+  const multimodalDiagnostic = clausePayload.flatMap((clause, clauseIndex) => {
+    if (clauseIndex > 0 && clause.connector_before === "THEN") eventIndex += 1;
+    const rows = [{
+      event: eventIndex + 1,
+      position: clauseIndex + 1,
+      connector_before: clause.connector_before || "START",
+      type: "text",
+      value: clause.text || "(empty)",
+    }];
+    clause.image_indices.forEach((imageIndex) => rows.push({
+      event: eventIndex + 1,
+      position: clauseIndex + 1,
+      connector_before: "same clause",
+      type: "image",
+      value: `image-${imageIndex + 1}`,
+    }));
+    return rows;
+  });
+  logQueryInput("multimodal", requestId, {
+    query,
+    mode: searchMode,
+    translate: useTranslate,
+    multimodalClauses: multimodalDiagnostic,
+  });
+  try {
+    const response = await fetch(apiUrl("/api/search/multimodal"), {
+      method: "POST",
+      headers: NGROK_HEADER,
+      body: formData,
+      signal: controller.signal,
+    });
+    if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
+    if (!response.ok) {
+      let message = await response.text();
+      try { message = JSON.parse(message)?.detail || message; } catch { /* keep response text */ }
+      throw new Error(message || "Multimodal search failed");
+    }
+    const data = await response.json();
+    if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
+    assertModelIsolation(data, modelKey, "Multimodal search");
+    logApiResponse("multimodal", requestId, data);
+    const results = normalizeResults(data.results ?? []);
+    return {
+      query: data.query || query || "Image query",
+      subQueries: data.sub_queries ?? [],
+      latencyMs: data.latency_ms ?? Math.round(performance.now() - t0),
+      count: data.count ?? results.length,
+      searchMode: data.search_mode ?? searchMode,
+      durationLimit: data.duration_limit ?? durationLimit,
+      results,
+    };
+  } finally {
+    if (activeSearchController === controller) activeSearchController = null;
+  }
+}
+
 function createStaleSearchError(requestId) {
   const error = new Error(`Stale search ignored: ${requestId}`);
   error.name = "StaleSearchError";
@@ -246,7 +425,6 @@ export async function searchFusion({
   useSplit = true,
   useTranslate = true,
   fusionConfig,
-  translateProvider = "google",
   reasoning = false,
 }) {
   if (activeSearchController) {
@@ -270,17 +448,22 @@ export async function searchFusion({
     candidate_multiplier: candidateMultiplier,
     use_split: useSplit,
     weights: fusionConfig?.weights ?? undefined,
+    semantic_lambda: Number(fusionConfig?.semanticLambda ?? 0.5),
     reasoning,
     use_translate: useTranslate,
-    translate_provider: translateProvider,
-    translate_api_key: translateProvider === "google" ? import.meta.env.VITE_GOOGLE_TRANSLATE : import.meta.env.VITE_LLM_TRANSLATE_API_KEY,
+    translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
     duration_limit: fusionConfig?.temporal ? Number(fusionConfig?.durationLimit ?? -1) : -1,
   };
 
   const t0 = performance.now();
-  console.log(`[FUSION SEARCH ${requestId}] payload`, payload);
-  console.groupCollapsed(`[FUSION SEARCH ${requestId}] reasoning input`);
-  console.log("reasoning", reasoning);
+  logQueryInput("fusion", requestId, {
+    query,
+    mode: fusionConfig?.temporal ? "temporal fusion" : "fusion",
+    translate: useTranslate,
+  });
+  console.log(`[FUSION SEARCH ${requestId}] payload`, { ...payload, translate_api_key: payload.translate_api_key ? "[configured]" : null });
+  console.groupCollapsed(`[FUSION SEARCH ${requestId}] source configuration`);
+  console.log("reasoning", "disconnected");
   console.log("weights sent", payload.weights);
   console.log("enabled sources", { semantic: semanticModels.length > 0, ocr: payload.use_ocr, asr: payload.use_asr, temporal: payload.temporal });
   console.groupEnd();
@@ -431,6 +614,9 @@ function normalizeResults(results) {
       similarity: Number.isFinite(similarity) ? similarity : 0,
       caption: item.caption || "",
       rank: safeNumber(item.rank, index + 1),
+      model_key: item.model_key || raw.model_key || "",
+      search_mode: item.search_mode || raw.search_mode || "",
+      source_models: item.source_models ?? raw.source_models ?? [],
       matched_sequence: matchedSequence,
       // OCR/ASR-only: the on-screen text or transcript snippet that matched
       // the query. Empty for semantic/temporal results.
@@ -558,11 +744,13 @@ export async function similaritySearch({
   videoId,
   frameId,
   topK = 20,
+  modelKey,
 }) {
   const payload = {
     video_id: videoId,
     frame_id: Number(frameId),
     top_k: topK,
+    model_key: modelKey,
   };
 
   const t0 = performance.now();
@@ -583,7 +771,8 @@ export async function similaritySearch({
     throw new Error(errorText || "Similarity search failed");
   }
 
-  const data = await response.json();
+    const data = await response.json();
+  assertModelIsolation(data, modelKey, "Similarity search");
   const normalizedResults = normalizeResults(data.results ?? []);
 
   console.table({

@@ -1,10 +1,12 @@
-import { Plus, Search, Mic, Zap, Settings2 } from "lucide-react";
+import { Plus, Search, Mic, Zap, Settings2, X } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import FusionSettingsModal from "./FusionSettingsModal";
 
 const FALLBACK_MODELS = ["siglip2-so400m", "vitH-378-quickgelu"];
 
 export default function SearchBar({
+  query = "",
+  theme = "dark",
   model,
   mode,
   loading,
@@ -12,18 +14,22 @@ export default function SearchBar({
   durationLimit = -1,
   reasoningEnabled = false,
   availableModels = [],
+  semanticModelRoles,
   fusionConfig,
-  translateProvider = "google",
+  queryClauses = [""],
+  queryConnectors = [],
+  clauseImages = [[]],
   onModelChange,
   onModeChange,
   onDurationLimitChange,
   onReasoningToggle,
   onFusionConfigChange,
-  onTranslateProviderChange,
+  onQueryChange,
+  onAddClauseImages,
+  onRemoveClauseImage,
   expandedByDefault = false,
   onSearch,
 }) {
-  const [query, setQuery] = useState("");
   const [recording, setRecording] = useState(false);
   const [fusionModalOpen, setFusionModalOpen] = useState(false);
   // The home composer starts expanded; the bottom composer starts compact
@@ -35,12 +41,16 @@ export default function SearchBar({
 
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
+  const fileInputRef = useRef(null);
   const committedTranscriptRef = useRef("");
+  const activeInlineClauseRef = useRef(0);
+  const inlineInputRefs = useRef([]);
 
   const isTemporal = mode === "temporal";
   const isOcr = mode === "ocr";
   const isAsr = mode === "asr";
   const isFusion = mode === "fusion";
+  const hasQueryImages = clauseImages.some((items) => items.length > 0);
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -87,7 +97,6 @@ export default function SearchBar({
 
   useEffect(() => {
     return () => stopBrowserSpeech();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function resolveSearchMode() {
@@ -97,15 +106,63 @@ export default function SearchBar({
 
   function runSearch(nextQuery) {
     const cleanQuery = String(nextQuery || "").trim();
-    if (!cleanQuery || loading || disabled) return;
+    if ((!cleanQuery && !hasQueryImages) || loading || disabled) return;
     const searchMode = resolveSearchMode();
     onSearch({
       query: cleanQuery,
       searchMode,
       durationLimit: searchMode === "temporal" ? Number(durationLimit) : -1,
       fusionConfig: searchMode === "fusion" ? fusionConfig : null,
-      reasoning: searchMode === "temporal" || searchMode === "fusion" ? reasoningEnabled : false,
+      reasoning: false,
     });
+  }
+
+  function activeClauseIndex() {
+    if (hasQueryImages) {
+      return Math.max(0, Math.min(activeInlineClauseRef.current, queryClauses.length - 1));
+    }
+    const caret = textareaRef.current?.selectionStart ?? query.length;
+    const beforeCaret = query.slice(0, caret);
+    const separatorPattern = /\b(?:AND|THEN)\b/g;
+    const separators = beforeCaret.match(separatorPattern);
+    const clauseIndex = Math.min(separators?.length ?? 0, Math.max(0, queryClauses.length - 1));
+    const lastAnd = beforeCaret.lastIndexOf(" AND ");
+    const lastThen = beforeCaret.lastIndexOf(" THEN ");
+    const segmentStart = Math.max(lastAnd, lastThen) + 1;
+    // Pasting immediately after a delimiter means “insert before the next
+    // text clause”. Store it after the previous clause so the flattened
+    // query order is text → image → next text.
+    if (!beforeCaret.slice(segmentStart).trim() && clauseIndex > 0) return clauseIndex - 1;
+    return clauseIndex;
+  }
+
+  function attachFiles(files) {
+    onAddClauseImages?.(activeClauseIndex(), files);
+  }
+
+  function imageQueryPosition(clauseIndex, imageIndex) {
+    let position = 1;
+    for (let index = 0; index < clauseIndex; index += 1) {
+      position += (queryClauses[index]?.trim() ? 1 : 0) + (clauseImages[index]?.length ?? 0);
+    }
+    return position + (queryClauses[clauseIndex]?.trim() ? 1 : 0) + imageIndex;
+  }
+
+  function updateInlineClause(clauseIndex, value) {
+    const nextClauses = queryClauses.map((clause, index) => index === clauseIndex ? value : clause);
+    let nextQuery = String(nextClauses[0] || "");
+    for (let index = 1; index < nextClauses.length; index += 1) {
+      nextQuery += ` ${queryConnectors[index - 1] || "AND"} ${nextClauses[index] || ""}`;
+    }
+    committedTranscriptRef.current = nextQuery;
+    onQueryChange?.(nextQuery);
+  }
+
+  function handlePaste(event) {
+    const images = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
+    if (!images.length) return;
+    event.preventDefault();
+    attachFiles(images);
   }
 
   function handleSubmit(e) {
@@ -114,6 +171,43 @@ export default function SearchBar({
   }
 
   function handleKeyDown(e) {
+    const noCommandModifier = !e.ctrlKey && !e.metaKey && !e.altKey;
+    const addSemantic = e.shiftKey && noCommandModifier && (
+      e.key === "+" || e.key === ":" || e.code === "Equal"
+    );
+    const addTemporal = e.shiftKey && noCommandModifier && (
+      e.key === "|" || e.code === "Backslash"
+    );
+    const undoClause = e.shiftKey && noCommandModifier && (
+      e.key === "_" || e.key === "-" || e.code === "Minus"
+    );
+
+    if (addSemantic || addTemporal) {
+      e.preventDefault();
+      const connector = addSemantic ? "AND" : "THEN";
+      const base = query.trimEnd();
+      activeInlineClauseRef.current = queryClauses.length;
+      onQueryChange?.(`${base}${base ? " " : ""}${connector} `);
+      requestAnimationFrame(() => {
+        const inlineInput = inlineInputRefs.current[queryClauses.length];
+        if (inlineInput) {
+          inlineInput.focus();
+          return;
+        }
+        const end = textareaRef.current?.value.length ?? 0;
+        textareaRef.current?.setSelectionRange(end, end);
+        textareaRef.current?.focus();
+      });
+      return;
+    }
+    if (undoClause) {
+      const matches = [...query.matchAll(/\s+\b(?:AND|THEN)\b\s*/g)];
+      if (matches.length) {
+        e.preventDefault();
+        onQueryChange?.(query.slice(0, matches.at(-1).index).trimEnd());
+      }
+      return;
+    }
     if (e.key === "Enter" && e.shiftKey) return;
     if (e.key === "Enter") {
       e.preventDefault();
@@ -148,7 +242,7 @@ export default function SearchBar({
           .replace(/\s+/g, " ").trim();
       }
       const nextText = `${committedTranscriptRef.current} ${interimText}`.replace(/\s+/g, " ").trim();
-      setQuery(nextText);
+      onQueryChange?.(nextText);
     };
     recognition.onerror = (event) => {
       if (event.error === "network")
@@ -177,13 +271,13 @@ export default function SearchBar({
       className={[
         "search-wrapper",
         loading ? "searching-active" : "",
-        isExpanded ? "expanded" : "",
+        isExpanded || hasQueryImages ? "expanded" : "",
         recording ? "voice-recording-active" : "",
       ].filter(Boolean).join(" ")}
       onSubmit={handleSubmit}
     >
       <div className="search-inner">
-        <textarea
+        {!hasQueryImages ? <textarea
           ref={textareaRef}
           className="search-chat-textarea"
           value={query}
@@ -192,7 +286,7 @@ export default function SearchBar({
             recording
               ? "Đang nghe, nói để nhập truy vấn..."
               : isTemporal
-                ? "Ví dụ: person opens box; reads label..."
+                ? "Ví dụ: person opens box THEN reads label..."
                 : isOcr
                   ? "Nhập chữ xuất hiện trên màn hình (biển hiệu, phụ đề...)..."
                   : isAsr
@@ -203,13 +297,53 @@ export default function SearchBar({
           }
           onChange={(e) => {
             committedTranscriptRef.current = e.target.value;
-            setQuery(e.target.value);
+            onQueryChange?.(e.target.value);
           }}
           onKeyDown={handleKeyDown}
-        />
+          onPaste={handlePaste}
+        /> : (
+          <div className="inline-query-composer" aria-label="Ordered text and image query">
+            {queryClauses.map((clause, clauseIndex) => (
+              <div className="inline-query-clause" key={`clause-${clauseIndex}`}>
+                {clauseIndex > 0 && (
+                  <span className={`inline-query-connector is-${(queryConnectors[clauseIndex - 1] || "AND").toLowerCase()}`}>
+                    {queryConnectors[clauseIndex - 1] || "AND"}
+                  </span>
+                )}
+                <input
+                  ref={(element) => { inlineInputRefs.current[clauseIndex] = element; }}
+                  className="inline-query-text-input"
+                  value={clause}
+                  placeholder={clauseIndex === 0 ? "Nhập query..." : "Query tiếp theo..."}
+                  onFocus={() => { activeInlineClauseRef.current = clauseIndex; }}
+                  onChange={(event) => updateInlineClause(clauseIndex, event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={(event) => {
+                    const images = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
+                    if (!images.length) return;
+                    event.preventDefault();
+                    onAddClauseImages?.(clauseIndex, images);
+                  }}
+                />
+                {(clauseImages[clauseIndex] ?? []).map((item, imageIndex) => (
+                  <div className="query-image-chip" key={item.id} title={`Query ${imageQueryPosition(clauseIndex, imageIndex)}: ${item.name}`}>
+                    <img src={item.url} alt={item.name} />
+                    <span>Q{String(imageQueryPosition(clauseIndex, imageIndex)).padStart(2, "0")}</span>
+                    <button type="button" onClick={() => onRemoveClauseImage?.(clauseIndex, item.id)} aria-label={`Remove ${item.name}`}>
+                      <X size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="search-chat-footer">
-          <button type="button" className="search-icon-button" aria-label="Attach">
+          <input ref={fileInputRef} className="query-image-input" type="file" accept="image/*" multiple
+            onChange={(event) => { attachFiles(event.target.files); event.target.value = ""; }} />
+          <button type="button" className="search-icon-button" aria-label="Attach query image"
+            title="Upload image query" onClick={() => fileInputRef.current?.click()}>
             <Plus size={20} />
           </button>
 
@@ -221,18 +355,6 @@ export default function SearchBar({
                 ))}
               </select>
             )}
-
-            <select
-              className="search-select search-provider-select"
-              value={translateProvider}
-              onChange={(e) => onTranslateProviderChange?.(e.target.value)}
-              title="Translation provider"
-              aria-label="Translation provider"
-            >
-              <option value="google">Google</option>
-              <option value="llm">LLM</option>
-              <option value="envit5">EnViT5</option>
-            </select>
 
             <select className="search-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
               <option value="text">Semantic</option>
@@ -256,15 +378,15 @@ export default function SearchBar({
             )}
 
             {/* ── LLM reasoning toggle ─────────────────────────────────── */}
-            {(isTemporal || isFusion) && (
+            {(
               <button
                 type="button"
                 className={["rerank-tag", reasoningEnabled ? "rerank-tag--active" : ""].filter(Boolean).join(" ")}
                 aria-label={reasoningEnabled ? "Tắt Reasoning" : "Bật Reasoning"}
                 title={
                   reasoningEnabled
-                    ? "LLM reasoning đang bật: temporal order, scene split và focused fusion queries"
-                    : "Bật LLM reasoning cho temporal/fusion"
+                    ? "Reasoning preview đang bật (chưa kết nối search pipeline)"
+                    : "Reasoning preview — hiện chỉ để hiển thị"
                 }
                 onClick={() => onReasoningToggle?.(!reasoningEnabled)}
                 disabled={disabled}
@@ -301,7 +423,7 @@ export default function SearchBar({
             <button
               type="submit"
               className="search-submit"
-              disabled={loading || disabled}
+              disabled={loading || disabled || (!query.trim() && !hasQueryImages)}
               aria-label="Search"
             >
               <Search size={18} />
@@ -311,8 +433,11 @@ export default function SearchBar({
       </div>
 
       <FusionSettingsModal
+        key={fusionModalOpen ? "fusion-open" : "fusion-closed"}
         open={fusionModalOpen}
+        theme={theme}
         models={modelOptions}
+        modelRoles={semanticModelRoles}
         value={fusionConfig}
         onClose={() => setFusionModalOpen(false)}
         onSave={(next) => onFusionConfigChange?.({ ...next, hasConfig: true })}

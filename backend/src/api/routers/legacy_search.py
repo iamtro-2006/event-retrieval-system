@@ -21,12 +21,13 @@ Chỉ khác bản gốc 1 điểm bắt buộc: lấy `RetrievalSystem`/`Orchest
 from __future__ import annotations
 
 import time
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
 from src.api.legacy.deps import get_cfg, get_legacy_index, get_legacy_paths, get_legacy_system
@@ -37,12 +38,115 @@ from src.api.legacy.serializers import (
     resolve_keyframe_path_from_dict,
     safe_int,
 )
-from src.api.legacy.translate import translate_query_if_needed
-from src.api.schemas.legacy import FusionSearchRequest, SearchRequest, SimilaritySearchRequest
+from src.api.legacy.translate import translate_queries_if_needed, translate_query_if_needed
+from src.api.schemas.legacy import (
+    FusionSearchRequest,
+    MultimodalSearchRequest,
+    SearchRequest,
+    SimilaritySearchRequest,
+    ColorSearchRequest,
+)
+from src.color_retrieval.palette import COLOR_NAMES, PALETTE_RGB
+from src.color_retrieval.search import get_color_index
 from src.retrieval.index.faiss_index import FaissIndex
+from src.retrieval.retriever.temporal_search.pipeline.search import temporal_search_from_events
 from src.retrieval.system import RetrievalSystem
+from src.retrieval.retriever.common.video_filter import with_video_filter
 
 router = APIRouter(tags=["legacy-search"])
+
+
+@router.get("/api/video-ids")
+async def get_video_ids(clip_index: FaissIndex = Depends(get_legacy_index)):
+    """Return the unique video IDs in the currently loaded metadata."""
+    values = await run_in_threadpool(lambda: sorted(clip_index._rows_by_video.keys()))
+    return {"video_ids": values, "count": len(values)}
+
+
+@router.get("/api/color/palette")
+async def get_color_palette():
+    return {
+        "grid_size": 5,
+        "colors": [
+            {"name": name, "rgb": [int(channel) for channel in rgb]}
+            for name, rgb in zip(COLOR_NAMES, PALETTE_RGB)
+        ],
+    }
+
+
+@router.post("/api/search/color")
+async def search_color_api(
+    payload: ColorSearchRequest,
+    clip_index: FaissIndex = Depends(get_legacy_index),
+    cfg: dict[str, Any] = Depends(get_cfg),
+    paths: LegacyPaths = Depends(get_legacy_paths),
+):
+    if not payload.cells:
+        raise HTTPException(status_code=422, detail="Select at least one colour cell")
+    cells = [cell.model_dump() if hasattr(cell, "model_dump") else cell.dict() for cell in payload.cells]
+    for cell in cells:
+        if not 0 <= int(cell["row"]) < 5 or not 0 <= int(cell["col"]) < 5:
+            raise HTTPException(status_code=422, detail="Colour cell row/col must be between 0 and 4")
+        if cell["color"] not in COLOR_NAMES:
+            raise HTTPException(status_code=422, detail=f"Unknown colour: {cell['color']}")
+    color_path = Path(cfg.get("color", {}).get("index_path", "data/database/color_5x5.npz"))
+    if not color_path.is_absolute():
+        color_path = paths.backend_dir / color_path
+    top_k = max(1, min(int(payload.top_k or cfg["search"].get("default_top_k", 20)), int(cfg["search"].get("max_top_k", 500))))
+    started = time.perf_counter()
+    try:
+        index = await run_in_threadpool(get_color_index, color_path, clip_index.metadata_records)
+        result_frame = await run_in_threadpool(index.search, clip_index.metadata_records, cells, top_k, payload.video_ids)
+        results = [] if result_frame.empty else await run_in_threadpool(_serialize_result_frame, result_frame, paths)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {
+        "query": "Color: " + ", ".join(f"r{cell['row'] + 1}c{cell['col'] + 1}={cell['color']}" for cell in cells),
+        "search_mode": "color",
+        "count": len(results),
+        "latency_ms": round((time.perf_counter() - started) * 1000),
+        "results": results,
+    }
+
+
+def _require_explicit_model_for_multi_model_search(
+    system: RetrievalSystem, model_key: str | None, *, feature: str
+) -> None:
+    """Never silently fall back to a default when several models are live."""
+    manager = getattr(system.orchestrator, "index_manager", None)
+    if manager is not None and len(manager.text_search_keys()) > 1 and not model_key:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{feature} requires model_key because multiple models are loaded. "
+                f"Available models: {manager.text_search_keys()}"
+            ),
+        )
+
+
+def _normalize_embedding(vectors: list[np.ndarray]) -> np.ndarray:
+    """Fuse text/image evidence belonging to one clause in CLIP space."""
+    vector = np.mean(np.vstack([np.asarray(item).reshape(1, -1) for item in vectors]), axis=0)
+    norm = float(np.linalg.norm(vector))
+    if norm <= 0:
+        raise ValueError("Clause produced a zero-length embedding")
+    return np.ascontiguousarray((vector / norm).reshape(1, -1), dtype=np.float32)
+
+
+def _serialize_result_frame(results_df: pd.DataFrame, paths: LegacyPaths) -> list[dict]:
+    cols_to_keep = [c for c in [
+        "video_id", "keyframe_id", "keyframe_id_int", "frame_idx", "dataset",
+        "keyframe_path", "video_path", "timestamp_sec", "timestamp", "fps",
+        "score", "retrieval_score", "avg_score", "caption", "matched_sequence",
+        "model_key", "search_mode", "source_models",
+        "temporal_start_time", "temporal_end_time", "temporal_duration_sec", "video_score",
+        "matched_texts", "ocr_score", "asr_score", "segment_id",
+        "color_score",
+    ] if c in results_df.columns]
+    records = results_df[cols_to_keep].to_dict(orient="records")
+    return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in records]
 
 
 @router.get("/api/frame-info")
@@ -199,7 +303,7 @@ async def search_api(
     if not original_query:
         raise HTTPException(status_code=400, detail="Query is empty")
 
-    max_top_k = int(cfg["search"].get("max_top_k", 200))
+    max_top_k = int(cfg["search"].get("max_top_k", 500))
     default_top_k = int(cfg["search"].get("default_top_k", 20))
     top_k = max(1, min(int(payload.top_k or default_top_k), max_top_k))
 
@@ -212,6 +316,10 @@ async def search_api(
     )
 
     mode = payload.search_mode
+    if mode in ("semantic", "temporal", "auto"):
+        _require_explicit_model_for_multi_model_search(
+            system, payload.model_key, feature=f"{mode} search"
+        )
     duration_limit = -1.0 if payload.duration_limit is None or payload.duration_limit == 0 else float(payload.duration_limit)
 
     # OCR/ASR search match raw text via Elasticsearch (its own tokenizer/fuzzy
@@ -229,7 +337,6 @@ async def search_api(
             use_translate=should_translate,
             cfg=cfg,
             backend_dir=paths.backend_dir,
-            provider=payload.translate_provider,
             api_key=payload.translate_api_key,
         )
     except Exception as exc:
@@ -237,12 +344,15 @@ async def search_api(
 
     try:
         results_df, query_plan = await run_in_threadpool(
-            orchestrator.run_search, query=search_query, mode=mode, use_split=use_split,
+            with_video_filter, payload.video_ids, orchestrator.run_search, query=search_query, mode=mode, use_split=use_split,
             reasoning=bool(payload.reasoning),
             top_k=top_k, candidate_multiplier=candidate_multiplier, duration_limit=duration_limit,
+            model_key=payload.model_key,
         )
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc).strip('"')) from exc
     except RuntimeError as exc:
         # e.g. OCR requested but Elasticsearch is unavailable/not configured.
         raise HTTPException(status_code=503, detail=str(exc))
@@ -259,6 +369,11 @@ async def search_api(
         "mode": mode, "search_mode": mode,
         "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k, "latency_ms": latency_ms,
+        "model_key": (
+            payload.model_key or orchestrator.index.model_key
+            if mode in ("semantic", "temporal", "auto")
+            else None
+        ),
         "events": query_plan.events, "event_queries": query_plan.event_queries, "sub_queries": query_plan.flat_queries,
     }
 
@@ -271,6 +386,7 @@ async def search_api(
                 "video_id", "keyframe_id", "keyframe_id_int", "frame_idx", "dataset",
                 "keyframe_path", "video_path", "timestamp_sec", "timestamp", "fps",
                 "score", "retrieval_score", "avg_score", "caption", "matched_sequence",
+                "model_key", "search_mode", "source_models",
                 "temporal_start_time", "temporal_end_time", "temporal_duration_sec", "video_score",
                 # OCR-specific columns (see FaissRetrievalSystem._enrich_ocr_hits)
                 "matched_texts", "ocr_score",
@@ -285,6 +401,210 @@ async def search_api(
         raise HTTPException(status_code=500, detail=f"Serialize failed: {type(exc).__name__}: {exc}")
 
     return {**response_base, "count": len(results), "results": results}
+
+
+@router.post("/api/search/multimodal")
+async def search_multimodal_api(
+    request_json: str = Form(...),
+    images: list[UploadFile] = File(default=[]),
+    system: RetrievalSystem = Depends(get_legacy_system),
+    cfg: dict[str, Any] = Depends(get_cfg),
+    paths: LegacyPaths = Depends(get_legacy_paths),
+):
+    """Search CLIP space with text, uploaded images, or a mixture per clause.
+
+    This endpoint is intentionally separate from ``/api/search`` so every
+    existing text/OCR/ASR/fusion request keeps its original contract.
+    """
+    try:
+        validator = getattr(MultimodalSearchRequest, "model_validate_json", None)
+        payload = validator(request_json) if validator else MultimodalSearchRequest.parse_raw(request_json)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid multimodal request: {exc}")
+
+    mode = payload.search_mode or "semantic"
+    if mode not in ("semantic", "temporal", "auto"):
+        raise HTTPException(
+            status_code=400,
+            detail="Image queries are supported in Semantic, Temporal, and Auto modes; remove images to use OCR, ASR, or Fusion.",
+        )
+    _require_explicit_model_for_multi_model_search(
+        system, payload.model_key, feature="multimodal search"
+    )
+    if not payload.clauses:
+        raise HTTPException(status_code=400, detail="At least one query clause is required")
+    if len(images) > 12:
+        raise HTTPException(status_code=413, detail="A maximum of 12 query images is allowed")
+
+    uploaded_bytes: list[bytes] = []
+    uploaded_suffixes: list[str] = []
+    for image in images:
+        if not (image.content_type or "").lower().startswith("image/"):
+            raise HTTPException(status_code=415, detail=f"Unsupported upload type: {image.content_type or 'unknown'}")
+        content = await image.read(10 * 1024 * 1024 + 1)
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"Image '{image.filename}' exceeds 10 MB")
+        if not content:
+            raise HTTPException(status_code=400, detail=f"Image '{image.filename}' is empty")
+        uploaded_bytes.append(content)
+        uploaded_suffixes.append({
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+            "image/bmp": ".bmp",
+        }.get((image.content_type or "").lower(), ".img"))
+
+    referenced = {
+        image_index
+        for clause in payload.clauses
+        for image_index in clause.image_indices
+    }
+    if any(index < 0 or index >= len(uploaded_bytes) for index in referenced):
+        raise HTTPException(status_code=422, detail="A clause references an unknown uploaded image")
+
+    max_top_k = int(cfg["search"].get("max_top_k", 500))
+    default_top_k = int(cfg["search"].get("default_top_k", 20))
+    top_k = max(1, min(int(payload.top_k or default_top_k), max_top_k))
+    candidate_multiplier = max(1, int(payload.candidate_multiplier or cfg["search"].get("candidate_multiplier", 5)))
+    candidate_k = max(top_k * candidate_multiplier, top_k)
+    duration_limit = -1.0 if payload.duration_limit is None or payload.duration_limit == 0 else float(payload.duration_limit)
+    use_translate = (
+        bool(cfg.get("translate", {}).get("enabled_default", False))
+        if payload.use_translate is None
+        else bool(payload.use_translate)
+    )
+    started = time.perf_counter()
+
+    original_clause_texts = [clause.text.strip() for clause in payload.clauses]
+    try:
+        translated_clause_texts = await run_in_threadpool(
+            translate_queries_if_needed,
+            queries=original_clause_texts,
+            use_translate=use_translate,
+            cfg=cfg,
+            backend_dir=paths.backend_dir,
+            api_key=payload.translate_api_key,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
+
+    def _search():
+        semantic_pipeline = system.orchestrator.semantic_search
+        index = semantic_pipeline._resolve(payload.model_key)
+
+        with tempfile.TemporaryDirectory(prefix="vireta-query-") as temp_dir:
+            image_embeddings: list[np.ndarray] = []
+            for image_index, content in enumerate(uploaded_bytes):
+                target = Path(temp_dir) / f"{image_index}{uploaded_suffixes[image_index]}"
+                target.write_bytes(content)
+                image_embeddings.append(index.encode_image(target))
+
+            labels: list[str] = []
+            clause_embeddings: list[np.ndarray] = []
+            temporal_events: list[list[str]] = []
+            for clause_index, clause in enumerate(payload.clauses):
+                original_text = clause.text.strip()
+                text_value = translated_clause_texts[clause_index]
+                if payload.use_split:
+                    # A text fragment and every image occupy independent
+                    # positions, exactly like individual multi-query terms.
+                    current_labels: list[str] = []
+                    current_embeddings: list[np.ndarray] = []
+                    if text_value:
+                        current_labels.append(original_text)
+                        current_embeddings.append(index.encode_texts([text_value]))
+                    for image_index in clause.image_indices:
+                        current_labels.append(f"Image query {image_index + 1}")
+                        current_embeddings.append(image_embeddings[image_index])
+                    if current_labels:
+                        if clause_index > 0 and clause.connector_before == "AND" and temporal_events:
+                            temporal_events[-1].extend(current_labels)
+                        else:
+                            temporal_events.append(current_labels)
+                        labels.extend(current_labels)
+                        clause_embeddings.extend(current_embeddings)
+                else:
+                    # Split OFF means the complete text/image input is one
+                    # query representation and therefore one temporal event.
+                    vectors: list[np.ndarray] = []
+                    if text_value:
+                        vectors.append(index.encode_texts([text_value]))
+                    vectors.extend(image_embeddings[i] for i in clause.image_indices)
+                    if not vectors:
+                        continue
+                    labels.append(original_text or f"Image query {clause_index + 1}")
+                    clause_embeddings.append(_normalize_embedding(vectors))
+                    temporal_events.append([labels[-1]])
+
+            if not clause_embeddings:
+                raise ValueError("Every query clause is empty")
+
+            embeddings = np.ascontiguousarray(np.vstack(clause_embeddings), dtype=np.float32)
+            # Auto switches to temporal only when the explicit grammar created
+            # more than one THEN event. Multiple AND alternatives (including
+            # text + image in one event) remain a semantic multi-query.
+            effective_mode = (
+                "temporal"
+                if mode == "auto" and len(temporal_events) > 1
+                else ("semantic" if mode == "auto" else mode)
+            )
+            if effective_mode == "temporal":
+                results_df = temporal_search_from_events(
+                    index.index,
+                    index.search_lock,
+                    index.metadata_records,
+                    index.index_vectors,
+                    index.allow_npy_fallback,
+                    temporal_events,
+                    embeddings,
+                    top_k,
+                    candidate_k,
+                    duration_limit,
+                )
+            else:
+                results_df = semantic_pipeline.multi_query_search(
+                    labels,
+                    top_k=top_k,
+                    candidate_k=candidate_k,
+                    query_embeddings=embeddings,
+                    model_key=payload.model_key,
+                )
+            if not results_df.empty:
+                results_df["model_key"] = index.model_key
+            return results_df, effective_mode, labels, temporal_events, index.model_key
+
+    try:
+        results_df, effective_mode, labels, temporal_events, resolved_model_key = await run_in_threadpool(with_video_filter, payload.video_ids, _search)
+        results = [] if results_df.empty else await run_in_threadpool(_serialize_result_frame, results_df, paths)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid image query: {exc}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Multimodal search failed: {type(exc).__name__}: {exc}")
+
+    latency_ms = round((time.perf_counter() - started) * 1000)
+    display_query = payload.query.strip() or " · ".join(labels)
+    translated_query = " · ".join(text for text in translated_clause_texts if text) or None
+    return {
+        "original_query": display_query,
+        "query": display_query,
+        "translated_query": translated_query if use_translate else None,
+        "use_translate": use_translate,
+        "use_split": payload.use_split,
+        "mode": effective_mode,
+        "search_mode": effective_mode,
+        "model_key": resolved_model_key,
+        "duration_limit": duration_limit,
+        "top_k": top_k,
+        "candidate_multiplier": candidate_multiplier,
+        "candidate_k": candidate_k,
+        "latency_ms": latency_ms,
+        "events": temporal_events if effective_mode == "temporal" else [labels],
+        "event_queries": labels,
+        "sub_queries": labels,
+        "count": len(results),
+        "results": results,
+    }
 
 
 @router.post("/api/search/fusion")
@@ -307,7 +627,7 @@ async def search_fusion_api(
     if not original_query:
         raise HTTPException(status_code=400, detail="Query is empty")
 
-    max_top_k = int(cfg["search"].get("max_top_k", 200))
+    max_top_k = int(cfg["search"].get("max_top_k", 500))
     default_top_k = int(cfg["search"].get("default_top_k", 20))
     top_k = max(1, min(int(payload.top_k or default_top_k), max_top_k))
 
@@ -332,7 +652,7 @@ async def search_fusion_api(
 
     try:
         fused_df, _per_source = await run_in_threadpool(
-            system.search_advanced,
+            with_video_filter, payload.video_ids, system.search_advanced,
             original_query,
             semantic_models=payload.semantic_models,
             temporal=payload.temporal,
@@ -344,9 +664,9 @@ async def search_fusion_api(
             duration_limit=duration_limit,
             weights=payload.weights,
             translate=use_translate,
-            translate_provider=payload.translate_provider,
             translate_api_key=payload.translate_api_key,
             reasoning=payload.reasoning,
+            semantic_lambda=payload.semantic_lambda,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
@@ -372,6 +692,9 @@ async def search_fusion_api(
         "weights": (fused_df.attrs.get("weights") if fused_df is not None else None) or payload.weights or {},
         "events": fused_df.attrs.get("events", []) if fused_df is not None else [],
         "event_queries": fused_df.attrs.get("event_queries", []) if fused_df is not None else [],
+        "candidate_k": fused_df.attrs.get("candidate_k") if fused_df is not None else None,
+        "candidate_universe_size": fused_df.attrs.get("candidate_universe_size") if fused_df is not None else None,
+        "event_candidate_counts": fused_df.attrs.get("event_candidate_counts", {}) if fused_df is not None else {},
         "focused_queries": fused_df.attrs.get("focused_queries", {}) if fused_df is not None else {},
     }
 
@@ -454,25 +777,32 @@ async def similarity_search_api(
     payload: SimilaritySearchRequest,
     request: Request,
     system: RetrievalSystem = Depends(get_legacy_system),
-    clip_index: FaissIndex = Depends(get_legacy_index),
     paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Execute an image-to-image similarity search based on a source frame."""
+    _require_explicit_model_for_multi_model_search(
+        system, payload.model_key, feature="similarity search"
+    )
     orchestrator = system.orchestrator
 
     def _run_sim_search():
-        top_k = 20
+        top_k = max(1, min(int(payload.top_k or 20), 500))
+        index = orchestrator.semantic_search._resolve(payload.model_key)
 
-        row = find_metadata_row(clip_index, payload.video_id, payload.frame_id)
+        row = find_metadata_row(index, payload.video_id, payload.frame_id)
         source_dict = row.to_dict()
         image_path = resolve_keyframe_path_from_dict(source_dict, paths.keyframes_root, paths.backend_dir)
 
-        results_df = orchestrator.semantic_search.similarity_search_by_image(image_path=Path(image_path), top_k=top_k)
-        return source_dict, results_df
+        results_df = orchestrator.semantic_search.similarity_search_by_image(
+            image_path=Path(image_path), top_k=top_k, model_key=index.model_key
+        )
+        return source_dict, results_df, index.model_key
 
     start = time.perf_counter()
     try:
-        source_dict_data, df_results = await run_in_threadpool(_run_sim_search)
+        source_dict_data, df_results, resolved_model_key = await run_in_threadpool(with_video_filter, payload.video_ids, _run_sim_search)
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc).strip('"')) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Similarity search failed: {type(exc).__name__}: {exc}")
 
@@ -481,7 +811,8 @@ async def similarity_search_api(
     if df_results.empty:
         return {
             "query": f"similarity:{payload.video_id}/{payload.frame_id:06d}",
-            "search_mode": "similarity", "latency_ms": latency_ms, "count": 0, "results": [],
+            "search_mode": "similarity", "model_key": resolved_model_key,
+            "latency_ms": latency_ms, "count": 0, "results": [],
         }
 
     def _parse():
@@ -491,6 +822,7 @@ async def similarity_search_api(
 
     return {
         "query": f"similarity:{payload.video_id}/{payload.frame_id:06d}",
-        "search_mode": "similarity", "latency_ms": latency_ms, "count": len(results),
+        "search_mode": "similarity", "model_key": resolved_model_key,
+        "latency_ms": latency_ms, "count": len(results),
         "source": dict_to_result_FAST(source_dict_data, paths.keyframes_root, paths.backend_dir), "results": results,
     }

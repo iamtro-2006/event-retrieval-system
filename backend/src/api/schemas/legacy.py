@@ -20,15 +20,40 @@ class SearchRequest(BaseModel):
     temporal,ocr,asr,auto,advanced}` là các endpoint tách riêng)."""
 
     query: str
+    video_ids: list[str] = []
     top_k: int | None = None
     candidate_multiplier: int | None = None
     use_split: bool | None = None
     reasoning: bool = False
     use_translate: bool | None = None
     search_mode: SearchMode | None = "semantic"
+    model_key: str | None = None
     duration_limit: float | None = -1
-    translate_provider: str | None = None
     translate_api_key: str | None = None
+
+
+class MultimodalClause(BaseModel):
+    """One visual/temporal clause and the uploaded images attached to it."""
+
+    text: str = ""
+    image_indices: list[int] = []
+    connector_before: str | None = None
+
+
+class MultimodalSearchRequest(BaseModel):
+    """JSON metadata carried inside the multipart multimodal request."""
+
+    query: str = ""
+    video_ids: list[str] = []
+    clauses: list[MultimodalClause]
+    top_k: int | None = None
+    candidate_multiplier: int | None = None
+    use_split: bool = True
+    use_translate: bool | None = None
+    translate_api_key: str | None = None
+    search_mode: SearchMode | None = "semantic"
+    duration_limit: float | None = -1
+    model_key: str | None = None
 
 
 class FusionSearchRequest(BaseModel):
@@ -43,6 +68,7 @@ class FusionSearchRequest(BaseModel):
 
     query: str
     semantic_models: list[str] = []
+    video_ids: list[str] = []
     temporal: bool = False
     use_ocr: bool = False
     use_asr: bool = False
@@ -53,7 +79,7 @@ class FusionSearchRequest(BaseModel):
     use_translate: bool | None = None
     duration_limit: float | None = -1
     weights: dict[str, float] | None = None
-    translate_provider: str | None = None
+    semantic_lambda: float = 0.5
     translate_api_key: str | None = None
 
 
@@ -73,6 +99,20 @@ class DresSubmitRequest(BaseModel):
 
 
 class SimilaritySearchRequest(BaseModel):
+    video_ids: list[str] = []
     video_id: str
     frame_id: int
     top_k: int | None = None
+    model_key: str | None = None
+
+
+class ColorCell(BaseModel):
+    row: int
+    col: int
+    color: str
+
+
+class ColorSearchRequest(BaseModel):
+    cells: list[ColorCell]
+    top_k: int | None = None
+    video_ids: list[str] = []

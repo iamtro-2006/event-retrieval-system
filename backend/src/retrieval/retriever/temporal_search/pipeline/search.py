@@ -371,6 +371,7 @@ def build_temporal_candidates(
     events: list[list[str]],
     all_embeddings: np.ndarray,
     candidate_k: int,
+    vector_cache: np.ndarray | np.memmap | None = None,
 ) -> pd.DataFrame:
     """Build a unified candidate DataFrame for all temporal events.
 
@@ -387,7 +388,14 @@ def build_temporal_candidates(
         offset += count
 
         event_results = multi_query_search(
-            index, search_lock, metadata_records, event_queries, event_emb, candidate_k, candidate_k
+            index,
+            search_lock,
+            metadata_records,
+            event_queries,
+            event_emb,
+            candidate_k,
+            candidate_k,
+            vector_cache,
         )
         if event_results.empty:
             continue
@@ -452,7 +460,13 @@ def build_combined_temporal_candidates(
         index = resolve_index(model_key)
         embeddings = encode_events_dedup_safe(index.encode_texts, events)
         df = build_temporal_candidates(
-            index.index, index.search_lock, index.metadata_records, events, embeddings, candidate_k
+            index.index,
+            index.search_lock,
+            index.metadata_records,
+            events,
+            embeddings,
+            candidate_k,
+            index.index_vectors,
         )
         if df.empty:
             continue
@@ -632,7 +646,7 @@ def temporal_search_from_events(
     event_queries = [event[0] for event in events]
 
     candidate_df = build_temporal_candidates(
-        index, search_lock, metadata_records, events, all_embeddings, candidate_k
+        index, search_lock, metadata_records, events, all_embeddings, candidate_k, vector_cache
     )
     if candidate_df.empty:
         return pd.DataFrame()

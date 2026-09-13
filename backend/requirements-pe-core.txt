@@ -1,0 +1,4 @@
+# Optional dependencies for the perception_encoder backend.
+# Install with: python -m pip install --no-deps -r requirements-pe-core.txt
+einops==0.8.1
+perception_models @ git+https://github.com/facebookresearch/perception_models.git@3e352cca660658d4b5c90f42a7808b11469e4c66

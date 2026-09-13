@@ -35,6 +35,7 @@ import {
   submitDresViaBackend,
 } from "./api/submissionAPI";
 import { playNotifySound } from "./utils/notifySound";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const DEFAULT_SURROUND_MODAL = Object.freeze({
   open: false,
@@ -59,6 +60,38 @@ function getErrorMessage(error, fallback = "Unexpected error") {
   return error?.message || String(error || fallback);
 }
 
+function parseExplicitQuery(query) {
+  const text = String(query || "");
+  if (!text.trim()) return { clauses: [""], connectors: [] };
+  const pieces = text.split(/\b(AND|THEN)\b/);
+  const clauses = [pieces[0].trim()];
+  const connectors = [];
+  for (let index = 1; index < pieces.length; index += 2) {
+    const clause = String(pieces[index + 1] || "").trim();
+    connectors.push(pieces[index]);
+    clauses.push(clause);
+  }
+  return { clauses: clauses.length ? clauses : [""], connectors };
+}
+
+function composeQuery(clauses, connectors = []) {
+  const normalized = clauses.map((clause) => String(clause || "").trim());
+  let value = normalized[0] || "";
+  for (let index = 1; index < normalized.length; index += 1) {
+    value += ` ${connectors[index - 1] || "AND"} ${normalized[index]}`;
+  }
+  return value.trim();
+}
+
+function createImageAttachment(file) {
+  return {
+    id: crypto.randomUUID(),
+    file,
+    name: file.name || "Pasted image",
+    url: URL.createObjectURL(file),
+  };
+}
+
 export default function App() {
   const defaultSubmission = useMemo(() => getDefaultSubmissionSettings(), []);
   const searchIdRef = useRef(0);
@@ -74,7 +107,14 @@ export default function App() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [model, setModel] = useState("siglip2-so400m");
   const [availableModels, setAvailableModels] = useState([]);
+  const [semanticModelRoles, setSemanticModelRoles] = useState({ local: null, global: null });
   const [mode, setMode] = useState("text");
+  const [query, setQuery] = useState("");
+  const [queryClauses, setQueryClauses] = useState([""]);
+  const [queryConnectors, setQueryConnectors] = useState([]);
+  const [clauseImages, setClauseImages] = useState([[]]);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [resultsHeaderCollapsed, setResultsHeaderCollapsed] = useState(false);
   const [durationLimit, setDurationLimit] = useState(-1);
   const [fusionConfig, setFusionConfig] = useState({
     semanticModels: [],
@@ -83,6 +123,7 @@ export default function App() {
     useOcr: false,
     useAsr: false,
     weights: { semantic: 0.8, ocr: 0.1, asr: 0.1 },
+    semanticLambda: 0.5,
     hasConfig: false,
   });
   const [columns, setColumns] = useState(4);
@@ -100,7 +141,6 @@ export default function App() {
   // ── Settings ─────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
-    useSplit: true,
     useTranslate: true,
     topK: 20,
     candidateMultiplier: 5,
@@ -109,7 +149,6 @@ export default function App() {
     username: defaultSubmission.teamId,
     password: defaultSubmission.teamPassword,
   });
-  const [translateProvider, setTranslateProvider] = useState("google");
 
   // ── Backend ──────────────────────────────────────────
   const [backendReady, setBackendReady] = useState(false);
@@ -140,6 +179,7 @@ export default function App() {
     loading,
     error,
     search,
+    searchMultimodal,
     searchWithFusion,
     reset,
   } = useRetrievalSearch();
@@ -153,7 +193,8 @@ export default function App() {
     return mode === "temporal" ||
       mode === "auto" ||
       mode === "ocr" ||
-      mode === "asr"
+      mode === "asr" ||
+      mode === "fusion"
       ? mode
       : "semantic";
   }, [mode]);
@@ -165,8 +206,68 @@ export default function App() {
     return `${themeClass}${isHeavyDataset ? " performance-mode" : ""}`;
   }, [theme, isHeavyDataset]);
 
+  const handleQueryChange = useCallback((nextQuery) => {
+    const value = String(nextQuery ?? "");
+    const { clauses: nextClauses, connectors: nextConnectors } = parseExplicitQuery(value);
+    setQuery(value);
+    setQueryClauses(nextClauses);
+    setQueryConnectors(nextConnectors);
+    setClauseImages((previous) => {
+      previous.slice(nextClauses.length).flat().forEach((item) => URL.revokeObjectURL(item.url));
+      return nextClauses.map((_, index) => previous[index] ?? []);
+    });
+  }, []);
+
+  const handleModeChange = useCallback((nextMode) => {
+    setMode(nextMode);
+  }, []);
+
+  const handleClausesChange = useCallback((nextClauses, options = {}) => {
+    const normalized = nextClauses?.length ? nextClauses : [""];
+    let nextConnectors = [...queryConnectors];
+    if (Number.isInteger(options.removedIndex)) {
+      const connectorIndex = options.removedIndex === 0 ? 0 : options.removedIndex - 1;
+      nextConnectors.splice(connectorIndex, 1);
+    } else if (normalized.length > queryClauses.length) {
+      nextConnectors.push(options.connector === "THEN" ? "THEN" : "AND");
+    }
+    nextConnectors = nextConnectors.slice(0, Math.max(0, normalized.length - 1));
+    setQueryClauses(normalized);
+    setQueryConnectors(nextConnectors);
+    setClauseImages((previous) => {
+      if (Number.isInteger(options.removedIndex)) {
+        previous[options.removedIndex]?.forEach((item) => URL.revokeObjectURL(item.url));
+        const remaining = previous.filter((_, index) => index !== options.removedIndex);
+        return normalized.map((_, index) => remaining[index] ?? []);
+      }
+      return normalized.map((_, index) => previous[index] ?? []);
+    });
+    setQuery(composeQuery(normalized, nextConnectors));
+  }, [queryClauses.length, queryConnectors]);
+
+  const handleAddClauseImages = useCallback((clauseIndex, files) => {
+    const accepted = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
+    if (!accepted.length) return;
+    setClauseImages((previous) => {
+      const next = queryClauses.map((_, index) => [...(previous[index] ?? [])]);
+      next[Math.max(0, Math.min(clauseIndex, next.length - 1))].push(...accepted.map(createImageAttachment));
+      return next;
+    });
+  }, [queryClauses]);
+
+  const handleRemoveClauseImage = useCallback((clauseIndex, imageId) => {
+    setClauseImages((previous) => previous.map((items, index) => {
+      if (index !== clauseIndex) return items;
+      const removed = items.find((item) => item.id === imageId);
+      if (removed) URL.revokeObjectURL(removed.url);
+      return items.filter((item) => item.id !== imageId);
+    }));
+  }, []);
+
   const searchBarProps = useMemo(
     () => ({
+      query,
+      theme,
       model,
       mode,
       loading,
@@ -174,16 +275,21 @@ export default function App() {
       durationLimit,
       reasoningEnabled,
       availableModels,
+      semanticModelRoles,
       fusionConfig,
-      translateProvider,
-      onTranslateProviderChange: setTranslateProvider,
+      queryClauses,
+      queryConnectors,
+      clauseImages,
       onModelChange: setModel,
-      onModeChange: setMode,
+      onModeChange: handleModeChange,
+      onQueryChange: handleQueryChange,
+      onAddClauseImages: handleAddClauseImages,
+      onRemoveClauseImage: handleRemoveClauseImage,
       onDurationLimitChange: setDurationLimit,
       onReasoningToggle: setReasoningEnabled,
       onFusionConfigChange: setFusionConfig,
     }),
-    [model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, fusionConfig, translateProvider]
+    [query, theme, model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, semanticModelRoles, fusionConfig, queryClauses, queryConnectors, clauseImages, handleModeChange, handleQueryChange, handleAddClauseImages, handleRemoveClauseImage]
   );
 
   // ── Bootstrap ────────────────────────────────────────
@@ -196,6 +302,7 @@ export default function App() {
         const config = await getBackendConfig();
 
         if (!alive) return;
+        setSemanticModelRoles(config.semantic_model_roles || { local: null, global: null });
 
         setSettings((prev) => ({
           ...prev,
@@ -236,11 +343,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const toastTimers = toastTimersRef.current;
     return () => {
-      for (const timer of toastTimersRef.current.values()) {
+      for (const timer of toastTimers.values()) {
         clearTimeout(timer);
       }
-      toastTimersRef.current.clear();
+      toastTimers.clear();
     };
   }, []);
 
@@ -317,6 +425,14 @@ export default function App() {
     setVideoResult(null);
     setRerankResultsData(null);
     setReranking(false);
+    setQuery("");
+    setQueryClauses([""]);
+    setQueryConnectors([]);
+    setClauseImages((previous) => {
+      previous.flat().forEach((item) => URL.revokeObjectURL(item.url));
+      return [[]];
+    });
+    setResultsHeaderCollapsed(false);
   }, [reset]);
 
   const handleSearch = useCallback(
@@ -324,7 +440,8 @@ export default function App() {
       const query = typeof payload === "string" ? payload : payload?.query;
       const cleanQuery = String(query || "").trim();
 
-      if (!cleanQuery || loading || !backendReady) return;
+      const hasImages = clauseImages.some((items) => items.length > 0);
+      if ((!cleanQuery && !hasImages) || loading || !backendReady) return;
 
       const searchId = ++searchIdRef.current;
       rerankRunRef.current += 1;
@@ -347,7 +464,25 @@ export default function App() {
       });
 
       try {
-        if (searchMode === "fusion") {
+        if (hasImages) {
+          if (!["semantic", "temporal", "auto"].includes(searchMode)) {
+            pushToast("warning", "Chế độ chưa hỗ trợ ảnh", "Hãy dùng Semantic, Temporal hoặc Auto; OCR/ASR/Fusion vẫn hoạt động bình thường với truy vấn chữ.");
+            return;
+          }
+          await searchMultimodal({
+            query: cleanQuery,
+            clauses: queryClauses,
+            queryConnectors,
+            clauseImages,
+            topK: settings.topK,
+            candidateMultiplier: settings.candidateMultiplier,
+            useSplit: true,
+            useTranslate: settings.useTranslate,
+            searchMode,
+            modelKey: model,
+            durationLimit: nextDurationLimit,
+          });
+        } else if (searchMode === "fusion") {
           const cfg = (typeof payload === "object" && payload?.fusionConfig) || fusionConfig;
           if (!cfg?.hasConfig) {
             pushToast("warning", "Fusion chưa được cấu hình", "Bấm nút cài đặt để chọn model/method trước khi search.");
@@ -357,23 +492,22 @@ export default function App() {
             query: cleanQuery,
             topK: settings.topK,
             candidateMultiplier: settings.candidateMultiplier,
-            useSplit: settings.useSplit,
+            useSplit: true,
             useTranslate: settings.useTranslate,
-            translateProvider,
              fusionConfig: cfg,
-             reasoning: Boolean(payload?.reasoning ?? reasoningEnabled),
+             reasoning: false,
           });
         } else {
           await search({
             query: cleanQuery,
             topK: settings.topK,
             candidateMultiplier: settings.candidateMultiplier,
-            useSplit: settings.useSplit,
+            useSplit: true,
             useTranslate: settings.useTranslate,
             searchMode,
+            modelKey: model,
             durationLimit: nextDurationLimit,
-             translateProvider,
-             reasoning: Boolean(payload?.reasoning ?? reasoningEnabled),
+             reasoning: false,
           });
         }
       } catch (err) {
@@ -385,8 +519,18 @@ export default function App() {
         pushToast("warning", "Search failed", getErrorMessage(err));
       }
     },
-    [backendReady, durationLimit, fusionConfig, loading, pushToast, reasoningEnabled, resolvedMode, search, searchWithFusion, settings, translateProvider]
+    [backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, queryConnectors, resolvedMode, search, searchMultimodal, searchWithFusion, settings]
   );
+
+  const handleSidebarSearch = useCallback(() => {
+    handleSearch({
+      query,
+      searchMode: resolvedMode,
+      durationLimit: resolvedMode === "temporal" ? Number(durationLimit) : -1,
+      fusionConfig: resolvedMode === "fusion" ? fusionConfig : null,
+      reasoning: false,
+    });
+  }, [durationLimit, fusionConfig, handleSearch, query, resolvedMode]);
 
   // Auto-rerank tối ưu hơn: debounce + chống stale update
   useEffect(() => {
@@ -440,45 +584,6 @@ export default function App() {
     pushToast,
     isHeavyDataset,
   ]);
-
-  const handleManualRerank = useCallback(
-    async ({ query, topCandidate, topK }) => {
-      if (rawResults.length === 0) return;
-
-      const runId = ++rerankRunRef.current;
-      setReranking(true);
-
-      startNonUrgentUpdate(() => {
-        setRerankResultsData(null);
-      });
-
-      try {
-        const data = await rerankResults({
-          results: rawResults,
-          query,
-          searchMode: resolvedMode,
-          topCandidate,
-          topK,
-        });
-
-        if (runId !== rerankRunRef.current) return;
-
-        startTransition(() => {
-          setRerankResultsData(data.results ?? []);
-        });
-
-        pushToast("correct", "Rerank xong", `${data.count} kết quả`);
-      } catch (err) {
-        if (runId !== rerankRunRef.current) return;
-        pushToast("warning", "Rerank thất bại", getErrorMessage(err));
-      } finally {
-        if (runId === rerankRunRef.current) {
-          setReranking(false);
-        }
-      }
-    },
-    [rawResults, resolvedMode, pushToast]
-  );
 
   const handleOpenSurroundingImages = useCallback(
     async (result) => {
@@ -540,6 +645,7 @@ export default function App() {
           videoId: result.video_id,
           frameId: result.frame_id,
           topK: settings.topK,
+          modelKey: result.model_key || result.raw?.model_key || model,
         });
 
         if (reqId !== similarReqRef.current) return;
@@ -563,7 +669,7 @@ export default function App() {
         pushToast("warning", "Similarity search failed", getErrorMessage(err));
       }
     },
-    [pushToast, settings.topK]
+    [model, pushToast, settings.topK]
   );
 
   const handleDresLogin = useCallback(async () => {
@@ -692,9 +798,22 @@ export default function App() {
     <div className={rootClassName}>
       <div className={`ambient-bg ${loading && !isHeavyDataset ? "ambient-searching" : ""}`} />
 
-      <div className="app-root">
+      <div className={`app-root ${sidebarExpanded ? "sidebar-is-expanded" : ""}`}>
         <Sidebar
           theme={theme}
+          mode={mode}
+          queryClauses={queryClauses}
+          queryConnectors={queryConnectors}
+          clauseImages={clauseImages}
+          expanded={sidebarExpanded}
+          loading={loading}
+          disabled={!backendReady}
+          onToggleExpanded={() => setSidebarExpanded((value) => !value)}
+          onModeChange={handleModeChange}
+          onClausesChange={handleClausesChange}
+          onAddClauseImages={handleAddClauseImages}
+          onRemoveClauseImage={handleRemoveClauseImage}
+          onSearch={handleSidebarSearch}
           onToggleTheme={handleToggleTheme}
           onReset={handleReset}
           onOpenSettings={handleOpenSettings}
@@ -718,36 +837,32 @@ export default function App() {
           {hasResults && (
             <>
               <section className="display-area">
-                <ResultToolbar
-                  model={model}
-                  latency={latency}
-                  columns={columns}
-                  grouped={grouped}
-                  onColumnsChange={handleColumnsChange}
-                  onGroupedChange={handleGroupedChange}
-                />
+                <div className={`results-header ${resultsHeaderCollapsed ? "is-collapsed" : ""}`}>
+                  {!resultsHeaderCollapsed && <>
+                    <ResultToolbar
+                      model={model}
+                      latency={latency}
+                      columns={columns}
+                      grouped={grouped}
+                      onColumnsChange={handleColumnsChange}
+                      onGroupedChange={handleGroupedChange}
+                    />
 
-                <div className="query-summary">
-                  <span>
-                    Query: <strong>{lastQuery}</strong>
-                  </span>
-
-                  <span className="query-summary-right">
-                    {reranking && (
-                      <span className="rerank-status-badge">
-                        <span className="rerank-spinner" /> VLM đang rerank...
+                    <div className="query-summary">
+                      <span>Query: <strong>{lastQuery}</strong></span>
+                      <span className="query-summary-right">
+                        {reranking && <span className="rerank-status-badge"><span className="rerank-spinner" /> VLM đang rerank...</span>}
+                        {rerankResultsData && !reranking && <span className="rerank-status-badge rerank-status-badge--done">✓ Đã rerank</span>}
+                        <span>{count} results</span>
                       </span>
-                    )}
-
-                    {rerankResultsData && !reranking && (
-                      <span className="rerank-status-badge rerank-status-badge--done">
-                        ✓ Đã rerank
-                      </span>
-                    )}
-
-                    <span>{count} results</span>
-
-                  </span>
+                    </div>
+                  </>}
+                  <button type="button" className="results-header-toggle"
+                    onClick={() => setResultsHeaderCollapsed((value) => !value)}
+                    aria-label={resultsHeaderCollapsed ? "Show result toolbar" : "Hide result toolbar"}
+                    title={resultsHeaderCollapsed ? "Show toolbar" : "Hide toolbar"}>
+                    {resultsHeaderCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+                  </button>
                 </div>
 
                 <div className="result-body">
@@ -781,6 +896,7 @@ export default function App() {
 
                   {selected && (
                     <DetailPanel
+                      key={selected.id}
                       result={selected}
                       onClose={handleCloseDetail}
                       onSubmit={handleSubmitResult}
@@ -803,6 +919,7 @@ export default function App() {
         </main>
 
         <VideoModal
+          key={videoResult ? `${videoResult.id}-open` : "video-closed"}
           open={Boolean(videoResult)}
           result={videoResult}
           layer={modalLayer("video")}

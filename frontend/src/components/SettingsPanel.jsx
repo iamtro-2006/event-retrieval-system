@@ -33,12 +33,6 @@ export default function SettingsPanel({
         <h4>Search Pipeline</h4>
 
         <SwitchRow
-          label="Split query"
-          checked={settings.useSplit}
-          onChange={(value) => updateField("useSplit", value)}
-        />
-
-        <SwitchRow
           label="Translate VI → EN"
           checked={settings.useTranslate}
           onChange={(value) => updateField("useTranslate", value)}
