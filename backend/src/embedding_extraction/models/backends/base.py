@@ -4,13 +4,15 @@ Design goal: `embedder.py` / `extract_embeddings.py` (offline image embedding)
 and `retrieval/index/faiss_index.py` (online text/image query encoding for
 search) should NOT need to know which backend (open_clip, transformers,
 PE-Core, ...) produced the model. Every backend loader returns a `LoadedModel`,
-whose `.model` object exposes:
+whose `.model` object exposes either the legacy tensor method or the
+path-native image method:
 
-  - `encode_image(batch: torch.Tensor) -> torch.Tensor`   (required)
+  - `encode_image(batch: torch.Tensor) -> torch.Tensor`   (legacy tensor)
+  - `encode_image_paths(paths: list[Path]) -> np.ndarray`  (optional alternative)
   - `encode_text(texts: list[str]) -> torch.Tensor`        (optional)
 
-`encode_image` is the only method `encode_keyframe_images()` in embedder.py
-calls, so offline extraction keeps working unmodified. `encode_text` is what
+`encode_keyframe_images()` uses `encode_image_paths()` when available, otherwise
+the existing tensor-based `encode_image()` path. `encode_text` is what
 `retrieval.index.faiss_index.FaissIndex.encode_texts()` calls for search --
 a backend that doesn't implement it (e.g. a vision-only model, or one whose
 text tower isn't wired up yet) should raise `NotImplementedError` with a
@@ -22,8 +24,10 @@ available for it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Protocol
 
+import numpy as np
 import torch
 from PIL import Image
 
@@ -36,10 +40,18 @@ class ImageTextEncoder(Protocol):
     def encode_text(self, texts: list[str]) -> torch.Tensor: ...
 
 
+class PathImageEncoder(Protocol):
+    """Optional capability for multimodal models that ingest image paths."""
+
+    embedding_dim: int
+
+    def encode_image_paths(self, paths: list[Path]) -> np.ndarray: ...
+
+
 @dataclass
 class LoadedModel:
-    model: ImageTextEncoder
-    preprocess: Callable[[Image.Image], torch.Tensor]
+    model: ImageTextEncoder | PathImageEncoder
+    preprocess: Callable[[Image.Image], torch.Tensor] | None
     device: torch.device
     precision: str
     embedding_dim: int | None = None

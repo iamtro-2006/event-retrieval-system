@@ -115,6 +115,29 @@ def encode_keyframe_images(
 		unit="batch",
 	):
 		batch_paths = image_paths[start:start + batch_size]
+		path_encoder = getattr(model, "encode_image_paths", None)
+		if callable(path_encoder):
+			# Path-native multimodal backends own image loading and
+			# preprocessing; never force them through the tensor contract.
+			emb = np.asarray(path_encoder(batch_paths))
+			expected_dim = getattr(model, "embedding_dim", None)
+			valid_shape = emb.ndim == 2 and emb.shape[0] == len(batch_paths)
+			if expected_dim is not None:
+				valid_shape = valid_shape and emb.shape[1] == int(expected_dim)
+			if not valid_shape or emb.dtype != np.float32:
+				raise ValueError(
+					"Invalid path-native embedding batch: "
+					f"shape={emb.shape}, dtype={emb.dtype}, "
+					f"expected_batch={len(batch_paths)}, expected_dim={expected_dim}"
+				)
+			if not np.isfinite(emb).all():
+				raise ValueError("Path-native embeddings contain NaN/Inf")
+			features.append(emb)
+			valid_all_paths.extend(batch_paths)
+			continue
+
+		if preprocess is None:
+			raise ValueError("Tensor backend requires preprocess")
 
 		batch, valid_paths = _build_image_batch(
 			image_paths=batch_paths,
@@ -154,4 +177,3 @@ def encode_keyframe_images(
 
 def load_embedding(path: Path) -> np.ndarray:
 	return np.load(path).astype(np.float32)
-

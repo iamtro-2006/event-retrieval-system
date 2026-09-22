@@ -73,6 +73,22 @@ semantic:
       model_extra:
         pooling: first
 
+    - model_key: wemm_embedding_2b
+      enabled: true
+      backend: wemm_embedding
+      model_name: tencent/WeMM-Embedding-2B
+      index_path: ../data/database/faiss_wemm_embedding_2b_full/keyframes.faiss
+      metadata_path: ../data/database/faiss_wemm_embedding_2b_full/metadata.csv
+      device: auto
+      precision: fp16
+      normalize: false  # WeMM full 2048-d outputs are already L2-normalized.
+      ef_search: 399
+      faiss_threads: 8
+      vector_cache_mode: none
+      allow_npy_fallback: false
+      model_extra:
+        revision: bbd6cd4bf52cfc6716f752a2df80b2706720bd95
+
 ocr:
   config_path: configs/ocr_extraction.yaml
 

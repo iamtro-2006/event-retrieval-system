@@ -29,11 +29,13 @@ from src.embedding_extraction.models.backends.base import LoadedModel
 BACKEND_OPEN_CLIP = "open_clip"
 BACKEND_BLIP2 = "blip2"
 BACKEND_PERCEPTION_ENCODER = "perception_encoder"
+BACKEND_WEMM_EMBEDDING = "wemm_embedding"
 
 _BACKEND_MODULES = {
     BACKEND_OPEN_CLIP: "src.embedding_extraction.models.backends.open_clip",
     BACKEND_BLIP2: "src.embedding_extraction.models.backends.blip2",
     BACKEND_PERCEPTION_ENCODER: "src.embedding_extraction.models.backends.perception_encoder",
+    BACKEND_WEMM_EMBEDDING: "src.embedding_extraction.models.backends.wemm_embedding",
 }
 
 # Convenience presets for the models used across this project. A config
@@ -45,6 +47,7 @@ _BACKEND_MODULES = {
 # refers to as the human-readable model name; short aliases are included so
 # configs can use whichever spelling is convenient.
 MODEL_PRESETS: dict[str, dict[str, Any]] = {
+    "tencent/WeMM-Embedding-2B": dict(backend=BACKEND_WEMM_EMBEDDING),
     # --- SigLIP2 so400m (open_clip) ---
     "ViT-SO400M-16-SigLIP2-384": dict(backend=BACKEND_OPEN_CLIP, pretrained="webli"),
     "siglip2-so400m": dict(backend=BACKEND_OPEN_CLIP, pretrained="webli", model_name="ViT-SO400M-16-SigLIP2-384"),
