@@ -2,6 +2,7 @@ import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette } from "lucide
 import { useEffect, useRef, useState, useCallback } from "react";
 import FusionSettingsModal from "./FusionSettingsModal";
 import { useVideoFilter } from "./VideoFilter";
+import { SEARCH_MODES, resolveSearchMode } from "../config/searchModes";
 
 const FALLBACK_MODELS = ["siglip2-so400m", "vitH-378-quickgelu"];
 
@@ -105,16 +106,11 @@ export default function SearchBar({
     return () => stopBrowserSpeech();
   }, []);
 
-  function resolveSearchMode() {
-    if (mode === "temporal" || mode === "auto" || mode === "ocr" || mode === "asr" || mode === "fusion") return mode;
-    return "semantic";
-  }
-
   function runSearch(nextQuery) {
     if (isColor) { onOpenColorSearch?.(); return; }
     const cleanQuery = String(nextQuery || "").trim();
     if ((!cleanQuery && !hasQueryImages) || loading || disabled) return;
-    const searchMode = resolveSearchMode();
+    const searchMode = resolveSearchMode(mode);
     onSearch({
       query: cleanQuery,
       searchMode,
@@ -246,7 +242,7 @@ export default function SearchBar({
   function startBrowserSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Trình duyệt chưa hỗ trợ Speech Recognition. Hãy dùng Chrome hoặc Edge.");
+      alert("This browser does not support speech recognition. Use Chrome or Edge.");
       return;
     }
     committedTranscriptRef.current = query.trim();
@@ -274,9 +270,9 @@ export default function SearchBar({
     };
     recognition.onerror = (event) => {
       if (event.error === "network")
-        alert("Speech Recognition bị lỗi network. Hãy kiểm tra internet/VPN/firewall.");
+        alert("Speech recognition encountered a network error. Check your internet connection, VPN, and firewall.");
       if (event.error === "not-allowed")
-        alert("Trình duyệt chưa được cấp quyền microphone.");
+        alert("Microphone permission has not been granted.");
     };
     recognition.onend = () => { setRecording(false); recognitionRef.current = null; };
     recognitionRef.current = recognition;
@@ -312,16 +308,16 @@ export default function SearchBar({
           rows={1}
           placeholder={
             recording
-              ? "Đang nghe, nói để nhập truy vấn..."
+              ? "Listening... Speak to enter a query."
               : isTemporal
-                ? "Ví dụ: person opens box THEN reads label..."
+                ? "Example: person opens box THEN reads label..."
                 : isOcr
-                  ? "Nhập chữ xuất hiện trên màn hình (biển hiệu, phụ đề...)..."
+                  ? "Enter on-screen text, such as signs or subtitles..."
                   : isAsr
-                    ? "Nhập nội dung lời thoại/giọng nói cần tìm..."
+                    ? "Enter the spoken content to find..."
                     : isFusion
-                      ? "Nhập truy vấn — kết quả sẽ được fusion theo cấu hình đã lưu..."
-                      : "Nhập truy vấn retrieval..."
+                      ? "Enter a query. Results will use the saved Fusion configuration..."
+                      : "Enter a retrieval query..."
           }
           onChange={(e) => {
             committedTranscriptRef.current = e.target.value;
@@ -346,7 +342,7 @@ export default function SearchBar({
                   className="inline-query-text-input"
                   style={{ width: `${Math.max(1, Math.min(42, clause.length + 1))}ch` }}
                   value={clause}
-                  placeholder={clauseIndex === 0 && !(clauseImages[0] || []).length ? "Nhập query..." : ""}
+                  placeholder={clauseIndex === 0 && !(clauseImages[0] || []).length ? "Enter a query..." : ""}
                   onFocus={() => { activeInlineClauseRef.current = clauseIndex; }}
                   onChange={(event) => updateInlineClause(clauseIndex, event.target.value)}
                   onKeyDown={handleKeyDown}
@@ -379,7 +375,7 @@ export default function SearchBar({
 
             onChange={(event) => { insertFiles(event.target.files); event.target.value = ""; }} />
           <div className="search-add-menu-host">
-          <button type="button" className="search-icon-button" aria-label="Add image or colour canvas"
+          <button type="button" className="search-icon-button" aria-label="Add image or color canvas"
             aria-expanded={addMenuOpen} title="Add query input" onClick={() => setAddMenuOpen((value) => !value)}>
             <Plus size={20} />
           </button>
@@ -403,13 +399,7 @@ export default function SearchBar({
             )}
 
             <select className="search-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
-              <option value="text">Semantic</option>
-              <option value="temporal">Temporal</option>
-              <option value="auto">Auto</option>
-              <option value="ocr">OCR (on-screen text)</option>
-              <option value="asr">ASR (speech)</option>
-              <option value="fusion">Fusion</option>
-              <option value="color">Color</option>
+              {SEARCH_MODES.map(({ key, label, shortcut }) => <option key={key} value={key}>{label} ({shortcut})</option>)}
             </select>
 
             {isTemporal && (
@@ -419,7 +409,7 @@ export default function SearchBar({
                 value={durationLimit}
                 min={-1}
                 step={1}
-                title="-1 = quét toàn video; >0 = giới hạn số giây"
+                title="-1 searches the entire video; values above 0 limit the duration in seconds"
                 onChange={(e) => onDurationLimitChange?.(Number(e.target.value))}
               />
             )}
@@ -428,7 +418,7 @@ export default function SearchBar({
             {videoFilter && <button type="button"
               className={`rerank-tag ${videoFilter.enabled ? "rerank-tag--active" : ""}`}
               aria-pressed={videoFilter.enabled}
-              title="Bật để giới hạn lần tìm kiếm tiếp theo theo video trong cache; cache trống tìm toàn bộ"
+              title="Limit the next search to cached videos. An empty cache searches all videos."
               onClick={() => videoFilter.setEnabled(!videoFilter.enabled)}>
               Filter {videoFilter.ids.length > 0 && `(${videoFilter.ids.length})`}
             </button>}
@@ -436,11 +426,11 @@ export default function SearchBar({
               <button
                 type="button"
                 className={["rerank-tag", reasoningEnabled ? "rerank-tag--active" : ""].filter(Boolean).join(" ")}
-                aria-label={reasoningEnabled ? "Tắt Reasoning" : "Bật Reasoning"}
+                aria-label={reasoningEnabled ? "Disable Reasoning" : "Enable Reasoning"}
                 title={
                   reasoningEnabled
-                    ? "Reasoning preview đang bật (chưa kết nối search pipeline)"
-                    : "Reasoning preview — hiện chỉ để hiển thị"
+                    ? "Reasoning preview is enabled but is not connected to the search pipeline"
+                    : "Reasoning preview is currently display-only"
                 }
                 onClick={() => onReasoningToggle?.(!reasoningEnabled)}
                 disabled={disabled}
@@ -454,8 +444,8 @@ export default function SearchBar({
               <button
                 type="button"
                 className={["search-icon-button", "fusion-settings-btn", fusionConfig?.hasConfig ? "has-config" : ""].filter(Boolean).join(" ")}
-                aria-label="Cấu hình Fusion search"
-                title="Cấu hình model, method và weight cho fusion search"
+                aria-label="Configure Fusion search"
+                title="Configure models, methods, and weights for Fusion search"
                 onClick={() => setFusionModalOpen(true)}
                 disabled={disabled}
               >

@@ -3,26 +3,13 @@ import { createPortal } from "react-dom";
 import { X, GitMerge, Sparkles, Waves, ScanText, AudioLines } from "lucide-react";
 
 /**
- * FusionSettingsModal — pop-up cấu hình cho search mode "fusion" (advanced
- * search).
+ * Configures the models, retrieval methods, and source weights used by
+ * Fusion search. Temporal mode blends the selected semantic models for each
+ * event before sequence alignment and can also include OCR and ASR.
  *
- * Cho phép tick nhiều semantic model, bật/tắt temporal (kèm duration
- * limit), OCR, ASR và điều chỉnh weight theo nhóm nguồn. Backend
- * Khi temporal bật, nó chạy multimodal PER EVENT:
- * mỗi event tự fuse các semantic model bằng weighted similarity, rồi kết hợp
- * đúng các method đã tick ở trên (semantic +
- * OCR/ASR nếu bật) TRƯỚC khi DP alignment ghép chuỗi — dùng chung danh sách
- * model đã tick ở "Semantic models", không có checklist model riêng cho
- * temporal.
- *
- * Bấm "Lưu cấu hình" → đóng modal, config được áp dụng ở lần bấm Search
- * tiếp theo (không tự động search khi save).
- *
- * Render qua createPortal vào document.body: modal KHÔNG được lồng bên
- * trong `.bottom-search-zone` (ancestor có `transform`, tạo containing
- * block riêng cho `position: fixed`) — nếu không portal, backdrop
- * `position: fixed` của modal sẽ bị tính toán lồng trong khung nhỏ đó
- * thay vì theo viewport, gây hiện tượng modal bị cắt/che sau khi search.
+ * Saving applies the configuration to the next search without running it.
+ * The modal renders through a body portal so its fixed backdrop remains
+ * relative to the viewport instead of the transformed bottom search zone.
  */
 export default function FusionSettingsModal({
   open,
@@ -120,11 +107,11 @@ export default function FusionSettingsModal({
           </div>
 
           <div className="fusion-modal-header-text">
-            <h2>Fusion search — cấu hình</h2>
-            <p>Semantic được trộn theo similarity; các modality được điều chỉnh trực tiếp trên radar.</p>
+            <h2>Fusion Search Configuration</h2>
+            <p>Blend semantic models by similarity and adjust source weights on the radar chart.</p>
           </div>
 
-          <button className="modal-close-btn" type="button" onClick={onClose} aria-label="Đóng">
+          <button className="modal-close-btn" type="button" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -138,7 +125,7 @@ export default function FusionSettingsModal({
             </div>
 
             {models.length === 0 && (
-              <p className="fusion-empty-hint">Không có model semantic nào khả dụng.</p>
+              <p className="fusion-empty-hint">No semantic models are available.</p>
             )}
 
             <div className="fusion-row-list">
@@ -158,8 +145,8 @@ export default function FusionSettingsModal({
 
           <div className="fusion-card">
             <div className="fusion-card-title"><GitMerge size={13} /><span>Fusion weights</span></div>
-            <p className="fusion-weight-total">Kéo trực tiếp các núm trên radar; tổng nguồn đang bật được chuẩn hoá = 1.0.</p>
-            <div className="fusion-radar-wrap" aria-label="Biểu đồ trọng số fusion">
+            <p className="fusion-weight-total">Drag the radar handles to adjust weights. Enabled sources are normalized to a total of 1.0.</p>
+            <div className="fusion-radar-wrap" aria-label="Fusion weight chart">
               <svg ref={radarRef} viewBox="0 0 100 100" className="fusion-radar">
                 <g className="fusion-radar-grid" aria-hidden="true">
                   {[1, 0.75, 0.5, 0.25].map((level) => (
@@ -195,25 +182,25 @@ export default function FusionSettingsModal({
             </label>
           </div>
 
-          {/* ── Method khác ────────────────────────────────────────── */}
+          {/* ── Additional methods ─────────────────────────────────── */}
           <div className="fusion-card">
             <div className="fusion-card-title">
               <Waves size={13} />
-              <span>Method khác</span>
+              <span>Additional methods</span>
             </div>
 
             <div className="fusion-row-list">
               <MethodRow
                 icon={<Waves size={14} />}
                 label="Temporal"
-                sublabel="Chuỗi sự kiện — mỗi event trộn semantic theo similarity rồi ghép chuỗi"
+                sublabel="Ordered events with semantic blending before sequence alignment"
                 checked={draft.temporal}
                 onToggle={() => updateField("temporal", !draft.temporal)}
               />
 
               {draft.temporal && (
                 <label className="fusion-duration-field">
-                  <span>Duration limit (giây, -1 = không giới hạn)</span>
+                  <span>Duration limit in seconds (-1 for no limit)</span>
                   <input
                     type="number"
                     min={-1}
@@ -227,7 +214,7 @@ export default function FusionSettingsModal({
               <MethodRow
                 icon={<ScanText size={14} />}
                 label="OCR"
-                sublabel="Chữ xuất hiện trên màn hình"
+                sublabel="Text displayed on screen"
                 checked={draft.useOcr}
                 onToggle={() => updateField("useOcr", !draft.useOcr)}
               />
@@ -235,7 +222,7 @@ export default function FusionSettingsModal({
               <MethodRow
                 icon={<AudioLines size={14} />}
                 label="ASR"
-                sublabel="Lời thoại / giọng nói"
+                sublabel="Dialogue and spoken content"
                 checked={draft.useAsr}
                 onToggle={() => updateField("useAsr", !draft.useAsr)}
               />
@@ -244,14 +231,14 @@ export default function FusionSettingsModal({
 
           {!hasAnyMethod && (
             <p className="fusion-empty-hint fusion-empty-hint--warn">
-              Cần tick ít nhất 1 model semantic, hoặc bật OCR/ASR để fusion search chạy được.
+              Select at least one semantic model or enable OCR or ASR.
             </p>
           )}
         </div>
 
         <div className="fusion-modal-footer">
           <button type="button" className="fusion-cancel-btn" onClick={onClose}>
-            Huỷ
+            Cancel
           </button>
           <button
             type="button"
@@ -259,7 +246,7 @@ export default function FusionSettingsModal({
             onClick={handleSave}
             disabled={!hasAnyMethod}
           >
-            Lưu cấu hình
+            Save configuration
           </button>
         </div>
       </div>

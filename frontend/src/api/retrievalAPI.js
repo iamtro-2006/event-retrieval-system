@@ -112,8 +112,8 @@ function assertModelIsolation(data, requestedModelKey, label) {
   const responseModelKey = String(data?.model_key || "");
   if (responseModelKey !== requestedModelKey) {
     throw new Error(
-      `${label}: backend trả model '${responseModelKey || "không xác định"}' ` +
-      `thay vì model đã chọn '${requestedModelKey}'. Hãy restart cả backend và frontend.`
+      `${label}: the backend returned model '${responseModelKey || "unknown"}' ` +
+      `instead of the selected model '${requestedModelKey}'. Restart both the backend and frontend.`
     );
   }
 
@@ -122,9 +122,9 @@ function assertModelIsolation(data, requestedModelKey, label) {
     return actual !== requestedModelKey;
   });
   if (mismatched) {
-    const actual = mismatched?.model_key || mismatched?.raw?.model_key || "không xác định";
+    const actual = mismatched?.model_key || mismatched?.raw?.model_key || "unknown";
     throw new Error(
-      `${label}: phát hiện kết quả từ model '${actual}' trong nhánh '${requestedModelKey}'.`
+      `${label}: received a result from model '${actual}' in the '${requestedModelKey}' branch.`
     );
   }
 }
@@ -180,7 +180,7 @@ export async function getAvailableModels() {
 
 export async function getVideoIds() {
   const response = await fetch(apiUrl("/api/video-ids"), { headers: NGROK_HEADER });
-  if (!response.ok) throw new Error("Không thể tải video ID metadata. Hãy thử lại.");
+  if (!response.ok) throw new Error("Could not load video ID metadata. Try again.");
   const data = await response.json();
   return Array.isArray(data.video_ids) ? data.video_ids : [];
 }
@@ -204,7 +204,7 @@ export async function searchColorRetrieval({ cells, topK = 20, videoIds = [] }) 
   }
   const data = await response.json();
   return {
-    query: data.query || "Dominant colour search",
+    query: data.query || "Dominant color search",
     searchMode: "color",
     latencyMs: data.latency_ms ?? null,
     count: data.count ?? 0,
@@ -897,7 +897,7 @@ export async function transcribeSpeech(blob) {
   return response.json();
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// RERANK API — gửi danh sách kết quả hiện tại lên backend để VLM chấm điểm lại
+// Send the current results to the backend for VLM reranking.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function rerankResults({
   results,

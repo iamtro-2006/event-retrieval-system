@@ -41,6 +41,7 @@ import {
 import { getGodModeEndpoint, godModeSocketUrl, submitDresViaGodMode } from "./api/godmodeAPI";
 import { playNotifySound } from "./utils/notifySound";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { SEARCH_MODE_BY_CODE } from "./config/searchModes";
 
 const DEFAULT_SURROUND_MODAL = Object.freeze({
   open: false,
@@ -110,6 +111,7 @@ function RetrievalApp() {
   const surroundReqRef = useRef(0);
   const similarReqRef = useRef(0);
   const rerankRunRef = useRef(0);
+  const resultListRef = useRef(null);
 
   const [, startNonUrgentUpdate] = useTransition();
 
@@ -283,6 +285,26 @@ function RetrievalApp() {
 
   const handleModeChange = useCallback((nextMode) => {
     setMode(nextMode);
+  }, []);
+
+  useEffect(() => {
+    const handleSearchModeShortcut = (event) => {
+      if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || event.repeat) return;
+
+      const nextMode = SEARCH_MODE_BY_CODE[event.code]?.key;
+      if (!nextMode) return;
+
+      event.preventDefault();
+      handleModeChange(nextMode);
+    };
+
+    window.addEventListener("keydown", handleSearchModeShortcut);
+    return () => window.removeEventListener("keydown", handleSearchModeShortcut);
+  }, [handleModeChange]);
+
+  const scrollResultsToTop = useCallback(() => {
+    resultListRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   const handleInlineClauseChange = useCallback((clauseIndex, value) => {
@@ -528,6 +550,7 @@ function RetrievalApp() {
   const handleColorSearch = useCallback(async () => {
     const cells = selectedColorCells(colorGrid);
     if (!cells.length || loading || !backendReady) return;
+    scrollResultsToTop();
     setGodModeResults([]);
     setMode("color");
     setSelected(null);
@@ -538,7 +561,7 @@ function RetrievalApp() {
     } catch (err) {
       pushToast("warning", "Color search failed", getErrorMessage(err));
     }
-  }, [backendReady, colorGrid, loading, pushToast, searchByColor, settings.topK]);
+  }, [backendReady, colorGrid, loading, pushToast, scrollResultsToTop, searchByColor, settings.topK]);
 
   // ── Stable UI handlers ───────────────────────────────
   const handleToggleTheme = useCallback(() => {
@@ -612,6 +635,7 @@ function RetrievalApp() {
       const hasImages = clauseImages.some((items) => items.length > 0);
       if ((!cleanQuery && !hasImages) || loading || !backendReady) return;
 
+      scrollResultsToTop();
       setGodModeResults([]);
       const searchId = ++searchIdRef.current;
       rerankRunRef.current += 1;
@@ -636,7 +660,7 @@ function RetrievalApp() {
       try {
         if (hasImages) {
           if (!["semantic", "temporal", "auto"].includes(searchMode)) {
-            pushToast("warning", "Chế độ chưa hỗ trợ ảnh", "Hãy dùng Semantic, Temporal hoặc Auto; OCR/ASR/Fusion vẫn hoạt động bình thường với truy vấn chữ.");
+            pushToast("warning", "Images are not supported in this mode", "Use Semantic, Temporal, or Auto for image queries. OCR, ASR, and Fusion support text queries only.");
             return;
           }
           await searchMultimodal({
@@ -655,7 +679,7 @@ function RetrievalApp() {
         } else if (searchMode === "fusion") {
           const cfg = (typeof payload === "object" && payload?.fusionConfig) || fusionConfig;
           if (!cfg?.hasConfig) {
-            pushToast("warning", "Fusion chưa được cấu hình", "Bấm nút cài đặt để chọn model/method trước khi search.");
+            pushToast("warning", "Fusion is not configured", "Open Fusion settings and select at least one model or method before searching.");
             return;
           }
           await searchWithFusion({
@@ -689,7 +713,7 @@ function RetrievalApp() {
         pushToast("warning", "Search failed", getErrorMessage(err));
       }
     },
-    [backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, queryConnectors, resolvedMode, search, searchMultimodal, searchWithFusion, settings]
+    [backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, queryConnectors, resolvedMode, scrollResultsToTop, search, searchMultimodal, searchWithFusion, settings]
   );
 
   const handleSidebarSearch = useCallback(() => {
@@ -702,7 +726,7 @@ function RetrievalApp() {
     });
   }, [durationLimit, fusionConfig, handleSearch, query, resolvedMode]);
 
-  // Auto-rerank tối ưu hơn: debounce + chống stale update
+  // Debounce automatic reranking and ignore stale updates.
   useEffect(() => {
     if (!rerankEnabled || mode === "fusion" || rawResults.length === 0 || loading || !lastQuery) return;
 
@@ -731,7 +755,7 @@ function RetrievalApp() {
       } catch (err) {
         if (cancelled || runId !== rerankRunRef.current) return;
         console.warn("[AUTO-RERANK] failed:", err?.message || err);
-        pushToast("warning", "Auto-rerank thất bại", getErrorMessage(err));
+        pushToast("warning", "Automatic reranking failed", getErrorMessage(err));
       } finally {
         if (!cancelled && runId === rerankRunRef.current) {
           setReranking(false);
@@ -920,10 +944,10 @@ function RetrievalApp() {
         }
 
         if (settings.godMode && !settings.godModeEndpoint) {
-          throw new Error("God Mode endpoint chưa được cấu hình");
+          throw new Error("The God Mode endpoint is not configured.");
         }
         if (settings.godMode && !evaluationId) {
-          throw new Error("God Mode cần Evaluation ID đang hoạt động");
+          throw new Error("God Mode requires an active evaluation ID.");
         }
         const response = settings.godMode
           ? await submitDresViaGodMode({ endpoint: settings.godModeEndpoint, dresUrl: settings.submitUrl, sessionId, evaluationId, result })
@@ -1035,8 +1059,8 @@ function RetrievalApp() {
                     <div className="query-summary">
                       <span>Query: <strong>{lastQuery}</strong></span>
                       <span className="query-summary-right">
-                        {reranking && <span className="rerank-status-badge"><span className="rerank-spinner" /> VLM đang rerank...</span>}
-                        {rerankResultsData && !reranking && <span className="rerank-status-badge rerank-status-badge--done">✓ Đã rerank</span>}
+                        {reranking && <span className="rerank-status-badge"><span className="rerank-spinner" /> VLM reranking...</span>}
+                        {rerankResultsData && !reranking && <span className="rerank-status-badge rerank-status-badge--done">✓ Reranked</span>}
                         <span>{count} results</span>
                       </span>
                     </div>
@@ -1050,7 +1074,7 @@ function RetrievalApp() {
                 </div>
 
                 <div className="result-body">
-                  <div className="result-list">
+                  <div className="result-list" ref={resultListRef}>
                     {grouped ? (
                       <GroupedResults
                         results={deferredResults}
@@ -1093,7 +1117,7 @@ function RetrievalApp() {
                 <SearchBar {...searchBarProps} expandedByDefault={false} onSearch={handleSearch} />
 
                 <p className="footer-note">
-                  Retrieval result có thể thiếu chính xác, cần kiểm tra lại bằng video gốc.
+                  Retrieval results may be inaccurate. Verify them against the source video.
                 </p>
               </div>
             </>

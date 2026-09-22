@@ -79,7 +79,7 @@ export default function SettingsPanel({
         </label>
 
         <p className="settings-warning">
-          Chỉ verdict DRES đúng mới được relay và ghim vào rerank của các máy cùng evaluation.
+          Only correct DRES verdicts are relayed and pinned to reranked results for clients in the same evaluation.
         </p>
       </div>
 
@@ -144,7 +144,7 @@ export default function SettingsPanel({
 
         <p className="settings-warning">
           <ShieldCheck size={14} />
-          Frontend chỉ gọi backend proxy. Backend mới gọi DRES qua /api/dres/login và /api/dres/submit.
+          The frontend calls the backend proxy. The backend communicates with DRES through /api/dres/login and /api/dres/submit.
         </p>
       </div>
     </aside>

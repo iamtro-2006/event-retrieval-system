@@ -35,11 +35,11 @@ export function ColorGridEditor({ value, onChange, compact = false, onSearch, lo
       <span>{selectedColorCells(value).length}/25 cells</span>
     </div>
     <div className="color-editor-body">
-      <div className="color-palette" aria-label="Dominant colour palette">
+      <div className="color-palette" aria-label="Dominant color palette">
         {COLOR_PALETTE.map(([name, hex]) => <button key={name} type="button" aria-label={name}
           aria-pressed={selected === name} title={name} style={{ "--swatch": hex }} onClick={() => setSelected(name)} />)}
       </div>
-      <div className="dominant-color-grid" role="grid" aria-label="5 by 5 dominant colour grid"
+      <div className="dominant-color-grid" role="grid" aria-label="5 by 5 dominant color grid"
         onPointerUp={() => { painting.current = null; }} onPointerLeave={() => { painting.current = null; }}>
         {value.map((color, index) => <button key={index} type="button" role="gridcell"
           aria-label={`Row ${Math.floor(index / 5) + 1}, column ${index % 5 + 1}${color ? `: ${color}` : ": empty"}`}
@@ -57,7 +57,7 @@ export function ColorGridEditor({ value, onChange, compact = false, onSearch, lo
       </div>
     </div>
     {onSearch && <button className="color-search-submit" type="button" disabled={loading || !selectedColorCells(value).length} onClick={onSearch}>
-      <Search size={16} /> {loading ? "Searching…" : "Search colours"}
+      <Search size={16} /> {loading ? "Searching..." : "Search colors"}
     </button>}
     <small>Click/drag to paint · right-click to clear a cell</small>
   </div>;
@@ -75,9 +75,9 @@ export default function ColorSearchModal({ open, value, onChange, onClose, onSea
   }, [loading, onClose, onSearch, open, value]);
   if (!open) return null;
   return <div className="color-modal-backdrop" onClick={onClose}>
-    <section className="color-modal" role="dialog" aria-modal="true" aria-label="Dominant colour search" onClick={(event) => event.stopPropagation()}>
-      <header><div><strong>Dominant-colour search</strong><span>Select remembered colours on the 5 × 5 frame</span></div>
-        <button type="button" onClick={onClose} aria-label="Close colour canvas"><X size={18} /></button></header>
+    <section className="color-modal" role="dialog" aria-modal="true" aria-label="Dominant color search" onClick={(event) => event.stopPropagation()}>
+      <header><div><strong>Dominant Color Search</strong><span>Paint the remembered colors on the 5 × 5 frame grid</span></div>
+        <button type="button" onClick={onClose} aria-label="Close color canvas"><X size={18} /></button></header>
       <ColorGridEditor value={value} onChange={onChange} onSearch={onSearch} loading={loading} />
     </section>
   </div>;

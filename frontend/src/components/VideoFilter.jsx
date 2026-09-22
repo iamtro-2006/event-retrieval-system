@@ -30,13 +30,13 @@ export function VideoFilterProvider({ children }) {
     currentIds.current = next;
     setIds(next);
     try { localStorage.setItem("vireta-video-cache", JSON.stringify(next)); }
-    catch { notify("Không thể lưu cache qua lần tải lại trang."); }
+    catch { notify("The video cache could not be saved for the next page load."); }
   };
   const add = (id) => {
     if (!id) return;
-    if (currentIds.current.includes(id)) { notify(`${id} đã tồn tại trong cache`); return; }
+    if (currentIds.current.includes(id)) { notify(`${id} is already in the cache.`); return; }
     save([...currentIds.current, id]);
-    notify(`Đã thêm ${id}`);
+    notify(`Added ${id}.`);
   };
   const remove = (id) => save(currentIds.current.filter((value) => value !== id));
   const activeIds = useMemo(() => enabled && ids.length ? ids : [], [enabled, ids]);
@@ -65,7 +65,7 @@ export function VideoFilterBar() {
     event.preventDefault();
     const exact = catalog.find((id) => id.toLowerCase() === query.trim().toLowerCase());
     const id = exact || (matches.length === 1 ? matches[0] : null);
-    if (!id) { notify("Chọn một video ID chính xác từ metadata rồi nhấn Enter."); return; }
+    if (!id) { notify("Select an exact video ID from the metadata, then press Enter."); return; }
     add(id); setQuery("");
   };
   return <>
@@ -79,7 +79,7 @@ export function VideoFilterBar() {
       </form>
       <button type="button" disabled={loading} onClick={async () => {
         const values = await load();
-        if (values) { save((current) => [...new Set([...current, ...values])]); notify(`Đã import ${values.length} video ID từ metadata`); }
+        if (values) { save((current) => [...new Set([...current, ...values])]); notify(`Imported ${values.length} video IDs from metadata.`); }
       }}>{loading ? "Loading…" : "Import all"}</button>
       <button type="button" onClick={() => save([])} disabled={!ids.length}>Clear all</button>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}>Cache ({ids.length})</button>
@@ -97,9 +97,9 @@ export function VideoFilterBar() {
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
           }
         }}>
-        <header><strong><History size={16} /> Video ID cache ({ids.length})</strong><button autoFocus type="button" onClick={() => setOpen(false)} aria-label="Đóng cache"><X size={18} /></button></header>
-        <p>Filter chỉ áp dụng khi bật tag Filter. Cache trống sẽ tìm toàn bộ.</p>
-        {!ids.length ? <p>Cache đang trống.</p> : <ol>{ids.map((id) => <li key={id}><span>{id}</span><button type="button" onClick={() => remove(id)} aria-label={`Xóa ${id}`}><X size={14} /></button></li>)}</ol>}
+        <header><strong><History size={16} /> Video ID cache ({ids.length})</strong><button autoFocus type="button" onClick={() => setOpen(false)} aria-label="Close cache"><X size={18} /></button></header>
+        <p>The cache limits results only when the Filter tag is enabled. An empty cache searches all videos.</p>
+        {!ids.length ? <p>The cache is empty.</p> : <ol>{ids.map((id) => <li key={id}><span>{id}</span><button type="button" onClick={() => remove(id)} aria-label={`Remove ${id}`}><X size={14} /></button></li>)}</ol>}
       </section>
     </div>}
   </>;
@@ -109,9 +109,9 @@ export function VideoVotes({ videoId }) {
   const filter = useVideoFilter();
   if (!filter) return null;
   return <>
-    <button className="vote-button like" type="button" aria-label={`Like ${videoId}`} title="Thêm video vào cache"
+    <button className="vote-button like" type="button" aria-label={`Add ${videoId} to cache`} title="Add video to cache"
       aria-pressed={filter.ids.includes(videoId)} onClick={(event) => { event.stopPropagation(); filter.add(videoId); }}><ThumbsUp size={13} /></button>
-    <button className="vote-button dislike" type="button" aria-label={`Dislike ${videoId}`} title="Xóa video khỏi cache"
+    <button className="vote-button dislike" type="button" aria-label={`Remove ${videoId} from cache`} title="Remove video from cache"
       onClick={(event) => { event.stopPropagation(); filter.remove(videoId); }}><ThumbsDown size={13} /></button>
   </>;
 }

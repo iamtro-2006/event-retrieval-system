@@ -26,7 +26,7 @@ export default function ResultToolbar({
 
       <div className="column-control">
         <Grid3X3 size={16} />
-        <span>Số cột:</span>
+        <span>Columns:</span>
 
         <input
           type="range"
@@ -40,4 +40,4 @@ export default function ResultToolbar({
       </div>
     </div>
   );
-} 
+}

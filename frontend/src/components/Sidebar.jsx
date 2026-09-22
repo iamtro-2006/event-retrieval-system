@@ -6,16 +6,9 @@ import {
 import { useState } from "react";
 import { useVideoFilter } from "./VideoFilter";
 import { ColorGridEditor } from "./ColorSearch";
+import { SEARCH_MODES } from "../config/searchModes";
 
-const SEARCH_MODES = [
-  { key: "text", label: "Semantic", hint: "Visual meaning", icon: Search },
-  { key: "temporal", label: "Temporal", hint: "Ordered events", icon: Clock3 },
-  { key: "auto", label: "Auto", hint: "Detect query intent", icon: WandSparkles },
-  { key: "ocr", label: "OCR", hint: "On-screen text", icon: ScanText },
-  { key: "asr", label: "ASR", hint: "Spoken content", icon: AudioLines },
-  { key: "fusion", label: "Fusion", hint: "Combine sources", icon: Blend },
-  { key: "color", label: "Color", hint: "Dominant colour grid", icon: Palette },
-];
+const MODE_ICONS = { text: Search, temporal: Clock3, auto: WandSparkles, ocr: ScanText, asr: AudioLines, fusion: Blend, color: Palette };
 
 const BRAND_VARIANTS = [
   { icon: Sparkles, className: "is-blue", label: "Spark" },
@@ -63,7 +56,7 @@ export default function Sidebar({
   return (
     <aside className={`sidebar ${expanded ? "is-expanded" : ""}`}>
       <div className="sidebar-top">
-        {videoFilter && <button className="sidebar-button" type="button" title="Video ID cache" aria-label="Lịch sử video ID cache"
+        {videoFilter && <button className="sidebar-button" type="button" title="Video ID cache" aria-label="Video ID cache history"
           aria-expanded={videoFilter.open} onClick={() => videoFilter.setOpen(!videoFilter.open)}>
           <History size={20} />{expanded && <span>Video cache ({videoFilter.ids.length})</span>}
         </button>}
@@ -87,14 +80,18 @@ export default function Sidebar({
           {!expanded && (
             <div className="mode-hover-card" role="menu">
               <p className="mode-hover-eyebrow">SEARCH BY</p>
-              {SEARCH_MODES.map(({ key, label, hint, icon: Icon }) => (
+              {SEARCH_MODES.map(({ key, label, description, shortcut }) => {
+                const Icon = MODE_ICONS[key];
+                return (
                 <button type="button" role="menuitem" key={key}
                   className={`mode-hover-option ${mode === key ? "active" : ""}`}
+                  title={`${label} (${shortcut})`}
                   onClick={() => onModeChange?.(key)}>
                   <span className="mode-hover-icon"><Icon size={17} /></span>
-                  <span><strong>{label}</strong><small>{hint}</small></span>
+                  <span><strong>{label}</strong><small>{description} · {shortcut}</small></span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -117,12 +114,16 @@ export default function Sidebar({
               <p className="sidebar-section-label">ACTIVE MODE</p>
               <h2>{getModeLabel(mode)} Search</h2>
               <div className="expanded-mode-list">
-                {SEARCH_MODES.map(({ key, label, icon: Icon }) => (
+                {SEARCH_MODES.map(({ key, label, shortcut }) => {
+                  const Icon = MODE_ICONS[key];
+                  return (
                   <button type="button" key={key} className={mode === key ? "active" : ""}
+                    title={`${label} (${shortcut})`}
                     onClick={() => onModeChange?.(key)}>
                     <Icon size={16} /><span>{label}</span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </section>
 

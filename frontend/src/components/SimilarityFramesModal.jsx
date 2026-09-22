@@ -47,7 +47,7 @@ export default function SimilarityFramesModal({
 
           <div className="surround-modal-controls">
             <label>
-              Số cột
+              Columns
               <input
                 type="range"
                 min="2"
