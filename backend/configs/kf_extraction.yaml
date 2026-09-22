@@ -2,9 +2,12 @@ project:
   name: keyframe_pipeline
   seed: 42
 
+# Canonical methods exposed by scripts/keyframe_extraction/run.py.
+method: distribution
+
 paths:
-  input_dir: data/raw/videos
-  output_dir: data/processed/test
+  input_dir: ../data/raw/videos
+  output_dir: ../data
 
 logging:
   level: INFO
@@ -28,9 +31,10 @@ frame_loader:
   persistent_workers: false
 
 embedding:
-  model_name: ViT-L-16-SigLIP-256 
-  pretrained: webli
-  batch_size: 16
+  model_name: PE-Core-L14-336
+  backend: perception_encoder
+  pretrained: true
+  batch_size: 1
   device: auto
   precision: fp16
   skip_existing: true
@@ -43,3 +47,32 @@ keyframe:
   image_quality: 95
   save_images: true
   skip_existing: true
+
+distribution:
+  sample_fps: 5.0
+  baseline_seconds: 8.0
+  reference_test_seconds: 2.0
+  current_seconds: 2.0
+  window_step: 2.0
+  p_value: 0.05
+  consecutive_windows: 2
+  local_consecutive: 3
+  block_size: 2
+  min_scene_seconds: 5.0
+  max_scene_seconds: 30.0
+  hsv_weight: 0.6
+  motion_weight: 0.4
+  difference_threshold: 20
+
+kfeavi:
+  analysis_width: 320
+  analysis_height: 180
+  grid_rows: 4
+  grid_cols: 4
+  sample_stride: 1
+  mad_scale: 3.5
+  percentile: 98.0
+  min_gap_seconds: 1.0
+
+vlm:
+  enabled: false

@@ -60,11 +60,12 @@ class KeyframeExtractionPipeline:
         )
 
         clip_model, preprocess, clip_device = load_clip_model(
-            self.cfg.embedding.model_name,
-            self.cfg.embedding.pretrained,
-            self.cfg.embedding.precision,
-            self.cfg.embedding.device,
-            self.logger,
+            model_name=self.cfg.embedding.model_name,
+            pretrained=self.cfg.embedding.pretrained,
+            precision=self.cfg.embedding.precision,
+            device_name=self.cfg.embedding.device,
+            backend=self.cfg.embedding.backend,
+            logger=self.logger,
         )
 
         started = time.time()

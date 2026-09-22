@@ -48,6 +48,7 @@ class FrameLoaderConfig:
 @dataclass
 class EmbeddingConfig:
     model_name: str = "MobileCLIP2-S4"
+    backend: str | None = None
     pretrained: str = "dfndr2b"
     batch_size: int = 256
     device: str = "auto"
@@ -137,6 +138,7 @@ def load_config(config_path: str | Path) -> AppConfig:
         ),
         embedding=EmbeddingConfig(
             model_name=str(embedding.get("model_name", "MobileCLIP2-S4")),
+            backend=embedding.get("backend"),
             pretrained=str(embedding.get("pretrained", "dfndr2b")),
             batch_size=int(embedding.get("batch_size", 256)),
             device=str(embedding.get("device", "auto")),
