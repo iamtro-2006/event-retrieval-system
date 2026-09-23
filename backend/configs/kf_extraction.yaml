@@ -19,7 +19,10 @@ transnet:
   repo_dir: external/TransNetV2
   weights_path: weights/transnetv2-pytorch-weights.pth
   threshold: 0.5
-  batch_size: 100
+  # Total TransNet window. Only the center frames are retained so adjacent
+  # windows have temporal context, matching the P3 notebook inference path.
+  batch_size: 500
+  context_frames: 25
   device: auto
   skip_existing: true
 
@@ -34,14 +37,17 @@ embedding:
   model_name: PE-Core-L14-336
   backend: perception_encoder
   pretrained: true
-  batch_size: 1
+  batch_size: 8
   device: auto
   precision: fp16
   skip_existing: true
 
 keyframe:
   min_scene_frames: 3
+  # Keep max_scene_gap_frames as a compatibility fallback. The PE-Core path
+  # now prefers the FPS-aware duration limit below.
   max_scene_gap_frames: 5000
+  max_scene_seconds: 20.0
   hist_threshold: 0.95
   min_hist_bins: 10
   image_quality: 95

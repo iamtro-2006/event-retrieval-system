@@ -1,5 +1,5 @@
 input_keyframes_root: ../data/keyframes
-output_embeddings_root: ../data/embeddings
+output_embeddings_root: ../data
 
 image:
   extensions: [".jpg", ".jpeg", ".png", ".webp"]
@@ -13,18 +13,6 @@ save:
 # aren't installed on this machine yet). Every model writes to its own
 # subfolder: <output_embeddings_root>/<key>/<dataset>/<video>/<frame>.npy
 models:
-
-  # Tencent WeMM multimodal embedding. Kept disabled so normal extraction
-  # runs do not regenerate the canonical 115,402 vectors accidentally.
-  - key: wemm_embedding_2b
-    enabled: false
-    backend: wemm_embedding
-    name: tencent/WeMM-Embedding-2B
-    device: auto
-    precision: fp16
-    batch_size: 4
-    normalize: false
-    revision: bbd6cd4bf52cfc6716f752a2df80b2706720bd95
 
   # Meta Perception Encoder Core. All PE-Core sizes use the same backend;
   # change `name` to T16-384 / S16-384 / B16-224 / L14-336 / G14-448.

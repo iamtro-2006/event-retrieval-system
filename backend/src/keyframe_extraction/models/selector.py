@@ -66,8 +66,16 @@ def extract_keyframe_indexes(
     hist_threshold: float,
     min_hist_bins: int,
     logger: logging.Logger | None = None,
+    max_scene_seconds: float | None = None,
 ) -> list[int]:
-    scenes = split_large_scenes(scenes, max_gap)
+    effective_max_gap = max_gap
+    if max_scene_seconds is not None:
+        if max_scene_seconds <= 0:
+            raise ValueError("max_scene_seconds must be positive when provided")
+        fps = get_video_fps(video_path)
+        if fps > 0:
+            effective_max_gap = max(1, round(max_scene_seconds * fps) - 1)
+    scenes = split_large_scenes(scenes, effective_max_gap)
     selected: list[int] = []
 
     if logger:

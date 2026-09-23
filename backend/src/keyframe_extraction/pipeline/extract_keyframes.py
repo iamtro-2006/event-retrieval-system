@@ -94,6 +94,7 @@ class KeyframeExtractionPipeline:
                     self.cfg.transnet.threshold,
                     scene_path,
                     self.logger,
+                    self.cfg.transnet.context_frames,
                 )
 
             if feature_path.exists() and self.cfg.embedding.skip_existing:
@@ -124,6 +125,7 @@ class KeyframeExtractionPipeline:
                 self.cfg.keyframe.hist_threshold,
                 self.cfg.keyframe.min_hist_bins,
                 self.logger,
+                self.cfg.keyframe.max_scene_seconds,
             )
             save_keyframe_map(indexes, video, map_path)
             self.logger.info("Saved keyframe map: %s", map_path)

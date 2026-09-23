@@ -31,7 +31,8 @@ class TransNetConfig:
     repo_dir: Path
     weights_path: Path
     threshold: float = 0.5
-    batch_size: int = 100
+    batch_size: int = 500
+    context_frames: int = 25
     device: str = "auto"
     skip_existing: bool = True
 
@@ -60,6 +61,7 @@ class EmbeddingConfig:
 class KeyframeConfig:
     min_scene_frames: int = 3
     max_scene_gap_frames: int = 5000
+    max_scene_seconds: float | None = 20.0
     hist_threshold: float = 0.90
     min_hist_bins: int = 10
     image_quality: int = 95
@@ -125,7 +127,8 @@ def load_config(config_path: str | Path) -> AppConfig:
             repo_dir=_resolve(root, transnet["repo_dir"]),
             weights_path=_resolve(root, transnet["weights_path"]),
             threshold=float(transnet.get("threshold", 0.5)),
-            batch_size=int(transnet.get("batch_size", 100)),
+            batch_size=int(transnet.get("batch_size", 500)),
+            context_frames=int(transnet.get("context_frames", 25)),
             device=str(transnet.get("device", "auto")),
             skip_existing=_as_bool(transnet.get("skip_existing", True), True),
         ),
@@ -148,6 +151,11 @@ def load_config(config_path: str | Path) -> AppConfig:
         keyframe=KeyframeConfig(
             min_scene_frames=int(keyframe.get("min_scene_frames", 3)),
             max_scene_gap_frames=int(keyframe.get("max_scene_gap_frames", 5000)),
+            max_scene_seconds=(
+                None
+                if keyframe.get("max_scene_seconds", 20.0) is None
+                else float(keyframe.get("max_scene_seconds", 20.0))
+            ),
             hist_threshold=float(keyframe.get("hist_threshold", 0.90)),
             min_hist_bins=int(keyframe.get("min_hist_bins", 10)),
             image_quality=int(keyframe.get("image_quality", 95)),
