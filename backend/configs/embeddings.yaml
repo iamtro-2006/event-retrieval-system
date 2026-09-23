@@ -30,10 +30,10 @@ models:
   # change `name` to T16-384 / S16-384 / B16-224 / L14-336 / G14-448.
   # Disabled by default because the official perception_models package and
   # checkpoint weights are large optional dependencies.
-  - key: pe_core_l14_336
+  - key: pe_core_g14_448
     enabled: false
     backend: perception_encoder
-    name: PE-Core-L14-336
+    name: PE-Core-G14-448
     pretrained: true          # downloads the official checkpoint from HF
     device: auto
     precision: amp
@@ -52,15 +52,15 @@ models:
     pretrained: webli          # -> resolves to hf-hub:timm/ViT-SO400M-16-SigLIP2-384
     device: auto
     precision: fp32
-    batch_size: 32
+    batch_size: 8
     normalize: true
 
-  # ViT-H-14-378-quickgelu
-  - key: dfn_vit_h14_378
+  # ViT-gopt-16-SigLIP2-384 
+  - key: siglip2_gopt16_384
     enabled: true
     backend: open_clip
-    name: ViT-H-14-378-quickgelu
-    pretrained: dfn5b          # -> resolves to hf-hub:apple/DFN5B-CLIP-ViT-H-14-378
+    name: ViT-gopt-16-SigLIP2-384 
+    pretrained: webli          # -> resolves to hf-hub:apple/DFN5B-CLIP-ViT-H-14-378
     device: auto
     precision: fp32
     batch_size: 16
