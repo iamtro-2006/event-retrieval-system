@@ -28,9 +28,9 @@ class VerifiedSubmit(BaseModel):
     dres_url: str
     session_id: str
     evaluation_id: str
-    video_id: str
-    frame_id: int
-    timestamp: float = Field(ge=0)
+    task: str = "kis"
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    answer: str | None = None
     result: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -73,11 +73,15 @@ def read_results(evaluation_id: str) -> list[dict[str, Any]]:
 
 def safe_result(payload: VerifiedSubmit) -> dict[str, Any]:
     source = payload.result
+    item = payload.items[0]
+    video_id = str(item.get("video_id") or "")
+    frame_id = int(item.get("frame_id") or 0)
+    timestamp = float(item.get("timestamp") or 0)
     return {
-        "id": f"godmode:{payload.evaluation_id}:{payload.video_id}:{payload.frame_id}",
-        "video_id": payload.video_id,
-        "frame_id": payload.frame_id,
-        "timestamp": payload.timestamp,
+        "id": f"godmode:{payload.evaluation_id}:{video_id}:{frame_id}",
+        "video_id": video_id,
+        "frame_id": frame_id,
+        "timestamp": timestamp,
         "image_url": str(source.get("image_url") or ""),
         "video_url": str(source.get("video_url") or ""),
         "similarity": 1.0,
@@ -86,7 +90,7 @@ def safe_result(payload: VerifiedSubmit) -> dict[str, Any]:
         "evaluation_id": payload.evaluation_id,
         "verified_at": time.time(),
         "raw": {
-            "frame_idx": payload.frame_id,
+            "frame_idx": frame_id,
             "keyframe_path": str((source.get("raw") or {}).get("keyframe_path") or ""),
         },
     }
@@ -121,11 +125,29 @@ async def submit(payload: VerifiedSubmit) -> dict[str, Any]:
     if not payload.session_id.strip() or not payload.evaluation_id.strip():
         raise HTTPException(status_code=400, detail="Missing DRES session or evaluation ID")
     dres_url = clean_external_url(payload.dres_url)
-    time_ms = int(round(payload.timestamp * 1000))
-    body = {"answerSets": [{"answers": [{
-        "mediaItemName": payload.video_id.strip(), "start": time_ms, "end": time_ms,
-        "text": None, "mediaItemCollectionName": None,
-    }]}]}
+    task = payload.task.strip().lower()
+    if task not in {"kis", "trake", "qa"} or not payload.items:
+        raise HTTPException(status_code=400, detail="Invalid task or empty submission queue")
+    def time_ms(item: dict[str, Any]) -> int:
+        return max(0, int(round(float(item.get("timestamp") or 0) * 1000)))
+    def media(item: dict[str, Any]) -> dict[str, Any]:
+        value = time_ms(item)
+        return {"mediaItemName": str(item.get("video_id") or "").strip(), "start": value, "end": value}
+    if task == "kis":
+        body = {"answerSets": [{"answers": [media(payload.items[0])]}]}
+    elif task == "trake":
+        video_ids = {str(item.get("video_id") or "").strip() for item in payload.items}
+        if "" in video_ids or len(video_ids) != 1:
+            raise HTTPException(status_code=400, detail="TRAKE requires all queued frames to belong to one video")
+        video_id = next(iter(video_ids))
+        frame_ids = ",".join(str(max(0, int(item.get("frame_id") or 0))) for item in payload.items)
+        body = {"answerSets": [{"answers": [{"text": f"TR-{video_id}-{frame_ids}"}]}]}
+    else:
+        answer = (payload.answer or "").strip()
+        if not answer:
+            raise HTTPException(status_code=400, detail="QA requires an answer")
+        item = payload.items[0]
+        body = {"answerSets": [{"answers": [{"text": f"QA-{answer}-{item.get('video_id')}-{time_ms(item)}"}]}]}
     try:
         response = await asyncio.to_thread(
             requests.post,
@@ -142,7 +164,7 @@ async def submit(payload: VerifiedSubmit) -> dict[str, Any]:
     with connect_db() as db:
         db.execute(
             "INSERT OR REPLACE INTO verified_results VALUES (?, ?, ?, ?, ?, ?)",
-            (payload.evaluation_id, payload.video_id, payload.frame_id, payload.timestamp,
+            (payload.evaluation_id, item["video_id"], item["frame_id"], item["timestamp"],
              json.dumps(item, ensure_ascii=False), item["verified_at"]),
         )
         db.execute("""

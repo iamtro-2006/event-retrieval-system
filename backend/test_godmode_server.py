@@ -19,9 +19,8 @@ class GodModeRelayTests(unittest.TestCase):
             dres_url="https://dres.example",
             session_id="session",
             evaluation_id="evaluation",
-            video_id="L01_V001",
-            frame_id=42,
-            timestamp=1.5,
+            task="kis",
+            items=[{"video_id": "L01_V001", "frame_id": 42, "timestamp": 1.5}],
             result={"image_url": "http://localhost/frame.jpg"},
         )
 

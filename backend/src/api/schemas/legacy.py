@@ -9,7 +9,7 @@ FE cũ có thể đã gửi kèm.
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.retrieval.retriever.common.orchestrator import SearchMode
 
@@ -93,8 +93,11 @@ class DresSubmitRequest(BaseModel):
     dres_url: str
     session_id: str
     evaluation_id: str | None = None
-    video_id: str
-    frame_id: int
+    task: str = "kis"
+    items: list[dict] = Field(default_factory=list)
+    answer: str | None = None
+    video_id: str | None = None
+    frame_id: int | None = None
     timestamp: float | None = None
 
 

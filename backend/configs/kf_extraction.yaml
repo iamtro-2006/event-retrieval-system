@@ -19,8 +19,6 @@ transnet:
   repo_dir: external/TransNetV2
   weights_path: weights/transnetv2-pytorch-weights.pth
   threshold: 0.5
-  # Total TransNet window. Only the center frames are retained so adjacent
-  # windows have temporal context, matching the P3 notebook inference path.
   batch_size: 500
   context_frames: 25
   device: auto

@@ -5,7 +5,7 @@ semantic:
   default_model_key: pe-core
   models:
     - model_key: siglip2-so400m
-      enabled: true
+      enabled: false
       model_name: ViT-SO400M-16-SigLIP2-384
       index_path: ../data/database/faiss_hnsw_siglip2_so400m_384/keyframes.faiss
       metadata_path: ../data/database/faiss_hnsw_siglip2_so400m_384/metadata.csv
