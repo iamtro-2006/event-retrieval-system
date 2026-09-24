@@ -1,5 +1,5 @@
 import { memo, useCallback } from "react";
-import { Play, Send, Search, Images } from "lucide-react";
+import { Play, Send, Search, Images, ListPlus } from "lucide-react";
 import { VideoVotes } from "./VideoFilter";
 import HighlightedSnippet from "./HighlightedSnippet";
 
@@ -35,6 +35,11 @@ const ResultCard = memo(function ResultCard({
   const handleSubmit = useCallback((e) => {
     e.stopPropagation();
     onSubmit?.(result);
+  }, [onSubmit, result]);
+
+  const handleQueue = useCallback((e) => {
+    e.stopPropagation();
+    onSubmit?.(result, "queue");
   }, [onSubmit, result]);
 
   const handleSimilaritySearch = useCallback((e) => {
@@ -123,29 +128,37 @@ const ResultCard = memo(function ResultCard({
               type="button"
               className="result-mini-btn"
               title="Similarity search"
+              aria-label="Similarity search"
               onClick={handleSimilaritySearch}
             >
-              <Search size={12} strokeWidth={2.4} />
-              <span>Similar</span>
+              <Search size={15} strokeWidth={2.4} />
+              <span className="action-label">Similar</span>
             </button>
 
             <button
               type="button"
               className="result-mini-btn"
               title="Surrounding images"
+              aria-label="Surrounding images"
               onClick={handleSurroundingImages}
             >
-              <Images size={12} strokeWidth={2.4} />
-              <span>Surround</span>
+              <Images size={15} strokeWidth={2.4} />
+              <span className="action-label">Surround</span>
             </button>
 
             <button
               type="button"
-              className="result-submit-btn"
-              onClick={handleSubmit}
+              className="result-mini-btn"
+              title="Add to submission queue"
+              aria-label="Add to submission queue"
+              onClick={handleQueue}
             >
-              <Send size={12} strokeWidth={2.4} />
-              <span>Submit</span>
+              <ListPlus size={15} strokeWidth={2.4} />
+              <span className="action-label">Queue</span>
+            </button>
+            <button type="button" className="result-submit-btn" title="Submit KIS" aria-label="Submit KIS" onClick={handleSubmit}>
+              <Send size={15} strokeWidth={2.4} />
+              <span className="action-label">Submit</span>
             </button>
           </div>
         </div>

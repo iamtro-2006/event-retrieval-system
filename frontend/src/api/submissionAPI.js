@@ -43,7 +43,9 @@ export async function submitDresViaBackend({
   dresUrl,
   sessionId,
   evaluationId,
-  result,
+  task,
+  items,
+  answer,
 }) {
   const response = await fetch(apiUrl("/api/dres/submit"), {
     method: "POST",
@@ -55,9 +57,13 @@ export async function submitDresViaBackend({
       dres_url: dresUrl,
       session_id: sessionId,
       evaluation_id: evaluationId || null,
-      video_id: result.video_id,
-      frame_id: Number(result.raw?.frame_idx ?? result.frame_id ?? 0),
-      timestamp: Number(result.timestamp ?? 0),
+      task,
+      answer: answer || null,
+      items: items.map((item) => ({
+        video_id: item.video_id,
+        frame_id: Number(item.frame_id ?? 0),
+        timestamp: Number(item.timestamp ?? 0),
+      })),
     }),
   });
 

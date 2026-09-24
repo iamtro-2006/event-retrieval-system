@@ -21,6 +21,7 @@ import SurroundingFramesModal from "./components/SurroundingFramesModal";
 import SimilarityFramesModal from "./components/SimilarityFramesModal";
 import VideoModal from "./components/VideoModal";
 import PreviewVideoModal from "./components/PreviewVideoModal";
+import SubmissionQueueModal from "./components/SubmissionQueueModal";
 import ColorSearchModal from "./components/ColorSearch";
 import { EMPTY_COLOR_GRID, selectedColorCells } from "./utils/colorGrid";
 import { useRetrievalSearch } from "./hooks/useRetrievalSearch";
@@ -57,13 +58,20 @@ const DEFAULT_SIMILAR_MODAL = Object.freeze({
   loading: false,
 });
 
-function getResultLabel(result) {
-  if (!result) return "";
-  return `${result.video_id}/${String(result.frame_id ?? 0).padStart(6, "0")}`;
-}
-
 function getErrorMessage(error, fallback = "Unexpected error") {
   return error?.message || String(error || fallback);
+}
+
+function toSubmissionItem(result) {
+  const frameId = Number(result?.raw?.frame_idx ?? result?.frame_idx ?? result?.frame_id ?? 0);
+  const timestamp = Number(result?.timestamp ?? result?.timestamp_sec ?? 0);
+  return {
+    ...result,
+    queue_id: `${result.video_id}:${frameId}:${Math.round(timestamp * 1000)}`,
+    frame_id: frameId,
+    timestamp,
+    image_url: result.image_url || result.raw?.image_url || "",
+  };
 }
 
 function parseExplicitQuery(query) {
@@ -152,6 +160,9 @@ function RetrievalApp() {
   const [similarColumns, setSimilarColumns] = useState(5);
   const [modalOrder, setModalOrder] = useState([]);
   const [videoResult, setVideoResult] = useState(null);
+  const [submissionQueue, setSubmissionQueue] = useState([]);
+  const [submissionQueueOpen, setSubmissionQueueOpen] = useState(false);
+  const [submissionPending, setSubmissionPending] = useState(false);
 
   // ── Settings ─────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -908,14 +919,21 @@ function RetrievalApp() {
     pushToast("pending", "DRES session cleared");
   }, [pushToast]);
 
+  const handleQueueResult = useCallback((result) => {
+    if (!result?.video_id) return;
+    const item = toSubmissionItem(result);
+    setSubmissionQueue((previous) => previous.some((queued) => queued.queue_id === item.queue_id) ? previous : [...previous, item]);
+  }, []);
+
   const handleSubmitResult = useCallback(
-    async (result) => {
-      if (!result) {
-        pushToast("warning", "Cannot submit", "No selected frame.");
+    async ({ task, items, answer }) => {
+      if (!items?.length) {
+        pushToast("warning", "Cannot submit", "Submission queue is empty.");
         return;
       }
 
       try {
+        setSubmissionPending(true);
         let sessionId = dres.sessionId;
         let evaluationId = settings.evaluationId;
 
@@ -950,10 +968,10 @@ function RetrievalApp() {
           throw new Error("God Mode requires an active evaluation ID.");
         }
         const response = settings.godMode
-          ? await submitDresViaGodMode({ endpoint: settings.godModeEndpoint, dresUrl: settings.submitUrl, sessionId, evaluationId, result })
-          : await submitDresViaBackend({ dresUrl: settings.submitUrl, sessionId, evaluationId, result });
+          ? await submitDresViaGodMode({ endpoint: settings.godModeEndpoint, dresUrl: settings.submitUrl, sessionId, evaluationId, task, items, answer })
+          : await submitDresViaBackend({ dresUrl: settings.submitUrl, sessionId, evaluationId, task, items, answer });
 
-        const label = getResultLabel(result);
+        const label = `${task.toUpperCase()} · ${items.length} frame(s)`;
 
         if (response.status === "correct") {
           if (response.verified_result) {
@@ -972,10 +990,22 @@ function RetrievalApp() {
         }
       } catch (err) {
         pushToast("warning", "Cannot submit", getErrorMessage(err));
+      } finally {
+        setSubmissionPending(false);
       }
     },
     [dres.sessionId, pushToast, settings]
   );
+
+  const handleResultAction = useCallback((result, action = "submit") => {
+    if (!result?.video_id) return;
+    const item = toSubmissionItem(result);
+    if (action === "queue") {
+      handleQueueResult(item);
+      return;
+    }
+    void handleSubmitResult({ task: "kis", items: [item], answer: "" });
+  }, [handleQueueResult, handleSubmitResult]);
 
   const closeAllModals = useCallback(() => {
     surroundReqRef.current += 1;
@@ -1081,7 +1111,7 @@ function RetrievalApp() {
                         columns={columns}
                         selectedId={selectedId}
                         onSelect={handleSelectResult}
-                        onSubmit={handleSubmitResult}
+                        onSubmit={handleResultAction}
                         onPlay={handlePlayResult}
                         onSimilaritySearch={handleSimilaritySearch}
                         onSurroundingImages={handleOpenSurroundingImages}
@@ -1093,7 +1123,7 @@ function RetrievalApp() {
                         columns={columns}
                         selectedId={selectedId}
                         onSelect={handleSelectResult}
-                        onSubmit={handleSubmitResult}
+                        onSubmit={handleResultAction}
                         onPlay={handlePlayResult}
                         onSimilaritySearch={handleSimilaritySearch}
                         onSurroundingImages={handleOpenSurroundingImages}
@@ -1107,7 +1137,7 @@ function RetrievalApp() {
                       key={selected.id}
                       result={selected}
                       onClose={handleCloseDetail}
-                      onSubmit={handleSubmitResult}
+                      onSubmit={handleResultAction}
                     />
                   )}
                 </div>
@@ -1132,10 +1162,10 @@ function RetrievalApp() {
           result={videoResult}
           layer={modalLayer("video")}
           onClose={closeAllModals}
-          onSubmit={handleSubmitResult}
+          onSubmit={handleResultAction}
         />
 
-        <PreviewVideoModal open={previewOpen} onClose={() => setPreviewOpen(false)} onSubmit={handleSubmitResult} />
+        <PreviewVideoModal open={previewOpen} onClose={() => setPreviewOpen(false)} onSubmit={handleResultAction} />
 
         <ColorSearchModal open={colorModalOpen} value={colorGrid} onChange={setColorGrid}
           loading={loading} onClose={() => setColorModalOpen(false)} onSearch={handleColorSearch} />
@@ -1161,7 +1191,7 @@ function RetrievalApp() {
           layer={modalLayer("surround")}
           onClose={closeAllModals}
           onSelect={handleSelectResult}
-          onSubmit={handleSubmitResult}
+          onSubmit={handleResultAction}
           onPlay={handlePlayResult}
           onSimilaritySearch={handleSimilaritySearch}
           onSurroundingImages={handleOpenSurroundingImages}
@@ -1177,10 +1207,22 @@ function RetrievalApp() {
           layer={modalLayer("similar")}
           onClose={closeAllModals}
           onSelect={handleSelectResult}
-          onSubmit={handleSubmitResult}
+          onSubmit={handleResultAction}
           onPlay={handlePlayResult}
           onSimilaritySearch={handleSimilaritySearch}
           onSurroundingImages={handleOpenSurroundingImages}
+        />
+
+        <button type="button" className="submission-queue-launcher" onClick={() => setSubmissionQueueOpen(true)}>
+          Queue <span>{submissionQueue.length}</span>
+        </button>
+        <SubmissionQueueModal
+          open={submissionQueueOpen}
+          items={submissionQueue}
+          submitting={submissionPending}
+          onClose={() => setSubmissionQueueOpen(false)}
+          onChange={setSubmissionQueue}
+          onSubmit={handleSubmitResult}
         />
 
         <ToastHost toasts={toasts} />
