@@ -149,14 +149,16 @@ function joinBaseUrl(baseUrl, relPath) {
 }
 
 function collectionFromResult(item) {
-  const explicit = String(item?.collection || item?.raw?.collection || item?.dataset || item?.raw?.dataset || "").trim().toLowerCase();
-  if (explicit) return explicit;
+  const candidates = [item?.collection, item?.raw?.collection, item?.dataset, item?.raw?.dataset]
+    .map((value) => String(value || "").trim().toLowerCase());
+  const physicalDataset = candidates.find((value) => value === "aic" || value === "cam");
+  if (physicalDataset) return physicalDataset;
 
   for (const url of [item?.image_url, item?.video_url, item?.map_url]) {
     const match = String(url || "").replaceAll("\\", "/").match(/\/(?:static\/)?(aic|cam)\//i);
     if (match) return match[1].toLowerCase();
   }
-  return "";
+  return candidates[0] || "";
 }
 
 function joinDatasetAssetUrl(collection, assetDirectory, relPath) {
@@ -233,7 +235,7 @@ export async function searchColorRetrieval({ dataset, cells, topK = 20, videoIds
     searchMode: "color",
     latencyMs: data.latency_ms ?? null,
     count: data.count ?? 0,
-    results: normalizeResults(data.results ?? []),
+    results: normalizeResults(data.results ?? [], dataset),
   };
 }
 
@@ -318,7 +320,7 @@ export async function searchRetrieval({
       throw createStaleSearchError(requestId);
     }
 
-    const normalizedResults = normalizeResults(data.results ?? []);
+    const normalizedResults = normalizeResults(data.results ?? [], dataset);
     const t3 = performance.now();
 
     if (!independentRequest && requestId !== activeSearchRequestId) {
@@ -465,7 +467,7 @@ export async function searchMultimodalRetrieval({
     if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
     assertModelIsolation(data, modelKey, "Multimodal search");
     logApiResponse("multimodal", requestId, data);
-    const results = normalizeResults(data.results ?? []);
+    const results = normalizeResults(data.results ?? [], dataset);
     return {
       query: data.query || query || "Image query",
       subQueries: data.sub_queries ?? [],
@@ -571,7 +573,7 @@ export async function searchFusion({
       throw createStaleSearchError(requestId);
     }
 
-    const normalizedResults = normalizeResults(data.results ?? []);
+    const normalizedResults = normalizeResults(data.results ?? [], dataset);
     const t3 = performance.now();
 
     if (requestId !== activeSearchRequestId) {
@@ -623,7 +625,7 @@ export async function searchFusion({
   }
 }
 
-export function normalizeResults(results) {
+export function normalizeResults(results, fallbackDataset = "") {
   if (!Array.isArray(results)) {
     return [];
   }
@@ -632,7 +634,10 @@ export function normalizeResults(results) {
     const frameId = Number(item.frame_id ?? 0);
     const similarity = Number(item.similarity ?? 0);
     const raw = item.raw || {};
-    const collection = collectionFromResult(item);
+    const inferredCollection = collectionFromResult(item);
+    const collection = inferredCollection === "aic" || inferredCollection === "cam"
+      ? inferredCollection
+      : String(fallbackDataset || inferredCollection).toLowerCase();
 
     const imageUrl =
       joinDatasetAssetUrl(collection, "keyframes", item.image_rel_path) ||
@@ -671,7 +676,11 @@ export function normalizeResults(results) {
       return {
       id: `${baseId}-${index}`,
       collection,
-      dataset: String(item.dataset || raw.dataset || collection || "").toLowerCase(),
+      // `raw.dataset` is the source corpus/group label (for example `l22`),
+      // while API `collection` is the physical dataset registered for requests
+      // (`aic` or `cam`). Actions such as surrounding/similarity must use the
+      // latter.
+      dataset: String(collection || fallbackDataset || item.dataset || raw.dataset || "").toLowerCase(),
       video_id: item.video_id || "unknown_video",
       frame_id: Number.isFinite(frameId) ? frameId : 0,
       frame_idx: safeNumber(item.frame_idx ?? raw.frame_idx, Number.isFinite(frameId) ? frameId : 0),
@@ -823,7 +832,7 @@ export async function getSurroundingFrames(dataset, videoId, keyframeId, radius 
 
   const data = await response.json();
 
-  return normalizeResults(data.frames ?? []);
+  return normalizeResults(data.frames ?? [], dataset);
 }
 
 export async function similaritySearch({
@@ -863,7 +872,7 @@ export async function similaritySearch({
 
     const data = await response.json();
   assertModelIsolation(data, modelKey, "Similarity search");
-  const normalizedResults = normalizeResults(data.results ?? []);
+  const normalizedResults = normalizeResults(data.results ?? [], dataset);
 
   console.table({
     mode: "similarity",
@@ -900,7 +909,7 @@ export async function getFrameInfo(dataset, videoId, keyframeId) {
 
   const data = await response.json();
 
-  return normalizeResults([data])[0];
+  return normalizeResults([data], dataset)[0];
 }
 
 export async function getVideoPreview(dataset, videoId, { frameId, timestampMs } = {}) {
@@ -909,7 +918,7 @@ export async function getVideoPreview(dataset, videoId, { frameId, timestampMs }
   if (timestampMs !== undefined && timestampMs !== "") params.set("timestamp_ms", String(timestampMs));
   const response = await fetch(apiUrl(`/api/video-preview?${params}`), { headers: NGROK_HEADER });
   if (!response.ok) throw new Error((await response.text()) || "Cannot load video preview");
-  return normalizeResults([await response.json()])[0];
+  return normalizeResults([await response.json()], dataset)[0];
 }
 
 export async function getVideoKeyframes(dataset, videoId) {

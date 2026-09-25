@@ -64,7 +64,9 @@ function getErrorMessage(error, fallback = "Unexpected error") {
 }
 
 function toSubmissionItem(result, dataset) {
-  const sourceDataset = String(result?.dataset || result?.collection || dataset || "").toLowerCase();
+  const candidates = [result?.dataset, result?.collection, dataset]
+    .map((value) => String(value || "").trim().toLowerCase());
+  const sourceDataset = candidates.find((value) => value === "aic" || value === "cam") || "";
   const frameId = Number(result?.raw?.frame_idx ?? result?.frame_idx ?? result?.frame_id ?? 0);
   const timestamp = Number(result?.timestamp ?? result?.timestamp_sec ?? 0);
   return {
@@ -226,9 +228,12 @@ function RetrievalApp() {
   const baseResults = rerankResultsData ?? rawResults;
   const results = useMemo(() => {
     if (!settings.godMode) return baseResults;
+    const datasetVerifiedResults = godModeResults.filter(
+      (item) => (item.dataset || item.collection) === settings.dataset
+    );
     const getKey = (item) => `${item.dataset || item.collection || settings.dataset}:${item.video_id}:${item.frame_id}`;
-    const verifiedKeys = new Set(godModeResults.map(getKey));
-    return [...godModeResults, ...baseResults.filter((item) => !verifiedKeys.has(getKey(item)))];
+    const verifiedKeys = new Set(datasetVerifiedResults.map(getKey));
+    return [...datasetVerifiedResults, ...baseResults.filter((item) => !verifiedKeys.has(getKey(item)))];
   }, [baseResults, godModeResults, settings.dataset, settings.godMode]);
   const resultsWithGroupOverrides = useMemo(() => {
     const changedVideoIds = new Set(Object.keys(groupSearchOverrides));
@@ -258,7 +263,7 @@ function RetrievalApp() {
     const merge = (incoming) => setGodModeResults((previous) => {
       const key = (item) => `${item.evaluation_id}:${item.dataset || item.collection || settings.dataset}:${item.video_id}:${item.frame_id}`;
       const byId = new Map(previous.map((item) => [key(item), item]));
-      normalizeResults(incoming).forEach((item) => byId.set(key(item), item));
+      normalizeResults(incoming, settings.dataset).forEach((item) => byId.set(key(item), item));
       return [...byId.values()].sort((a, b) => Number(b.verified_at) - Number(a.verified_at));
     });
     const connect = () => {
@@ -1114,7 +1119,7 @@ function RetrievalApp() {
 
         if (response.status === "correct") {
           if (response.verified_result) {
-            const verified = normalizeResults([response.verified_result])[0];
+            const verified = normalizeResults([response.verified_result], settings.dataset)[0];
             setGodModeResults((previous) => [verified, ...previous.filter((item) =>
               item.evaluation_id !== verified.evaluation_id ||
               (item.dataset || item.collection) !== (verified.dataset || verified.collection) ||
