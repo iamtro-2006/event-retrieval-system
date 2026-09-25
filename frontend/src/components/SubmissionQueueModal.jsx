@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { GripVertical, Send, Trash2, X } from "lucide-react";
+import { preloadVideoMetadata } from "../utils/videoPreload";
 
 const TASKS = ["kis", "trake", "qa"];
 
@@ -8,7 +9,7 @@ function mediaAnswer(item) {
   return { mediaItemName: item.video_id, start: timeMs, end: timeMs };
 }
 
-export default function SubmissionQueueModal({ open, items, onClose, onChange, onSubmit, submitting }) {
+export default function SubmissionQueueModal({ open, items, onClose, onChange, onSubmit, onPlay, submitting }) {
   const [task, setTask] = useState("kis");
   const [answer, setAnswer] = useState("");
   const [dragIndex, setDragIndex] = useState(null);
@@ -54,7 +55,11 @@ export default function SubmissionQueueModal({ open, items, onClose, onChange, o
           onDragStart={() => setDragIndex(index)} onDragOver={(event) => event.preventDefault()}
           onDrop={() => { move(dragIndex, index); setDragIndex(null); }}>
           <GripVertical size={18} className="queue-grip" />
-          <img src={item.image_url} alt={`${item.video_id} frame ${item.frame_id}`} />
+          <button type="button" className="submission-frame-preview" onMouseEnter={() => preloadVideoMetadata(item.video_url)} onFocus={() => preloadVideoMetadata(item.video_url)} onClick={() => onPlay?.(item)}
+            aria-label={`Play ${item.video_id} from ${Number(item.timestamp || 0).toFixed(3)} seconds`}>
+            <img src={item.image_url} alt={`${item.video_id} frame ${item.frame_id}`} />
+            {item.image_url && <span className="submission-frame-preview-large" aria-hidden="true"><img src={item.image_url} alt="" /></span>}
+          </button>
           <div><strong>{item.video_id}</strong><span>Frame {item.frame_id}</span><span>{Number(item.timestamp || 0).toFixed(3)}s · {Math.round(Number(item.timestamp || 0) * 1000)}ms</span></div>
           <button type="button" onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove frame"><Trash2 size={16} /></button>
         </article>)}

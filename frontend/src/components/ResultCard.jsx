@@ -2,6 +2,7 @@ import { memo, useCallback } from "react";
 import { Play, Send, Search, Images, ListPlus } from "lucide-react";
 import { VideoVotes } from "./VideoFilter";
 import HighlightedSnippet from "./HighlightedSnippet";
+import { preloadVideoMetadata } from "../utils/videoPreload";
 
 const ResultCard = memo(function ResultCard({
   result,
@@ -63,7 +64,7 @@ const ResultCard = memo(function ResultCard({
       style={{ "--stagger-index": index }}
       onClick={() => onSelect?.(result)}
     >
-      <div className="thumbnail-box">
+      <div className="thumbnail-box" onMouseEnter={() => preloadVideoMetadata(result.video_url)}>
         <img
           src={result.image_url}
           alt={label}
@@ -77,7 +78,7 @@ const ResultCard = memo(function ResultCard({
 
         <VideoVotes videoId={result.video_id} />
 
-        <button className="play-button" type="button" onClick={handlePlay}
+        <button className="play-button" type="button" onFocus={() => preloadVideoMetadata(result.video_url)} onClick={handlePlay}
           aria-label={`Play ${result.video_id} from ${Number(result.temporal?.start_time ?? result.timestamp ?? 0).toFixed(2)} seconds`}>
           <Play size={16} fill="currentColor" />
         </button>

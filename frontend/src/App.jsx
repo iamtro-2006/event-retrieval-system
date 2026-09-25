@@ -63,13 +63,20 @@ function getErrorMessage(error, fallback = "Unexpected error") {
   return error?.message || String(error || fallback);
 }
 
+function physicalDatasetFromResult(result, fallback = "") {
+  const candidates = [result?.collection, result?.raw?.collection, result?.dataset, result?.raw?.dataset, fallback];
+  return candidates.map((value) => String(value || "").trim().toLowerCase())
+    .find((value) => value === "aic" || value === "cam") || "";
+}
+
 function toSubmissionItem(result, dataset) {
-  const sourceDataset = String(result?.dataset || result?.collection || dataset || "").toLowerCase();
+  const sourceDataset = physicalDatasetFromResult(result, dataset);
   const frameId = Number(result?.raw?.frame_idx ?? result?.frame_idx ?? result?.frame_id ?? 0);
   const timestamp = Number(result?.timestamp ?? result?.timestamp_sec ?? 0);
   return {
     ...result,
     dataset: sourceDataset,
+    collection: sourceDataset,
     queue_id: `${sourceDataset}:${result.video_id}:${frameId}:${Math.round(timestamp * 1000)}`,
     frame_id: frameId,
     timestamp,
@@ -226,7 +233,7 @@ function RetrievalApp() {
   const baseResults = rerankResultsData ?? rawResults;
   const results = useMemo(() => {
     if (!settings.godMode) return baseResults;
-    const getKey = (item) => `${item.dataset || item.collection || settings.dataset}:${item.video_id}:${item.frame_id}`;
+    const getKey = (item) => `${physicalDatasetFromResult(item, settings.dataset)}:${item.video_id}:${item.frame_id}`;
     const verifiedKeys = new Set(godModeResults.map(getKey));
     return [...godModeResults, ...baseResults.filter((item) => !verifiedKeys.has(getKey(item)))];
   }, [baseResults, godModeResults, settings.dataset, settings.godMode]);
@@ -256,7 +263,7 @@ function RetrievalApp() {
     let retryTimer;
     let socket;
     const merge = (incoming) => setGodModeResults((previous) => {
-      const key = (item) => `${item.evaluation_id}:${item.dataset || item.collection || settings.dataset}:${item.video_id}:${item.frame_id}`;
+      const key = (item) => `${item.evaluation_id}:${physicalDatasetFromResult(item, settings.dataset)}:${item.video_id}:${item.frame_id}`;
       const byId = new Map(previous.map((item) => [key(item), item]));
       normalizeResults(incoming).forEach((item) => byId.set(key(item), item));
       return [...byId.values()].sort((a, b) => Number(b.verified_at) - Number(a.verified_at));
@@ -905,7 +912,7 @@ function RetrievalApp() {
       });
 
       try {
-        const dataset = result.dataset || result.collection || settings.dataset;
+        const dataset = physicalDatasetFromResult(result, settings.dataset);
         const frames = await getSurroundingFrames(dataset, result.video_id, result.frame_id, 12);
 
         if (reqId !== surroundReqRef.current) return;
@@ -948,7 +955,7 @@ function RetrievalApp() {
 
       try {
         const data = await similaritySearch({
-          dataset: result.dataset || result.collection || settings.dataset,
+          dataset: physicalDatasetFromResult(result, settings.dataset),
           videoIds: result.godmode_verified ? [] : activeIds,
           videoId: result.video_id,
           frameId: result.frame_id,
@@ -1023,7 +1030,7 @@ function RetrievalApp() {
 
   const handleQueueResult = useCallback((result) => {
     if (!result?.video_id) return;
-    const item = toSubmissionItem(result, result.dataset || result.collection || settings.dataset);
+    const item = toSubmissionItem(result, settings.dataset);
     setSubmissionQueue((previous) => previous.some((queued) => queued.queue_id === item.queue_id) ? previous : [...previous, item]);
   }, [settings.dataset]);
 
@@ -1066,7 +1073,7 @@ function RetrievalApp() {
         return;
       }
 
-      if (items.some((item) => item.dataset && item.dataset !== settings.dataset)) {
+      if (items.some((item) => physicalDatasetFromResult(item, settings.dataset) !== settings.dataset)) {
         pushToast("warning", "Cannot submit", "The queue contains frames from another dataset.");
         return;
       }
@@ -1106,9 +1113,10 @@ function RetrievalApp() {
         if (settings.godMode && !evaluationId) {
           throw new Error("God Mode requires an active evaluation ID.");
         }
+        const submissionItems = items.map((item) => toSubmissionItem(item, settings.dataset));
         const response = settings.godMode
-          ? await submitDresViaGodMode({ endpoint: settings.godModeEndpoint, dresUrl: settings.submitUrl, sessionId, evaluationId, task, items, answer })
-          : await submitDresViaBackend({ dresUrl: settings.submitUrl, sessionId, evaluationId, task, items, answer });
+          ? await submitDresViaGodMode({ endpoint: settings.godModeEndpoint, dresUrl: settings.submitUrl, sessionId, evaluationId, task, items: submissionItems, answer })
+          : await submitDresViaBackend({ dresUrl: settings.submitUrl, sessionId, evaluationId, task, items: submissionItems, answer });
 
         const label = `${task.toUpperCase()} · ${items.length} frame(s)`;
 
@@ -1117,7 +1125,7 @@ function RetrievalApp() {
             const verified = normalizeResults([response.verified_result])[0];
             setGodModeResults((previous) => [verified, ...previous.filter((item) =>
               item.evaluation_id !== verified.evaluation_id ||
-              (item.dataset || item.collection) !== (verified.dataset || verified.collection) ||
+              physicalDatasetFromResult(item) !== physicalDatasetFromResult(verified) ||
               item.video_id !== verified.video_id || item.frame_id !== verified.frame_id
             )]);
           }
@@ -1140,7 +1148,7 @@ function RetrievalApp() {
 
   const handleResultAction = useCallback((result, action = "submit") => {
     if (!result?.video_id) return;
-    const item = toSubmissionItem(result, result.dataset || result.collection || settings.dataset);
+    const item = toSubmissionItem(result, settings.dataset);
     if (action === "queue") {
       handleQueueResult(item);
       return;
@@ -1284,7 +1292,7 @@ function RetrievalApp() {
                     <DetailPanel
                       key={selected.id}
                       result={selected}
-                      dataset={selected.dataset || selected.collection || settings.dataset}
+                      dataset={physicalDatasetFromResult(selected, settings.dataset)}
                       onClose={handleCloseDetail}
                       onSubmit={handleResultAction}
                     />
@@ -1309,7 +1317,7 @@ function RetrievalApp() {
           key={videoResult ? `${videoResult.id}-open` : "video-closed"}
           open={Boolean(videoResult)}
           result={videoResult}
-          dataset={videoResult?.dataset || videoResult?.collection || settings.dataset}
+          dataset={physicalDatasetFromResult(videoResult, settings.dataset)}
           layer={modalLayer("video")}
           onClose={closeAllModals}
           onSubmit={handleResultAction}
@@ -1373,6 +1381,10 @@ function RetrievalApp() {
           onClose={() => setSubmissionQueueOpen(false)}
           onChange={setSubmissionQueue}
           onSubmit={handleSubmitResult}
+          onPlay={(item) => {
+            setSubmissionQueueOpen(false);
+            handlePlayResult({ ...item, timestamp: Number(item.timestamp || 0) });
+          }}
         />
 
         <ToastHost toasts={toasts} />
