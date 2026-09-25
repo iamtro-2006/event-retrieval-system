@@ -31,6 +31,7 @@ import {
   getAvailableModels,
   getSurroundingFrames,
   similaritySearch,
+  searchFusion,
   searchRetrieval,
   rerankResults,
   normalizeResults,
@@ -42,6 +43,7 @@ import {
 } from "./api/submissionAPI";
 import { getGodModeEndpoint, godModeSocketUrl, submitDresViaGodMode } from "./api/godmodeAPI";
 import { playNotifySound } from "./utils/notifySound";
+import { selectSimilarityModel } from "./utils/similarityModel";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { SEARCH_MODE_BY_CODE } from "./config/searchModes";
 
@@ -181,6 +183,7 @@ function RetrievalApp() {
     username: defaultSubmission.teamId,
     password: defaultSubmission.teamPassword,
     godMode: false,
+    mockGodMode: false,
     godModeEndpoint: defaultGodModeEndpoint,
   });
   const [godModeResults, setGodModeResults] = useState([]);
@@ -254,7 +257,7 @@ function RetrievalApp() {
   const selectedId = selected?.id ?? null;
 
   useEffect(() => {
-    if (!settings.godMode || !settings.godModeEndpoint || !settings.evaluationId) {
+    if (!settings.godMode || settings.mockGodMode || !settings.godModeEndpoint || !settings.evaluationId) {
       return undefined;
     }
     let disposed = false;
@@ -290,7 +293,29 @@ function RetrievalApp() {
       window.clearTimeout(retryTimer);
       socket?.close();
     };
-  }, [settings.dataset, settings.evaluationId, settings.godMode, settings.godModeEndpoint]);
+  }, [settings.dataset, settings.evaluationId, settings.godMode, settings.godModeEndpoint, settings.mockGodMode]);
+
+  useEffect(() => {
+    if (!settings.godMode || !settings.mockGodMode || !baseResults.length) return undefined;
+    let cursor = 0;
+    const timer = window.setInterval(() => {
+      const source = baseResults[cursor % baseResults.length];
+      cursor += 1;
+      const item = {
+        ...source,
+        dataset: source.dataset || source.collection || settings.dataset,
+        godmode_verified: true,
+        godmode_mock: true,
+        evaluation_id: settings.evaluationId || "mock-evaluation",
+        verified_at: Date.now() / 1000,
+      };
+      setGodModeResults((previous) => [item, ...previous.filter((entry) =>
+        entry.video_id !== item.video_id || entry.frame_id !== item.frame_id ||
+        (entry.dataset || entry.collection) !== item.dataset
+      )]);
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [baseResults, settings.dataset, settings.evaluationId, settings.godMode, settings.mockGodMode]);
 
   const resolvedMode = useMemo(() => {
     return mode === "temporal" ||
@@ -797,11 +822,15 @@ function RetrievalApp() {
     async (videoId, videoQuery) => {
       const cleanQuery = String(videoQuery || "").trim();
       if (!cleanQuery || !backendReady) return;
+      if (resolvedMode === "fusion" && !fusionConfig?.hasConfig) {
+        pushToast("warning", "Fusion is not configured", "Open Fusion settings and select at least one model or method before searching.");
+        return;
+      }
       const runId = (groupSearchRunRef.current.get(videoId) || 0) + 1;
       groupSearchRunRef.current.set(videoId, runId);
       setGroupSearchLoading((previous) => ({ ...previous, [videoId]: true }));
       try {
-        const data = await searchRetrieval({
+        const searchOptions = {
           dataset: settings.dataset,
           videoIds: [videoId],
           query: cleanQuery,
@@ -809,11 +838,16 @@ function RetrievalApp() {
           candidateMultiplier: settings.candidateMultiplier,
           useSplit: true,
           useTranslate: settings.useTranslate,
-          searchMode: "semantic",
-          modelKey: model,
-          durationLimit: -1,
-          independentRequest: true,
-        });
+        };
+        const data = resolvedMode === "fusion"
+          ? await searchFusion({ ...searchOptions, fusionConfig, reasoning: false, independentRequest: true })
+          : await searchRetrieval({
+              ...searchOptions,
+              searchMode: "semantic",
+              modelKey: model,
+              durationLimit: -1,
+              independentRequest: true,
+            });
         if (groupSearchRunRef.current.get(videoId) !== runId) return;
         setGroupSearchOverrides((previous) => ({ ...previous, [videoId]: data.results ?? [] }));
         setGroupSearchQueries((previous) => ({ ...previous, [videoId]: cleanQuery }));
@@ -829,7 +863,7 @@ function RetrievalApp() {
         }
       }
     },
-    [backendReady, model, pushToast, settings]
+    [backendReady, fusionConfig, model, pushToast, resolvedMode, settings]
   );
 
   const handleSidebarSearch = useCallback(() => {
@@ -952,13 +986,15 @@ function RetrievalApp() {
       });
 
       try {
+        const selectedFusionModels = (fusionConfig?.semanticModels ?? []).map(({ key }) => key);
+        const similarityModelKey = selectSimilarityModel(result, selectedFusionModels, availableModels, model);
         const data = await similaritySearch({
           dataset: result.dataset || result.collection || settings.dataset,
           videoIds: result.godmode_verified ? [] : activeIds,
           videoId: result.video_id,
           frameId: result.frame_id,
           topK: settings.topK,
-          modelKey: result.model_key || result.raw?.model_key || model,
+          modelKey: similarityModelKey,
         });
 
         if (reqId !== similarReqRef.current) return;
@@ -982,7 +1018,7 @@ function RetrievalApp() {
         pushToast("warning", "Similarity search failed", getErrorMessage(err));
       }
     },
-    [activeIds, model, pushToast, settings.dataset, settings.topK]
+    [activeIds, availableModels, fusionConfig, model, pushToast, settings.dataset, settings.topK]
   );
 
   const handleDresLogin = useCallback(async () => {
@@ -1029,8 +1065,13 @@ function RetrievalApp() {
   const handleQueueResult = useCallback((result) => {
     if (!result?.video_id) return;
     const item = toSubmissionItem(result, result.dataset || result.collection || settings.dataset);
-    setSubmissionQueue((previous) => previous.some((queued) => queued.queue_id === item.queue_id) ? previous : [...previous, item]);
-  }, [settings.dataset]);
+    if (submissionQueue.some((queued) => queued.queue_id === item.queue_id)) {
+      pushToast("pending", "Already in queue", `${item.video_id} is already queued.`);
+      return;
+    }
+    setSubmissionQueue((previous) => [...previous, item]);
+    pushToast("correct", "Added to queue successfully", `${item.video_id} · ${item.timestamp.toFixed(2)}s`);
+  }, [pushToast, settings.dataset, submissionQueue]);
 
   // Model indexes are isolated per physical dataset. Refresh the selector on
   // every dataset switch and discard selections that do not exist there.
@@ -1378,6 +1419,7 @@ function RetrievalApp() {
           onClose={() => setSubmissionQueueOpen(false)}
           onChange={setSubmissionQueue}
           onSubmit={handleSubmitResult}
+          onVideoAction={handleResultAction}
         />
 
         <ToastHost toasts={toasts} />

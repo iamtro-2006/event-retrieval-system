@@ -84,8 +84,14 @@ export default function SettingsPanel({
 
         <div className={settings.godMode && godModeConnected ? "dres-status connected" : "dres-status"}>
           <span />
-          {settings.godMode ? (godModeConnected ? "Relay connected" : "Relay disconnected") : "God Mode disabled"}
+          {settings.godMode ? (settings.mockGodMode ? "Mock feed active" : godModeConnected ? "Relay connected" : "Relay disconnected") : "God Mode disabled"}
         </div>
+
+        {settings.godMode && <SwitchRow
+          label="Mock God Mode (one answer every 8s)"
+          checked={Boolean(settings.mockGodMode)}
+          onChange={(value) => updateField("mockGodMode", value)}
+        />}
 
         <label className="setting-field">
           <span>God Mode endpoint</span>
@@ -97,7 +103,9 @@ export default function SettingsPanel({
         </label>
 
         <p className="settings-warning">
-          Only correct DRES verdicts are relayed and pinned to reranked results for clients in the same evaluation.
+          {settings.mockGodMode
+            ? "Uses the current search results locally to simulate verified answers every 8 seconds. No relay or DRES request is made for the mock feed."
+            : "Only correct DRES verdicts are relayed and pinned to reranked results for clients in the same evaluation."}
         </p>
       </div>
 

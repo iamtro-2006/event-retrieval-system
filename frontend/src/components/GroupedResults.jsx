@@ -83,14 +83,16 @@ export default function GroupedResults({
   return (
     <div className="grouped-results">
       {verified.length > 0 && (
-        <section className="video-strip-group godmode-rerank-group">
+        <section className="video-strip-group">
           <div className="video-strip-label"><span>RERANK</span></div>
           <div className="video-strip-main">
-            <div className="video-strip-topbar"><span>Verified correct · {verified.length} frames</span></div>
-            <div className="godmode-rerank-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-              {verified.map((result) => <ResultCard key={result.id} result={result} selected={result.id === selectedId}
-                onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch}
-                onSurroundingImages={onSurroundingImages} query={query} />)}
+            <div className="video-strip-topbar"><span>{verified.length} assets</span></div>
+            <div className="video-group-viewport is-expanded">
+              <div className="video-group-items" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+                {verified.map((result) => <ResultCard key={result.id} result={result} selected={result.id === selectedId}
+                  onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch}
+                  onSurroundingImages={onSurroundingImages} query={query} />)}
+              </div>
             </div>
           </div>
         </section>

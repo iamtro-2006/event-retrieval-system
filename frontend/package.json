@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:ui-mocks": "node scripts/validate-mock-scenarios.mjs"
+    "test:ui-mocks": "node scripts/validate-mock-scenarios.mjs",
+    "test:media-urls": "node --test src/api/mediaUrls.test.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",

@@ -1,3 +1,5 @@
+import { createMediaUrlResolver } from "./mediaUrls";
+
 const RAW_API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -21,6 +23,30 @@ const VIDEOS_BASE_URL = (
 const MAP_KEYFRAMES_BASE_URL = (
   import.meta.env.VITE_MAP_KEYFRAMES_BASE_URL || ""
 ).replace(/\/+$/, "");
+
+const DATASET_MEDIA_BASE_URLS = {
+  aic: {
+    keyframes: (import.meta.env.VITE_AIC_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
+    videos: (import.meta.env.VITE_AIC_VIDEOS_BASE_URL || "").replace(/\/+$/, ""),
+    mapKeyframes: (import.meta.env.VITE_AIC_MAP_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
+  },
+  cam: {
+    keyframes: (import.meta.env.VITE_CAM_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
+    videos: (import.meta.env.VITE_CAM_VIDEOS_BASE_URL || "").replace(/\/+$/, ""),
+    mapKeyframes: (import.meta.env.VITE_CAM_MAP_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
+  },
+};
+
+const resolveMediaUrl = createMediaUrlResolver({
+  apiBaseUrl: API_BASE_URL,
+  dataBaseUrl: DATA_BASE_URL,
+  sharedBases: {
+    keyframes: KEYFRAMES_BASE_URL,
+    videos: VIDEOS_BASE_URL,
+    mapKeyframes: MAP_KEYFRAMES_BASE_URL,
+  },
+  datasetBases: DATASET_MEDIA_BASE_URLS,
+});
 
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
@@ -136,18 +162,6 @@ function assertModelIsolation(data, requestedModelKey, label) {
   }
 }
 
-function joinBaseUrl(baseUrl, relPath) {
-  if (!baseUrl || !relPath) {
-    return "";
-  }
-
-  const cleanedRelPath = String(relPath)
-    .replaceAll("\\", "/")
-    .replace(/^\/+/, "");
-
-  return `${baseUrl}/${cleanedRelPath}`;
-}
-
 function collectionFromResult(item) {
   const candidates = [item?.collection, item?.raw?.collection, item?.dataset, item?.raw?.dataset]
     .map((value) => String(value || "").trim().toLowerCase());
@@ -159,13 +173,6 @@ function collectionFromResult(item) {
     if (match) return match[1].toLowerCase();
   }
   return candidates[0] || "";
-}
-
-function joinDatasetAssetUrl(collection, assetDirectory, relPath) {
-  if (!DATA_BASE_URL || !collection || !relPath) return "";
-  const datasetDirectory = String(collection).toUpperCase();
-  const cleanedRelPath = String(relPath).replaceAll("\\", "/").replace(/^\/+/, "");
-  return `${DATA_BASE_URL}/${datasetDirectory}/${assetDirectory}/${cleanedRelPath}`;
 }
 
 export async function checkBackendHealth() {
@@ -498,15 +505,16 @@ export async function searchFusion({
   useTranslate = true,
   fusionConfig,
   reasoning = false,
+  independentRequest = false,
 }) {
-  if (activeSearchController) {
+  if (!independentRequest && activeSearchController) {
     activeSearchController.abort();
   }
 
   const controller = new AbortController();
-  activeSearchController = controller;
+  if (!independentRequest) activeSearchController = controller;
 
-  const requestId = ++activeSearchRequestId;
+  const requestId = independentRequest ? `local-${performance.now().toFixed(2)}` : ++activeSearchRequestId;
 
   const semanticModels = (fusionConfig?.semanticModels ?? []).map((m) => m.key);
 
@@ -555,7 +563,7 @@ export async function searchFusion({
 
     const t1 = performance.now();
 
-    if (requestId !== activeSearchRequestId) {
+    if (!independentRequest && requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
     }
 
@@ -569,14 +577,14 @@ export async function searchFusion({
 
     logApiResponse("fusion", requestId, data);
 
-    if (requestId !== activeSearchRequestId) {
+    if (!independentRequest && requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
     }
 
     const normalizedResults = normalizeResults(data.results ?? [], dataset);
     const t3 = performance.now();
 
-    if (requestId !== activeSearchRequestId) {
+    if (!independentRequest && requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
     }
 
@@ -619,7 +627,7 @@ export async function searchFusion({
 
     throw error;
   } finally {
-    if (activeSearchController === controller) {
+    if (!independentRequest && activeSearchController === controller) {
       activeSearchController = null;
     }
   }
@@ -639,20 +647,16 @@ export function normalizeResults(results, fallbackDataset = "") {
       ? inferredCollection
       : String(fallbackDataset || inferredCollection).toLowerCase();
 
-    const imageUrl =
-      joinDatasetAssetUrl(collection, "keyframes", item.image_rel_path) ||
-      joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path) ||
-      toAbsoluteUrl(item.image_url || makeKeyframeUrl(item.keyframe_path));
+    const imageUrl = resolveMediaUrl(
+      collection, "keyframes", item.image_rel_path,
+      item.image_url || makeKeyframeUrl(item.keyframe_path)
+    );
 
-    const videoUrl =
-      joinDatasetAssetUrl(collection, "videos", item.video_rel_path) ||
-      joinBaseUrl(VIDEOS_BASE_URL, item.video_rel_path) ||
-      toAbsoluteUrl(item.video_url);
+    const videoUrl = resolveMediaUrl(collection, "videos", item.video_rel_path, item.video_url);
 
-    const mapUrl =
-      joinDatasetAssetUrl(collection, "map-keyframes", item.map_rel_path) ||
-      joinBaseUrl(MAP_KEYFRAMES_BASE_URL, item.map_rel_path) ||
-      toAbsoluteUrl(item.map_url ?? raw.map_url);
+    const mapUrl = resolveMediaUrl(
+      collection, "mapKeyframes", item.map_rel_path, item.map_url ?? raw.map_url
+    );
 
       
     const matchedSequence = normalizeMatchedSequence(
@@ -665,14 +669,6 @@ export function normalizeResults(results, fallbackDataset = "") {
       `${item.video_id || "unknown_video"}_${String(
         Number.isFinite(frameId) ? frameId : index
       ).padStart(6, "0")}`;
-    /*
-    console.log("KEYFRAMES_BASE_URL =", KEYFRAMES_BASE_URL);
-    console.log("image_rel_path =", item.image_rel_path);
-    console.log(
-      "resolved =",
-      joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path)
-    );
-    */
       return {
       id: `${baseId}-${index}`,
       collection,
@@ -748,10 +744,10 @@ function normalizeMatchedSequence(sequence, parentCollection = "") {
     const score = Number(item.score ?? item.candidate_score ?? 0);
     const collection = collectionFromResult(item) || parentCollection;
 
-    const imageUrl =
-      joinDatasetAssetUrl(collection, "keyframes", item.image_rel_path) ||
-      joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path) ||
-      toAbsoluteUrl(item.image_url || makeKeyframeUrl(item.keyframe_path));
+    const imageUrl = resolveMediaUrl(
+      collection, "keyframes", item.image_rel_path,
+      item.image_url || makeKeyframeUrl(item.keyframe_path)
+    );
 
     const baseId = `${item.video_id || "unknown_video"}_${String(
       Number.isFinite(frameId) ? frameId : index
@@ -796,17 +792,6 @@ function makeKeyframeUrl(keyframePath) {
   return `/static/keyframes/${rel}`;
 }
 
-function toAbsoluteUrl(url) {
-  if (!url || url === "#") {
-    return "#";
-  }
-
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-
-  return apiUrl(url);
-}
 
 function safeNumber(value, fallback = 0) {
   const numberValue = Number(value);

@@ -59,7 +59,7 @@ const ResultCard = memo(function ResultCard({
 
   return (
     <article
-      className={`result-card${selected ? " selected" : ""}${result.godmode_verified ? " godmode-verified" : ""}`}
+      className={`result-card${selected ? " selected" : ""}`}
       style={{ "--stagger-index": index }}
       onClick={() => onSelect?.(result)}
     >
@@ -73,8 +73,6 @@ const ResultCard = memo(function ResultCard({
         />
 
         <span className="score-badge">{score}%</span>
-        {result.godmode_verified && <span className="godmode-badge">DRES ✓</span>}
-
         <VideoVotes videoId={result.video_id} />
 
         <button className="play-button" type="button" onClick={handlePlay}

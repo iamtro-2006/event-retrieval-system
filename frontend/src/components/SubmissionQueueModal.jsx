@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { GripVertical, Send, Trash2, X } from "lucide-react";
+import { getVideoPreview } from "../api/retrievalAPI";
+import VideoModal from "./VideoModal";
 
 const TASKS = ["kis", "trake", "qa"];
 
@@ -8,10 +10,14 @@ function mediaAnswer(item) {
   return { mediaItemName: item.video_id, start: timeMs, end: timeMs };
 }
 
-export default function SubmissionQueueModal({ open, items, onClose, onChange, onSubmit, submitting }) {
+export default function SubmissionQueueModal({ open, items, onClose, onChange, onSubmit, onVideoAction, submitting }) {
   const [task, setTask] = useState("kis");
   const [answer, setAnswer] = useState("");
   const [dragIndex, setDragIndex] = useState(null);
+  const [videoPreview, setVideoPreview] = useState(null);
+  const [previewLoadingId, setPreviewLoadingId] = useState(null);
+  const [previewError, setPreviewError] = useState("");
+  const previewRequestRef = useRef(0);
   const preview = useMemo(() => {
     if (!items.length) return null;
     if (task === "qa") {
@@ -30,6 +36,38 @@ export default function SubmissionQueueModal({ open, items, onClose, onChange, o
   const invalidTrake = task === "trake" && new Set(items.map((item) => item.video_id)).size > 1;
   if (!open) return null;
 
+  const closeQueue = () => {
+    previewRequestRef.current += 1;
+    setVideoPreview(null);
+    setPreviewLoadingId(null);
+    setPreviewError("");
+    onClose();
+  };
+
+  const openVideoPreview = async (item) => {
+    const requestId = ++previewRequestRef.current;
+    setPreviewError("");
+    setPreviewLoadingId(null);
+    if (item.video_url && item.video_url !== "#") {
+      setVideoPreview({ ...item, is_preview_timestamp: true, is_preview_frame: false });
+      return;
+    }
+
+    setPreviewLoadingId(item.queue_id);
+    try {
+      const result = await getVideoPreview(item.dataset, item.video_id, {
+        timestampMs: Math.round(Number(item.timestamp || 0) * 1000),
+      });
+      if (requestId === previewRequestRef.current) {
+        setVideoPreview({ ...result, timestamp: item.timestamp, is_preview_timestamp: true });
+      }
+    } catch (error) {
+      if (requestId === previewRequestRef.current) setPreviewError(error.message || "Cannot load video preview.");
+    } finally {
+      if (requestId === previewRequestRef.current) setPreviewLoadingId(null);
+    }
+  };
+
   const move = (from, to) => {
     if (from == null || from === to) return;
     const next = [...items];
@@ -38,11 +76,11 @@ export default function SubmissionQueueModal({ open, items, onClose, onChange, o
     onChange(next);
   };
 
-  return <div className="submission-queue-backdrop" onClick={onClose}>
+  return <><div className="submission-queue-backdrop" onClick={closeQueue}>
     <section className="submission-queue-modal" onClick={(event) => event.stopPropagation()}>
       <header>
         <div><h2>Submission Queue</h2><p>{items.length} frame(s)</p></div>
-        <button type="button" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        <button type="button" onClick={closeQueue} aria-label="Close"><X size={18} /></button>
       </header>
 
       <nav className="submission-task-tabs" aria-label="Submission task">
@@ -54,12 +92,17 @@ export default function SubmissionQueueModal({ open, items, onClose, onChange, o
           onDragStart={() => setDragIndex(index)} onDragOver={(event) => event.preventDefault()}
           onDrop={() => { move(dragIndex, index); setDragIndex(null); }}>
           <GripVertical size={18} className="queue-grip" />
-          <img src={item.image_url} alt={`${item.video_id} frame ${item.frame_id}`} />
+          <button type="button" className="queue-preview-button" onClick={() => openVideoPreview(item)}
+            aria-label={`Preview ${item.video_id} from frame ${item.frame_id}`}
+            title="Preview video from this frame" disabled={previewLoadingId === item.queue_id}>
+            <img src={item.image_url} alt={`${item.video_id} frame ${item.frame_id}`} />
+          </button>
           <div><strong>{item.video_id}</strong><span>Frame {item.frame_id}</span><span>{Number(item.timestamp || 0).toFixed(3)}s · {Math.round(Number(item.timestamp || 0) * 1000)}ms</span></div>
           <button type="button" onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove frame"><Trash2 size={16} /></button>
         </article>)}
         {!items.length && <p className="submission-empty">Add a keyframe or queue a position from the video player.</p>}
       </div>
+      {previewError && <p className="submission-validation-error" role="alert">{previewError}</p>}
 
       {task === "qa" && <label className="submission-answer">Answer<textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Enter the QA answer" /></label>}
       {invalidTrake && <p className="submission-validation-error">TRAKE chỉ chấp nhận các frame thuộc cùng một video.</p>}
@@ -70,5 +113,10 @@ export default function SubmissionQueueModal({ open, items, onClose, onChange, o
           onClick={() => onSubmit({ task, items, answer })}><Send size={16} />{submitting ? "Submitting…" : `Submit ${task.toUpperCase()}`}</button>
       </footer>
     </section>
-  </div>;
+  </div>
+    <VideoModal key={videoPreview?.queue_id || videoPreview?.id || "queue-video-closed"}
+      open={Boolean(videoPreview)} result={videoPreview}
+      dataset={videoPreview?.dataset} layer={2200}
+      onClose={() => setVideoPreview(null)} onSubmit={onVideoAction} />
+  </>;
 }
