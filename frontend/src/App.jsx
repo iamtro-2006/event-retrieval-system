@@ -31,6 +31,7 @@ import {
   getAvailableModels,
   getSurroundingFrames,
   similaritySearch,
+  searchRetrieval,
   rerankResults,
   normalizeResults,
 } from "./api/retrievalAPI";
@@ -62,12 +63,14 @@ function getErrorMessage(error, fallback = "Unexpected error") {
   return error?.message || String(error || fallback);
 }
 
-function toSubmissionItem(result) {
+function toSubmissionItem(result, dataset) {
+  const sourceDataset = String(result?.dataset || result?.collection || dataset || "").toLowerCase();
   const frameId = Number(result?.raw?.frame_idx ?? result?.frame_idx ?? result?.frame_id ?? 0);
   const timestamp = Number(result?.timestamp ?? result?.timestamp_sec ?? 0);
   return {
     ...result,
-    queue_id: `${result.video_id}:${frameId}:${Math.round(timestamp * 1000)}`,
+    dataset: sourceDataset,
+    queue_id: `${sourceDataset}:${result.video_id}:${frameId}:${Math.round(timestamp * 1000)}`,
     frame_id: frameId,
     timestamp,
     image_url: result.image_url || result.raw?.image_url || "",
@@ -128,7 +131,7 @@ function RetrievalApp() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [colorModalOpen, setColorModalOpen] = useState(false);
   const [colorGrid, setColorGrid] = useState(() => [...EMPTY_COLOR_GRID]);
-  const [model, setModel] = useState("siglip2-so400m");
+  const [model, setModel] = useState("");
   const [availableModels, setAvailableModels] = useState([]);
   const [semanticModelRoles, setSemanticModelRoles] = useState({ local: null, global: null });
   const [mode, setMode] = useState("text");
@@ -167,6 +170,7 @@ function RetrievalApp() {
   // ── Settings ─────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
+    dataset: "aic",
     useTranslate: true,
     topK: 20,
     candidateMultiplier: 5,
@@ -199,6 +203,10 @@ function RetrievalApp() {
   const rerankEnabled = false;
   const [reranking, setReranking] = useState(false);
   const [rerankResultsData, setRerankResultsData] = useState(null);
+  const [groupSearchOverrides, setGroupSearchOverrides] = useState({});
+  const [groupSearchLoading, setGroupSearchLoading] = useState({});
+  const [groupSearchQueries, setGroupSearchQueries] = useState({});
+  const groupSearchRunRef = useRef(new Map());
 
   // ── Search hook ──────────────────────────────────────
   const {
@@ -218,11 +226,26 @@ function RetrievalApp() {
   const baseResults = rerankResultsData ?? rawResults;
   const results = useMemo(() => {
     if (!settings.godMode) return baseResults;
-    const verifiedKeys = new Set(godModeResults.map((item) => `${item.video_id}:${item.frame_id}`));
-    return [...godModeResults, ...baseResults.filter((item) => !verifiedKeys.has(`${item.video_id}:${item.frame_id}`))];
-  }, [baseResults, godModeResults, settings.godMode]);
-  const deferredResults = useDeferredValue(results);
-  const hasResults = deferredResults.length > 0;
+    const getKey = (item) => `${item.dataset || item.collection || settings.dataset}:${item.video_id}:${item.frame_id}`;
+    const verifiedKeys = new Set(godModeResults.map(getKey));
+    return [...godModeResults, ...baseResults.filter((item) => !verifiedKeys.has(getKey(item)))];
+  }, [baseResults, godModeResults, settings.dataset, settings.godMode]);
+  const resultsWithGroupOverrides = useMemo(() => {
+    const changedVideoIds = new Set(Object.keys(groupSearchOverrides));
+    return [
+      ...results.filter((item) => item.godmode_verified || !changedVideoIds.has(String(item.video_id))),
+      ...Object.values(groupSearchOverrides).flat(),
+    ];
+  }, [groupSearchOverrides, results]);
+  const filteredResults = useMemo(() => {
+    if (!activeIds.length) return resultsWithGroupOverrides;
+    const allowedVideoIds = new Set(activeIds);
+    return resultsWithGroupOverrides.filter((item) => allowedVideoIds.has(item.video_id));
+  }, [activeIds, resultsWithGroupOverrides]);
+  const groupOrder = useMemo(() => [...new Set(results.map((item) => item.video_id).filter(Boolean))], [results]);
+  const deferredResults = useDeferredValue(filteredResults);
+  const hasResults = resultsWithGroupOverrides.length > 0;
+  const visibleResultCount = activeIds.length ? deferredResults.length : count;
   const selectedId = selected?.id ?? null;
 
   useEffect(() => {
@@ -233,7 +256,7 @@ function RetrievalApp() {
     let retryTimer;
     let socket;
     const merge = (incoming) => setGodModeResults((previous) => {
-      const key = (item) => `${item.evaluation_id}:${item.video_id}:${item.frame_id}`;
+      const key = (item) => `${item.evaluation_id}:${item.dataset || item.collection || settings.dataset}:${item.video_id}:${item.frame_id}`;
       const byId = new Map(previous.map((item) => [key(item), item]));
       normalizeResults(incoming).forEach((item) => byId.set(key(item), item));
       return [...byId.values()].sort((a, b) => Number(b.verified_at) - Number(a.verified_at));
@@ -262,7 +285,7 @@ function RetrievalApp() {
       window.clearTimeout(retryTimer);
       socket?.close();
     };
-  }, [settings.evaluationId, settings.godMode, settings.godModeEndpoint]);
+  }, [settings.dataset, settings.evaluationId, settings.godMode, settings.godModeEndpoint]);
 
   const resolvedMode = useMemo(() => {
     return mode === "temporal" ||
@@ -492,21 +515,33 @@ function RetrievalApp() {
 
         setSettings((prev) => ({
           ...prev,
+          dataset: config.datasets?.default ?? prev.dataset,
           topK: config.search?.default_top_k ?? prev.topK,
           candidateMultiplier:
             config.search?.candidate_multiplier ?? prev.candidateMultiplier,
           useTranslate: config.translate?.enabled_default ?? prev.useTranslate,
         }));
 
-        if (config.model?.name) {
-          setModel(config.model.name);
+        const configuredModels = Array.isArray(config.available_models)
+          ? config.available_models
+          : [];
+        const configuredDefaultModel = config.model?.key || config.search?.default_model_key;
+        if (configuredModels.length > 0) {
+          setAvailableModels(configuredModels);
+          setModel(
+            configuredModels.includes(configuredDefaultModel)
+              ? configuredDefaultModel
+              : configuredModels[0]
+          );
+        } else if (configuredDefaultModel) {
+          setModel(configuredDefaultModel);
         }
 
         try {
-          const models = await getAvailableModels();
+          const models = await getAvailableModels(config.datasets?.default ?? "aic");
           if (alive && Array.isArray(models) && models.length > 0) {
             setAvailableModels(models);
-            setModel((prev) => (models.includes(prev) ? prev : models[0]));
+            setModel((prev) => (models.includes(prev) ? prev : (models.includes(configuredDefaultModel) ? configuredDefaultModel : models[0])));
           }
         } catch (modelsErr) {
           console.warn("[bootstrap] getAvailableModels failed:", modelsErr);
@@ -566,13 +601,17 @@ function RetrievalApp() {
     setMode("color");
     setSelected(null);
     setRerankResultsData(null);
+    setGroupSearchOverrides({});
+    setGroupSearchLoading({});
+    setGroupSearchQueries({});
+    groupSearchRunRef.current.clear();
     try {
-      await searchByColor({ cells, topK: settings.topK });
+      await searchByColor({ dataset: settings.dataset, cells, topK: settings.topK });
       setColorModalOpen(false);
     } catch (err) {
       pushToast("warning", "Color search failed", getErrorMessage(err));
     }
-  }, [backendReady, colorGrid, loading, pushToast, scrollResultsToTop, searchByColor, settings.topK]);
+  }, [backendReady, colorGrid, loading, pushToast, scrollResultsToTop, searchByColor, settings.dataset, settings.topK]);
 
   // ── Stable UI handlers ───────────────────────────────
   const handleToggleTheme = useCallback(() => {
@@ -620,6 +659,10 @@ function RetrievalApp() {
 
     reset();
     setGodModeResults([]);
+    setGroupSearchOverrides({});
+    setGroupSearchLoading({});
+    setGroupSearchQueries({});
+    groupSearchRunRef.current.clear();
     setSelected(null);
     setGrouped(false);
     setSurroundModal(DEFAULT_SURROUND_MODAL);
@@ -638,6 +681,17 @@ function RetrievalApp() {
     setResultsHeaderCollapsed(false);
   }, [reset]);
 
+  const handleSettingsChange = useCallback((nextSettings) => {
+    if (nextSettings.dataset !== settings.dataset) {
+      handleReset();
+      setGodModeResults(godModeResults);
+      setColorGrid([...EMPTY_COLOR_GRID]);
+      setPreviewOpen(false);
+      setColorModalOpen(false);
+    }
+    setSettings(nextSettings);
+  }, [godModeResults, handleReset, settings.dataset]);
+
   const handleSearch = useCallback(
     async (payload) => {
       const query = typeof payload === "string" ? payload : payload?.query;
@@ -648,6 +702,10 @@ function RetrievalApp() {
 
       scrollResultsToTop();
       setGodModeResults([]);
+      setGroupSearchOverrides({});
+      setGroupSearchLoading({});
+      setGroupSearchQueries({});
+      groupSearchRunRef.current.clear();
       const searchId = ++searchIdRef.current;
       rerankRunRef.current += 1;
 
@@ -675,6 +733,7 @@ function RetrievalApp() {
             return;
           }
           await searchMultimodal({
+            dataset: settings.dataset,
             query: cleanQuery,
             clauses: queryClauses,
             queryConnectors,
@@ -694,6 +753,7 @@ function RetrievalApp() {
             return;
           }
           await searchWithFusion({
+            dataset: settings.dataset,
             query: cleanQuery,
             topK: settings.topK,
             candidateMultiplier: settings.candidateMultiplier,
@@ -704,6 +764,7 @@ function RetrievalApp() {
           });
         } else {
           await search({
+            dataset: settings.dataset,
             query: cleanQuery,
             topK: settings.topK,
             candidateMultiplier: settings.candidateMultiplier,
@@ -725,6 +786,45 @@ function RetrievalApp() {
       }
     },
     [backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, queryConnectors, resolvedMode, scrollResultsToTop, search, searchMultimodal, searchWithFusion, settings]
+  );
+
+  const handleSearchInVideo = useCallback(
+    async (videoId, videoQuery) => {
+      const cleanQuery = String(videoQuery || "").trim();
+      if (!cleanQuery || !backendReady) return;
+      const runId = (groupSearchRunRef.current.get(videoId) || 0) + 1;
+      groupSearchRunRef.current.set(videoId, runId);
+      setGroupSearchLoading((previous) => ({ ...previous, [videoId]: true }));
+      try {
+        const data = await searchRetrieval({
+          dataset: settings.dataset,
+          videoIds: [videoId],
+          query: cleanQuery,
+          topK: Math.max(1, Math.floor(Number(settings.topK) / 2)),
+          candidateMultiplier: settings.candidateMultiplier,
+          useSplit: true,
+          useTranslate: settings.useTranslate,
+          searchMode: "semantic",
+          modelKey: model,
+          durationLimit: -1,
+          independentRequest: true,
+        });
+        if (groupSearchRunRef.current.get(videoId) !== runId) return;
+        setGroupSearchOverrides((previous) => ({ ...previous, [videoId]: data.results ?? [] }));
+        setGroupSearchQueries((previous) => ({ ...previous, [videoId]: cleanQuery }));
+        setSelected((previous) => previous?.video_id === videoId ? null : previous);
+      } catch (err) {
+        if (err?.name === "AbortError" || err?.name === "StaleSearchError") return;
+        if (groupSearchRunRef.current.get(videoId) !== runId) return;
+        console.error(err);
+        pushToast("warning", "In-video search failed", getErrorMessage(err));
+      } finally {
+        if (groupSearchRunRef.current.get(videoId) === runId) {
+          setGroupSearchLoading((previous) => ({ ...previous, [videoId]: false }));
+        }
+      }
+    },
+    [backendReady, model, pushToast, settings]
   );
 
   const handleSidebarSearch = useCallback(() => {
@@ -805,7 +905,8 @@ function RetrievalApp() {
       });
 
       try {
-        const frames = await getSurroundingFrames(result.video_id, result.frame_id, 12);
+        const dataset = result.dataset || result.collection || settings.dataset;
+        const frames = await getSurroundingFrames(dataset, result.video_id, result.frame_id, 12);
 
         if (reqId !== surroundReqRef.current) return;
 
@@ -828,7 +929,7 @@ function RetrievalApp() {
         pushToast("warning", "Surrounding frames failed", getErrorMessage(err));
       }
     },
-    [pushToast]
+    [pushToast, settings.dataset]
   );
 
   const handleSimilaritySearch = useCallback(
@@ -847,7 +948,8 @@ function RetrievalApp() {
 
       try {
         const data = await similaritySearch({
-          videoIds: activeIds,
+          dataset: result.dataset || result.collection || settings.dataset,
+          videoIds: result.godmode_verified ? [] : activeIds,
           videoId: result.video_id,
           frameId: result.frame_id,
           topK: settings.topK,
@@ -875,7 +977,7 @@ function RetrievalApp() {
         pushToast("warning", "Similarity search failed", getErrorMessage(err));
       }
     },
-    [activeIds, model, pushToast, settings.topK]
+    [activeIds, model, pushToast, settings.dataset, settings.topK]
   );
 
   const handleDresLogin = useCallback(async () => {
@@ -921,14 +1023,51 @@ function RetrievalApp() {
 
   const handleQueueResult = useCallback((result) => {
     if (!result?.video_id) return;
-    const item = toSubmissionItem(result);
+    const item = toSubmissionItem(result, result.dataset || result.collection || settings.dataset);
     setSubmissionQueue((previous) => previous.some((queued) => queued.queue_id === item.queue_id) ? previous : [...previous, item]);
-  }, []);
+  }, [settings.dataset]);
+
+  // Model indexes are isolated per physical dataset. Refresh the selector on
+  // every dataset switch and discard selections that do not exist there.
+  useEffect(() => {
+    if (!backendReady) return undefined;
+    let alive = true;
+
+    getAvailableModels(settings.dataset)
+      .then((models) => {
+        if (!alive) return;
+        const nextModels = Array.isArray(models) ? models : [];
+        setAvailableModels(nextModels);
+        setModel((previous) => nextModels.includes(previous) ? previous : (nextModels[0] || ""));
+        setFusionConfig((previous) => {
+          const semanticModels = previous.semanticModels.filter(({ key }) => nextModels.includes(key));
+          if (semanticModels.length === previous.semanticModels.length) return previous;
+          return {
+            ...previous,
+            semanticModels,
+            hasConfig: semanticModels.length > 0 || previous.useOcr || previous.useAsr,
+          };
+        });
+      })
+      .catch((modelsError) => {
+        if (!alive) return;
+        console.warn(`[models] ${settings.dataset}:`, modelsError);
+        setAvailableModels([]);
+        setModel("");
+      });
+
+    return () => { alive = false; };
+  }, [backendReady, settings.dataset]);
 
   const handleSubmitResult = useCallback(
     async ({ task, items, answer }) => {
       if (!items?.length) {
         pushToast("warning", "Cannot submit", "Submission queue is empty.");
+        return;
+      }
+
+      if (items.some((item) => item.dataset && item.dataset !== settings.dataset)) {
+        pushToast("warning", "Cannot submit", "The queue contains frames from another dataset.");
         return;
       }
 
@@ -977,7 +1116,9 @@ function RetrievalApp() {
           if (response.verified_result) {
             const verified = normalizeResults([response.verified_result])[0];
             setGodModeResults((previous) => [verified, ...previous.filter((item) =>
-              item.evaluation_id !== verified.evaluation_id || item.video_id !== verified.video_id || item.frame_id !== verified.frame_id
+              item.evaluation_id !== verified.evaluation_id ||
+              (item.dataset || item.collection) !== (verified.dataset || verified.collection) ||
+              item.video_id !== verified.video_id || item.frame_id !== verified.frame_id
             )]);
           }
           pushToast("correct", "Correct", label);
@@ -999,13 +1140,13 @@ function RetrievalApp() {
 
   const handleResultAction = useCallback((result, action = "submit") => {
     if (!result?.video_id) return;
-    const item = toSubmissionItem(result);
+    const item = toSubmissionItem(result, result.dataset || result.collection || settings.dataset);
     if (action === "queue") {
       handleQueueResult(item);
       return;
     }
     void handleSubmitResult({ task: "kis", items: [item], answer: "" });
-  }, [handleQueueResult, handleSubmitResult]);
+  }, [handleQueueResult, handleSubmitResult, settings.dataset]);
 
   const closeAllModals = useCallback(() => {
     surroundReqRef.current += 1;
@@ -1058,7 +1199,7 @@ function RetrievalApp() {
         />
 
         <main className={hasResults ? "main-layout has-results" : "main-layout is-home"}>
-          <VideoFilterBar />
+          <VideoFilterBar key={settings.dataset} dataset={settings.dataset} />
           {!hasResults && (
             <section className="home-panel">
               <div className="backend-status">
@@ -1091,7 +1232,7 @@ function RetrievalApp() {
                       <span className="query-summary-right">
                         {reranking && <span className="rerank-status-badge"><span className="rerank-spinner" /> VLM reranking...</span>}
                         {rerankResultsData && !reranking && <span className="rerank-status-badge rerank-status-badge--done">✓ Reranked</span>}
-                        <span>{count} results</span>
+                        <span>{visibleResultCount} results</span>
                       </span>
                     </div>
                   </>}
@@ -1105,7 +1246,9 @@ function RetrievalApp() {
 
                 <div className="result-body">
                   <div className="result-list" ref={resultListRef}>
-                    {grouped ? (
+                    {deferredResults.length === 0 && activeIds.length > 0 ? (
+                      <div className="filter-empty-state">No results in the cached video IDs.</div>
+                    ) : grouped ? (
                       <GroupedResults
                         results={deferredResults}
                         columns={columns}
@@ -1115,6 +1258,11 @@ function RetrievalApp() {
                         onPlay={handlePlayResult}
                         onSimilaritySearch={handleSimilaritySearch}
                         onSurroundingImages={handleOpenSurroundingImages}
+                        onSearchVideo={handleSearchInVideo}
+                        topK={settings.topK}
+                        searchingVideoIds={groupSearchLoading}
+                        localQueries={groupSearchQueries}
+                        groupOrder={groupOrder}
                         query={lastQuery}
                       />
                     ) : (
@@ -1136,6 +1284,7 @@ function RetrievalApp() {
                     <DetailPanel
                       key={selected.id}
                       result={selected}
+                      dataset={selected.dataset || selected.collection || settings.dataset}
                       onClose={handleCloseDetail}
                       onSubmit={handleResultAction}
                     />
@@ -1160,12 +1309,13 @@ function RetrievalApp() {
           key={videoResult ? `${videoResult.id}-open` : "video-closed"}
           open={Boolean(videoResult)}
           result={videoResult}
+          dataset={videoResult?.dataset || videoResult?.collection || settings.dataset}
           layer={modalLayer("video")}
           onClose={closeAllModals}
           onSubmit={handleResultAction}
         />
 
-        <PreviewVideoModal open={previewOpen} onClose={() => setPreviewOpen(false)} onSubmit={handleResultAction} />
+        <PreviewVideoModal key={settings.dataset} open={previewOpen} dataset={settings.dataset} onClose={() => setPreviewOpen(false)} onSubmit={handleResultAction} />
 
         <ColorSearchModal open={colorModalOpen} value={colorGrid} onChange={setColorGrid}
           loading={loading} onClose={() => setColorModalOpen(false)} onSearch={handleColorSearch} />
@@ -1174,7 +1324,7 @@ function RetrievalApp() {
           open={settingsOpen}
           settings={settings}
           dres={dres}
-          onChange={setSettings}
+          onChange={handleSettingsChange}
           onClose={handleCloseSettings}
           onDresLogin={handleDresLogin}
           onDresLogout={handleDresLogout}

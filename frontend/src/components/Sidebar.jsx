@@ -151,7 +151,7 @@ export default function Sidebar({
                     <div className="clause-input-shell">
                       <span className="clause-number">{String(index + 1).padStart(2, "0")}</span>
                       <textarea rows={2} value={clause}
-                        placeholder={index === 0 ? "Describe the first scene..." : "Describe the next clause..."}
+                        placeholder={`${getModeLabel(mode)} Search`}
                         onChange={(event) => updateClause(index, event.target.value)}
                         onPaste={(event) => {
                           const images = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));

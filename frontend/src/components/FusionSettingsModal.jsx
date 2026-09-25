@@ -91,8 +91,12 @@ export default function FusionSettingsModal({
   }
 
   const selectedKeys = draft.semanticModels.map((item) => item.key);
-  const localModel = modelRoles?.local || models[0] || "Local";
-  const globalModel = modelRoles?.global || models[1] || "Global";
+  const localModel = models.includes(modelRoles?.local)
+    ? modelRoles.local
+    : (models[0] || "Local");
+  const globalModel = models.includes(modelRoles?.global)
+    ? modelRoles.global
+    : (models[1] || models[0] || "Global");
   const canBlendSemantic = selectedKeys.length === 2 && selectedKeys.includes(localModel) && selectedKeys.includes(globalModel);
 
   return createPortal(

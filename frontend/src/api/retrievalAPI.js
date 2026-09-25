@@ -3,6 +3,13 @@ const RAW_API_BASE_URL =
 
 const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
 
+// Optional root of a single static server opened at the repository `data/`
+// directory. Assets are resolved as /AIC/{kind}/... or /CAM/{kind}/...
+// from the collection returned by the backend.
+const DATA_BASE_URL = (
+  import.meta.env.VITE_DATA_BASE_URL || ""
+).replace(/\/+$/, "");
+
 const KEYFRAMES_BASE_URL = (
   import.meta.env.VITE_KEYFRAMES_BASE_URL || ""
 ).replace(/\/+$/, "");
@@ -141,6 +148,24 @@ function joinBaseUrl(baseUrl, relPath) {
   return `${baseUrl}/${cleanedRelPath}`;
 }
 
+function collectionFromResult(item) {
+  const explicit = String(item?.collection || item?.raw?.collection || item?.dataset || item?.raw?.dataset || "").trim().toLowerCase();
+  if (explicit) return explicit;
+
+  for (const url of [item?.image_url, item?.video_url, item?.map_url]) {
+    const match = String(url || "").replaceAll("\\", "/").match(/\/(?:static\/)?(aic|cam)\//i);
+    if (match) return match[1].toLowerCase();
+  }
+  return "";
+}
+
+function joinDatasetAssetUrl(collection, assetDirectory, relPath) {
+  if (!DATA_BASE_URL || !collection || !relPath) return "";
+  const datasetDirectory = String(collection).toUpperCase();
+  const cleanedRelPath = String(relPath).replaceAll("\\", "/").replace(/^\/+/, "");
+  return `${DATA_BASE_URL}/${datasetDirectory}/${assetDirectory}/${cleanedRelPath}`;
+}
+
 export async function checkBackendHealth() {
   const response = await fetch(apiUrl("/api/health"), {
     headers: NGROK_HEADER,
@@ -165,8 +190,8 @@ export async function getBackendConfig() {
   return response.json();
 }
 
-export async function getAvailableModels() {
-  const response = await fetch(apiUrl("/api/search/models"), {
+export async function getAvailableModels(dataset = "aic") {
+  const response = await fetch(apiUrl(`/api/search/models?dataset=${encodeURIComponent(dataset)}`), {
     headers: NGROK_HEADER,
   });
 
@@ -178,14 +203,14 @@ export async function getAvailableModels() {
   return Array.isArray(data.models) ? data.models : [];
 }
 
-export async function getVideoIds() {
-  const response = await fetch(apiUrl("/api/video-ids"), { headers: NGROK_HEADER });
+export async function getVideoIds(dataset = "aic") {
+  const response = await fetch(apiUrl(`/api/video-ids?dataset=${encodeURIComponent(dataset)}`), { headers: NGROK_HEADER });
   if (!response.ok) throw new Error("Could not load video ID metadata. Try again.");
   const data = await response.json();
   return Array.isArray(data.video_ids) ? data.video_ids : [];
 }
 
-export async function searchColorRetrieval({ cells, topK = 20, videoIds = [] }) {
+export async function searchColorRetrieval({ dataset, cells, topK = 20, videoIds = [] }) {
   if (activeSearchController) activeSearchController.abort();
   const controller = new AbortController();
   activeSearchController = controller;
@@ -193,7 +218,7 @@ export async function searchColorRetrieval({ cells, topK = 20, videoIds = [] }) 
   const response = await fetch(apiUrl("/api/search/color"), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...NGROK_HEADER },
-    body: JSON.stringify({ cells, top_k: topK, video_ids: videoIds }),
+    body: JSON.stringify({ dataset, cells, top_k: topK, video_ids: videoIds }),
     signal: controller.signal,
   });
   if (requestId !== activeSearchRequestId) throw createStaleSearchError(requestId);
@@ -213,6 +238,7 @@ export async function searchColorRetrieval({ cells, topK = 20, videoIds = [] }) 
 }
 
 export async function searchRetrieval({
+  dataset,
   videoIds = [],
   query,
   topK = 20,
@@ -223,17 +249,19 @@ export async function searchRetrieval({
   modelKey,
   durationLimit = -1,
   reasoning = false,
+  independentRequest = false,
 }) {
-  if (activeSearchController) {
+  if (!independentRequest && activeSearchController) {
     activeSearchController.abort();
   }
 
   const controller = new AbortController();
-  activeSearchController = controller;
+  if (!independentRequest) activeSearchController = controller;
 
-  const requestId = ++activeSearchRequestId;
+  const requestId = independentRequest ? `local-${performance.now().toFixed(2)}` : ++activeSearchRequestId;
 
   const payload = {
+    dataset,
     query,
     video_ids: videoIds,
     top_k: topK,
@@ -269,7 +297,7 @@ export async function searchRetrieval({
 
     const t1 = performance.now();
 
-    if (requestId !== activeSearchRequestId) {
+    if (!independentRequest && requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
     }
 
@@ -286,14 +314,14 @@ export async function searchRetrieval({
       assertModelIsolation(data, modelKey, "Search");
     }
 
-    if (requestId !== activeSearchRequestId) {
+    if (!independentRequest && requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
     }
 
     const normalizedResults = normalizeResults(data.results ?? []);
     const t3 = performance.now();
 
-    if (requestId !== activeSearchRequestId) {
+    if (!independentRequest && requestId !== activeSearchRequestId) {
       throw createStaleSearchError(requestId);
     }
 
@@ -338,13 +366,14 @@ export async function searchRetrieval({
 
     throw error;
   } finally {
-    if (activeSearchController === controller) {
+    if (!independentRequest && activeSearchController === controller) {
       activeSearchController = null;
     }
   }
 }
 
 export async function searchMultimodalRetrieval({
+  dataset,
   videoIds = [],
   query = "",
   clauses = [],
@@ -378,6 +407,7 @@ export async function searchMultimodalRetrieval({
   });
 
   formData.append("request_json", JSON.stringify({
+    dataset,
     video_ids: videoIds,
     query,
     clauses: clausePayload,
@@ -457,6 +487,7 @@ function createStaleSearchError(requestId) {
 }
 
 export async function searchFusion({
+  dataset,
   videoIds = [],
   query,
   topK = 20,
@@ -478,6 +509,7 @@ export async function searchFusion({
   const semanticModels = (fusionConfig?.semanticModels ?? []).map((m) => m.key);
 
   const payload = {
+    dataset,
     query,
     semantic_models: semanticModels,
     video_ids: videoIds,
@@ -600,22 +632,27 @@ export function normalizeResults(results) {
     const frameId = Number(item.frame_id ?? 0);
     const similarity = Number(item.similarity ?? 0);
     const raw = item.raw || {};
+    const collection = collectionFromResult(item);
 
     const imageUrl =
+      joinDatasetAssetUrl(collection, "keyframes", item.image_rel_path) ||
       joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path) ||
       toAbsoluteUrl(item.image_url || makeKeyframeUrl(item.keyframe_path));
 
     const videoUrl =
+      joinDatasetAssetUrl(collection, "videos", item.video_rel_path) ||
       joinBaseUrl(VIDEOS_BASE_URL, item.video_rel_path) ||
       toAbsoluteUrl(item.video_url);
 
     const mapUrl =
+      joinDatasetAssetUrl(collection, "map-keyframes", item.map_rel_path) ||
       joinBaseUrl(MAP_KEYFRAMES_BASE_URL, item.map_rel_path) ||
       toAbsoluteUrl(item.map_url ?? raw.map_url);
 
       
     const matchedSequence = normalizeMatchedSequence(
-      item.matched_sequence ?? raw.matched_sequence ?? []
+      item.matched_sequence ?? raw.matched_sequence ?? [],
+      collection
     );
 
     const baseId =
@@ -633,6 +670,8 @@ export function normalizeResults(results) {
     */
       return {
       id: `${baseId}-${index}`,
+      collection,
+      dataset: String(item.dataset || raw.dataset || collection || "").toLowerCase(),
       video_id: item.video_id || "unknown_video",
       frame_id: Number.isFinite(frameId) ? frameId : 0,
       frame_idx: safeNumber(item.frame_idx ?? raw.frame_idx, Number.isFinite(frameId) ? frameId : 0),
@@ -689,7 +728,7 @@ export function normalizeResults(results) {
   });
 }
 
-function normalizeMatchedSequence(sequence) {
+function normalizeMatchedSequence(sequence, parentCollection = "") {
   if (!Array.isArray(sequence)) {
     return [];
   }
@@ -698,8 +737,10 @@ function normalizeMatchedSequence(sequence) {
     const frameId = Number(item.keyframe_id ?? item.frame_id ?? item.frame_idx ?? 0);
     const timestamp = Number(item.timestamp_sec ?? item.timestamp ?? 0);
     const score = Number(item.score ?? item.candidate_score ?? 0);
+    const collection = collectionFromResult(item) || parentCollection;
 
     const imageUrl =
+      joinDatasetAssetUrl(collection, "keyframes", item.image_rel_path) ||
       joinBaseUrl(KEYFRAMES_BASE_URL, item.image_rel_path) ||
       toAbsoluteUrl(item.image_url || makeKeyframeUrl(item.keyframe_path));
 
@@ -709,6 +750,7 @@ function normalizeMatchedSequence(sequence) {
 
     return {
       ...item,
+      collection,
       id: `${baseId}-${index}`,
       sub_query_idx: safeNumber(item.sub_query_idx, index),
       sub_query: item.sub_query || "",
@@ -762,8 +804,9 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
-export async function getSurroundingFrames(videoId, keyframeId, radius = 10) {
+export async function getSurroundingFrames(dataset, videoId, keyframeId, radius = 10) {
   const params = new URLSearchParams({
+    dataset,
     video_id: videoId,
     keyframe_id: String(keyframeId),
     radius: String(radius),
@@ -784,6 +827,7 @@ export async function getSurroundingFrames(videoId, keyframeId, radius = 10) {
 }
 
 export async function similaritySearch({
+  dataset,
   videoIds = [],
   videoId,
   frameId,
@@ -791,6 +835,7 @@ export async function similaritySearch({
   modelKey,
 }) {
   const payload = {
+    dataset,
     video_id: videoId,
     video_ids: videoIds,
     frame_id: Number(frameId),
@@ -837,8 +882,9 @@ export async function similaritySearch({
   };
 }
 
-export async function getFrameInfo(videoId, keyframeId) {
+export async function getFrameInfo(dataset, videoId, keyframeId) {
   const params = new URLSearchParams({
+    dataset,
     video_id: videoId,
     keyframe_id: String(keyframeId),
   });
@@ -857,8 +903,8 @@ export async function getFrameInfo(videoId, keyframeId) {
   return normalizeResults([data])[0];
 }
 
-export async function getVideoPreview(videoId, { frameId, timestampMs } = {}) {
-  const params = new URLSearchParams({ video_id: videoId });
+export async function getVideoPreview(dataset, videoId, { frameId, timestampMs } = {}) {
+  const params = new URLSearchParams({ dataset, video_id: videoId });
   if (frameId !== undefined && frameId !== "") params.set("frame_id", String(frameId));
   if (timestampMs !== undefined && timestampMs !== "") params.set("timestamp_ms", String(timestampMs));
   const response = await fetch(apiUrl(`/api/video-preview?${params}`), { headers: NGROK_HEADER });
@@ -866,14 +912,15 @@ export async function getVideoPreview(videoId, { frameId, timestampMs } = {}) {
   return normalizeResults([await response.json()])[0];
 }
 
-export async function getVideoKeyframes(videoId) {
-  const response = await fetch(apiUrl(`/api/video-keyframes?video_id=${encodeURIComponent(videoId)}`), { headers: NGROK_HEADER });
+export async function getVideoKeyframes(dataset, videoId) {
+  const params = new URLSearchParams({ dataset, video_id: videoId });
+  const response = await fetch(apiUrl(`/api/video-keyframes?${params}`), { headers: NGROK_HEADER });
   if (!response.ok) throw new Error(`Cannot load video keyframes (${response.status})`);
   return response.json();
 }
 
-export async function getFrameIdxAtTimestamp(videoId, timestampMs) {
-  const result = await getVideoPreview(videoId, { timestampMs });
+export async function getFrameIdxAtTimestamp(dataset, videoId, timestampMs) {
+  const result = await getVideoPreview(dataset, videoId, { timestampMs });
   return Number(result.frame_idx ?? result.raw?.frame_idx ?? 0);
 }
 

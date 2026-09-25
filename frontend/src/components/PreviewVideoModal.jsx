@@ -3,7 +3,7 @@ import { X, Video } from "lucide-react";
 import VideoModal from "./VideoModal";
 import { getVideoPreview } from "../api/retrievalAPI";
 
-export default function PreviewVideoModal({ open, onClose, onSubmit }) {
+export default function PreviewVideoModal({ open, dataset, onClose, onSubmit }) {
   const [videoId, setVideoId] = useState("");
   const [unit, setUnit] = useState("frame");
   const [value, setValue] = useState("");
@@ -12,7 +12,7 @@ export default function PreviewVideoModal({ open, onClose, onSubmit }) {
   const [result, setResult] = useState(null);
 
   if (!open) return null;
-  if (result) return <VideoModal open result={result} autoPlay={false} onClose={() => { setResult(null); }} onSubmit={onSubmit} />;
+  if (result) return <VideoModal open result={result} dataset={dataset} autoPlay={false} onClose={() => { setResult(null); }} onSubmit={onSubmit} />;
 
   async function handlePreview(e) {
     e.preventDefault();
@@ -20,7 +20,7 @@ export default function PreviewVideoModal({ open, onClose, onSubmit }) {
     if (!videoId.trim() || value === "") return setError("Enter a video ID and a frame or timestamp value.");
     setLoading(true);
     try {
-      const data = await getVideoPreview(videoId.trim(), unit === "frame" ? { frameId: value } : { timestampMs: value });
+      const data = await getVideoPreview(dataset, videoId.trim(), unit === "frame" ? { frameId: value } : { timestampMs: value });
       setResult(data);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }

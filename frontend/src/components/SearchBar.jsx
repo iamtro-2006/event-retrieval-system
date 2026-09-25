@@ -1,10 +1,7 @@
 import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import FusionSettingsModal from "./FusionSettingsModal";
-import { useVideoFilter } from "./VideoFilter";
 import { SEARCH_MODES, resolveSearchMode } from "../config/searchModes";
-
-const FALLBACK_MODELS = ["siglip2-so400m", "vitH-378-quickgelu"];
 
 export default function SearchBar({
   query = "",
@@ -35,7 +32,6 @@ export default function SearchBar({
   onSearch,
 }) {
   const [recording, setRecording] = useState(false);
-  const videoFilter = useVideoFilter();
   const [fusionModalOpen, setFusionModalOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   // The home composer starts expanded; the bottom composer starts compact
@@ -43,7 +39,10 @@ export default function SearchBar({
   const [isExpanded, setIsExpanded] = useState(expandedByDefault);
   const expandedRef = useRef(expandedByDefault);
 
-  const modelOptions = availableModels.length > 0 ? availableModels : FALLBACK_MODELS;
+  // The backend is the only source of truth for loaded indexes. Never show
+  // guessed/fallback model keys because selecting one produces an invalid
+  // model_key for the active dataset.
+  const modelOptions = availableModels;
 
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -53,10 +52,10 @@ export default function SearchBar({
   const inlineInputRefs = useRef([]);
 
   const isTemporal = mode === "temporal";
-  const isOcr = mode === "ocr";
-  const isAsr = mode === "asr";
   const isFusion = mode === "fusion";
   const isColor = mode === "color";
+  const activeModeLabel = SEARCH_MODES.find((item) => item.key === mode)?.label ?? "Semantic";
+  const searchPlaceholder = `${activeModeLabel} Search`;
   const hasQueryImages = clauseImages.some((items) => items.length > 0);
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -308,16 +307,8 @@ export default function SearchBar({
           rows={1}
           placeholder={
             recording
-              ? "Listening... Speak to enter a query."
-              : isTemporal
-                ? "Example: person opens box THEN reads label..."
-                : isOcr
-                  ? "Enter on-screen text, such as signs or subtitles..."
-                  : isAsr
-                    ? "Enter the spoken content to find..."
-                    : isFusion
-                      ? "Enter a query. Results will use the saved Fusion configuration..."
-                      : "Enter a retrieval query..."
+              ? "Listening..."
+              : searchPlaceholder
           }
           onChange={(e) => {
             committedTranscriptRef.current = e.target.value;
@@ -342,7 +333,7 @@ export default function SearchBar({
                   className="inline-query-text-input"
                   style={{ width: `${Math.max(1, Math.min(42, clause.length + 1))}ch` }}
                   value={clause}
-                  placeholder={clauseIndex === 0 && !(clauseImages[0] || []).length ? "Enter a query..." : ""}
+                  placeholder={clauseIndex === 0 && !(clauseImages[0] || []).length ? searchPlaceholder : ""}
                   onFocus={() => { activeInlineClauseRef.current = clauseIndex; }}
                   onChange={(event) => updateInlineClause(clauseIndex, event.target.value)}
                   onKeyDown={handleKeyDown}
@@ -390,7 +381,7 @@ export default function SearchBar({
           </div>
 
           <div className="search-chat-controls">
-            {!isFusion && (
+            {!isFusion && modelOptions.length > 0 && (
               <select className="search-select" value={model} onChange={(e) => onModelChange(e.target.value)}>
                 {modelOptions.map((modelKey) => (
                   <option key={modelKey} value={modelKey}>{modelKey}</option>
@@ -415,13 +406,6 @@ export default function SearchBar({
             )}
 
             {/* ── LLM reasoning toggle ─────────────────────────────────── */}
-            {videoFilter && <button type="button"
-              className={`rerank-tag ${videoFilter.enabled ? "rerank-tag--active" : ""}`}
-              aria-pressed={videoFilter.enabled}
-              title="Limit the next search to cached videos. An empty cache searches all videos."
-              onClick={() => videoFilter.setEnabled(!videoFilter.enabled)}>
-              Filter {videoFilter.ids.length > 0 && `(${videoFilter.ids.length})`}
-            </button>}
             {(
               <button
                 type="button"

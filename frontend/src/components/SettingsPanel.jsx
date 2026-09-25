@@ -30,6 +30,24 @@ export default function SettingsPanel({
         </button>
       </div>
 
+      <div className="settings-section dataset-settings-section">
+        <h4>Dataset</h4>
+        <div className="dataset-selector" role="group" aria-label="Search dataset">
+          {["aic", "cam"].map((dataset) => (
+            <button
+              key={dataset}
+              type="button"
+              className={settings.dataset === dataset ? "active" : ""}
+              aria-pressed={settings.dataset === dataset}
+              onClick={() => updateField("dataset", dataset)}
+            >
+              {dataset.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <p className="settings-warning">All search methods are restricted to the selected physical dataset.</p>
+      </div>
+
       <div className="settings-section">
         <h4>Search Pipeline</h4>
 

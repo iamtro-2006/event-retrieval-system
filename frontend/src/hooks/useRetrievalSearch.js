@@ -17,6 +17,7 @@ export function useRetrievalSearch() {
   const [durationLimit, setDurationLimit] = useState(-1);
 
   async function search({
+    dataset,
     query,
     topK = 20,
     candidateMultiplier,
@@ -26,6 +27,7 @@ export function useRetrievalSearch() {
     modelKey,
     durationLimit: requestedDurationLimit = -1,
     reasoning = false,
+    videoIds = activeIds,
   }) {
     const cleanQuery = typeof query === "string" ? query.trim() : "";
 
@@ -40,7 +42,8 @@ export function useRetrievalSearch() {
 
     try {
       const data = await searchRetrieval({
-        videoIds: activeIds,
+        dataset,
+        videoIds,
         query: cleanQuery,
         topK,
         candidateMultiplier,
@@ -85,6 +88,7 @@ export function useRetrievalSearch() {
   }
 
   async function searchWithFusion({
+    dataset,
     query,
     topK = 20,
     candidateMultiplier,
@@ -106,6 +110,7 @@ export function useRetrievalSearch() {
 
     try {
       const data = await searchFusion({
+        dataset,
         videoIds: activeIds,
         query: cleanQuery,
         topK,
@@ -177,6 +182,7 @@ export function useRetrievalSearch() {
   }
 
   async function searchSimilar({
+    dataset,
     videoId,
     frameId,
     topK = 20,
@@ -188,6 +194,7 @@ export function useRetrievalSearch() {
 
     try {
       const data = await similaritySearch({
+        dataset,
         videoIds: activeIds,
         videoId,
         frameId,
@@ -222,12 +229,12 @@ export function useRetrievalSearch() {
     }
   }
 
-  async function searchByColor({ cells, topK = 20 }) {
+  async function searchByColor({ dataset, cells, topK = 20 }) {
     if (!cells?.length) return;
     const requestId = ++requestIdRef.current;
     setLoading(true); setError("");
     try {
-      const data = await searchColorRetrieval({ cells, topK, videoIds: activeIds });
+      const data = await searchColorRetrieval({ dataset, cells, topK, videoIds: activeIds });
       if (requestId !== requestIdRef.current) return;
       setResults(data.results ?? []);
       setLatency(data.latencyMs ?? null);

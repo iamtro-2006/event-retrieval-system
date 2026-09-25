@@ -17,7 +17,7 @@ import { buildSurroundingFrames } from "../utils/surroundingFrames";
 import VideoModal from "./VideoModal";
 import { getFrameInfo, getFrameIdxAtTimestamp } from "../api/retrievalAPI";
 
-export default function DetailPanel({ result, onClose, onSubmit }) {
+export default function DetailPanel({ result, dataset, onClose, onSubmit }) {
   const [videoOpen, setVideoOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(result);
   const [timelineLoadingId, setTimelineLoadingId] = useState(null);
@@ -66,7 +66,7 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
     const videoId = activeResult.video_id ?? "";
     const timestampMs = Math.max(0, Math.round(timestamp * 1000));
     try {
-      const frameIdx = await getFrameIdxAtTimestamp(videoId, timestampMs);
+      const frameIdx = await getFrameIdxAtTimestamp(dataset, videoId, timestampMs);
       await navigator.clipboard.writeText(`${videoId}, ${frameIdx}`);
     } catch {
       console.error("Cannot copy frame id");
@@ -84,6 +84,7 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
 
     try {
       const nextResult = await getFrameInfo(
+        dataset,
         activeResult.video_id,
         clickedKeyframeId
       );
@@ -278,6 +279,7 @@ export default function DetailPanel({ result, onClose, onSubmit }) {
         key={`${activeResult.id}-${videoOpen ? "open" : "closed"}`}
         open={videoOpen}
         result={activeResult}
+        dataset={dataset}
         onClose={() => setVideoOpen(false)}
         onSubmit={onSubmit}
       />

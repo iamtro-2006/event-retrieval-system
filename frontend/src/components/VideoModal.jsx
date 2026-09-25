@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Copy, ListPlus, Send, X } from "lucide-react";
 import { getFrameIdxAtTimestamp, getVideoKeyframes, getVideoPreview } from "../api/retrievalAPI";
 
-export default function VideoModal({ open, result, onClose, onSubmit, layer = 40, autoPlay = true }) {
+export default function VideoModal({ open, result, dataset, onClose, onSubmit, layer = 40, autoPlay = true }) {
   const videoRef = useRef(null);
   const timelineViewportRef = useRef(null);
   const zoomRef = useRef(1);
@@ -42,9 +42,9 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
   useEffect(() => {
     if (!open || !result?.video_id) return;
     let alive = true;
-    getVideoKeyframes(result.video_id).then((data) => { if (alive) setVideoKeyframes(data.keyframes || []); }).catch(() => { if (alive) setVideoKeyframes([]); });
+    getVideoKeyframes(dataset, result.video_id).then((data) => { if (alive) setVideoKeyframes(data.keyframes || []); }).catch(() => { if (alive) setVideoKeyframes([]); });
     return () => { alive = false; };
-  }, [open, result?.video_id]);
+  }, [dataset, open, result?.video_id]);
   const centerTimelineAt = useCallback((ms, nextDuration) => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const node = timelineViewportRef.current;
@@ -136,12 +136,12 @@ export default function VideoModal({ open, result, onClose, onSubmit, layer = 40
   const boundedPlayback = (ms) => { if (manualSeekRef.current || dragHandle) return ms; if ((ms < startMs || ms >= endMs) && videoRef.current?.paused === false) { const reset = startMs; setCurrentMs(Math.round(reset)); if (videoRef.current) { videoRef.current.currentTime = reset / 1000; void videoRef.current.play(); } return reset; } return ms; };
   const addMarker = (ms = currentMs, exactFrameId = null) => setMarkers((p) => [...p, { ms, frameId: exactFrameId, type: "star" }]);
   async function sendCurrent(action) {
-    const preview = await getVideoPreview(videoId, { timestampMs: currentMs });
-    const exactFrameId = Number(preview.frame_idx ?? preview.raw?.frame_idx ?? await getFrameIdxAtTimestamp(videoId, currentMs));
+    const preview = await getVideoPreview(dataset, videoId, { timestampMs: currentMs });
+    const exactFrameId = Number(preview.frame_idx ?? preview.raw?.frame_idx ?? await getFrameIdxAtTimestamp(dataset, videoId, currentMs));
     onSubmit?.({ ...result, ...preview, video_id: videoId, frame_id: exactFrameId, frame_idx: exactFrameId, timestamp: currentMs / 1000, image_url: preview.image_url || result.image_url, raw: { ...result.raw, ...preview.raw, frame_idx: exactFrameId } }, action);
     addMarker(currentMs, exactFrameId);
   }
-  async function copyId() { try { const exactFrameId = await getFrameIdxAtTimestamp(videoId, currentMs); await navigator.clipboard.writeText(`${videoId}, ${exactFrameId}`); setCopyState(`Copied ${exactFrameId}`); } catch { setCopyState("Copy failed"); } setTimeout(() => setCopyState(""), 1500); }
+  async function copyId() { try { const exactFrameId = await getFrameIdxAtTimestamp(dataset, videoId, currentMs); await navigator.clipboard.writeText(`${videoId}, ${exactFrameId}`); setCopyState(`Copied ${exactFrameId}`); } catch { setCopyState("Copy failed"); } setTimeout(() => setCopyState(""), 1500); }
   const pos = (ms) => ({ left: `${ms / durationMs * 100}%` });
   return <div className="video-modal-backdrop" style={{ zIndex: 3000 + layer }} onClick={onClose}><div className={`video-modal video-modal--framework ${hasKeyframeIdentity ? "has-primary-keyframe" : ""}`} onClick={(e) => e.stopPropagation()}>
     <div className="video-modal-header"><div><h3>{videoId}</h3><p>Frame {String(frameId).padStart(6, "0")} · {(currentMs / 1000).toFixed(3)}s · {currentMs} ms</p></div><button type="button" onClick={onClose}><X size={18} /></button></div>

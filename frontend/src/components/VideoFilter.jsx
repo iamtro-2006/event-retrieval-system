@@ -46,8 +46,8 @@ export function VideoFilterProvider({ children }) {
   </VideoFilterContext.Provider>;
 }
 
-export function VideoFilterBar() {
-  const { ids, add, save, notify, open, setOpen, remove } = useVideoFilter();
+export function VideoFilterBar({ dataset = "aic" }) {
+  const { ids, enabled, setEnabled, add, save, notify, open, setOpen, remove } = useVideoFilter();
   const [catalog, setCatalog] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ export function VideoFilterBar() {
   const load = async () => {
     setLoading(true);
     setError("");
-    try { const values = await getVideoIds(); setCatalog(values); setLoaded(true); return values; }
+    try { const values = await getVideoIds(dataset); setCatalog(values); setLoaded(true); return values; }
     catch (err) { setError(err.message); return null; }
     finally { setLoading(false); }
   };
@@ -81,6 +81,11 @@ export function VideoFilterBar() {
         const values = await load();
         if (values) { save((current) => [...new Set([...current, ...values])]); notify(`Imported ${values.length} video IDs from metadata.`); }
       }}>{loading ? "Loading…" : "Import all"}</button>
+      <button type="button" className={enabled ? "is-active" : ""} aria-pressed={enabled}
+        title="Immediately filter visible results by the video ID cache. An empty cache shows all results."
+        onClick={() => setEnabled((value) => !value)}>
+        Filter{ids.length > 0 ? ` (${ids.length})` : ""}
+      </button>
       <button type="button" onClick={() => save([])} disabled={!ids.length}>Clear all</button>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}>Cache ({ids.length})</button>
       {error && <span role="alert">{error}</span>}
@@ -98,7 +103,7 @@ export function VideoFilterBar() {
           }
         }}>
         <header><strong><History size={16} /> Video ID cache ({ids.length})</strong><button autoFocus type="button" onClick={() => setOpen(false)} aria-label="Close cache"><X size={18} /></button></header>
-        <p>The cache limits results only when the Filter tag is enabled. An empty cache searches all videos.</p>
+        <p>The Filter button immediately limits visible results and future searches to cached video IDs. An empty cache shows all videos.</p>
         {!ids.length ? <p>The cache is empty.</p> : <ol>{ids.map((id) => <li key={id}><span>{id}</span><button type="button" onClick={() => remove(id)} aria-label={`Remove ${id}`}><X size={14} /></button></li>)}</ol>}
       </section>
     </div>}
