@@ -75,9 +75,19 @@ def safe_result(payload: VerifiedSubmit) -> dict[str, Any]:
     source = payload.result
     item = payload.items[0]
     video_id = str(item.get("video_id") or "")
-    frame_id = int(item.get("frame_id") or 0)
+    # Queue items may carry the source video's frame_idx for DRES submission,
+    # while the normalized result's frame_id is the keyframe identifier used
+    # by retrieval endpoints. Keep the latter in the verified-result feed.
+    frame_id = int(source.get("frame_id") or item.get("frame_id") or 0)
     timestamp = float(item.get("timestamp") or 0)
-    dataset = str(source.get("dataset") or source.get("collection") or item.get("dataset") or item.get("collection") or "").strip().lower()
+    datasets = [
+        str(value or "").strip().lower()
+        for value in (
+            source.get("collection"), source.get("dataset"),
+            item.get("collection"), item.get("dataset"),
+        )
+    ]
+    dataset = next((value for value in datasets if value in {"aic", "cam"}), "")
     return {
         "id": f"godmode:{payload.evaluation_id}:{dataset}:{video_id}:{frame_id}",
         "video_id": video_id,

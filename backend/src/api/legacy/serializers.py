@@ -271,6 +271,10 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
     matched_texts = [str(t) for t in matched_texts_raw] if isinstance(matched_texts_raw, (list, tuple)) else []
 
     return {
+        # `dataset` is the physical index/API dataset (aic/cam). The metadata
+        # row's own `dataset` value is only the source group (e.g. L22) and is
+        # preserved inside `raw` for path construction and diagnostics.
+        "dataset": collection,
         "collection": collection,
         "id": f"{video_id}_{frame_id_text}",
         "video_id": video_id,
