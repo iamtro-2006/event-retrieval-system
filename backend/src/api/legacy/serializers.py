@@ -22,6 +22,7 @@ from src.api.legacy.paths import resolve_backend_path
 
 
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
+VIDEO_EXTENSIONS = (".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v")
 from src.retrieval.index.faiss_index import FaissIndex
 
 
@@ -154,20 +155,33 @@ def resolve_keyframe_path_from_dict(item: dict[str, Any], keyframes_root: Path, 
     return ""
 
 
-def find_video_path_from_dict(item: dict[str, Any]) -> str:
-    """Resolve the relative path for a video file."""
+def find_video_path_from_dict(item: dict[str, Any], videos_root: Path | None = None) -> str:
+    """Resolve a video from metadata or the mounted videos directory."""
     video_path = str(item.get("video_path", "") or "")
-    if video_path:
-        return video_path.replace("\\", "/")
-
     dataset = str(item.get("dataset", "") or "")
     video_id = str(item.get("video_id", "") or "")
+    if videos_root is not None and video_id:
+        root = Path(videos_root)
+        if video_path:
+            normalized = video_path.replace("\\", "/")
+            relative = normalized.split("videos/", 1)[-1] if "videos/" in normalized else normalized
+            candidate = root / relative
+            if candidate.is_file():
+                return str(candidate).replace("\\", "/")
+        for folder in (root / dataset, root):
+            for extension in VIDEO_EXTENSIONS:
+                candidate = folder / f"{video_id}{extension}"
+                if candidate.is_file():
+                    return str(candidate).replace("\\", "/")
+    if video_path and videos_root is None:
+        return video_path.replace("\\", "/")
     if not video_id:
         return ""
-
+    # CAM source videos are stored as MOV when metadata lacks video_path.
+    extension = ".mov" if video_id.upper().startswith("N") else ".mp4"
     if dataset:
-        return f"data/processed/videos/{dataset}/{video_id}.mp4"
-    return f"data/processed/videos/{video_id}.mp4"
+        return f"data/processed/videos/{dataset}/{video_id}{extension}"
+    return f"data/processed/videos/{video_id}{extension}"
 
 
 def serialize_matched_sequence(
@@ -246,11 +260,11 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
     else:
         image_rel_path = f"{dataset}/{video_id}/{frame_id_text}.jpg" if dataset else f"{video_id}/{frame_id_text}.jpg"
 
-    raw_v_path = find_video_path_from_dict(item)
+    raw_v_path = find_video_path_from_dict(item, keyframes_root.parent / "videos")
     if "videos/" in raw_v_path:
         video_rel_path = raw_v_path.split("videos/", 1)[1]
     else:
-        video_rel_path = f"{dataset}/{video_id}.mp4" if dataset else f"{video_id}.mp4"
+        video_rel_path = f"{dataset}/{Path(raw_v_path).name}" if dataset else Path(raw_v_path).name
 
     timestamp = safe_float(get("timestamp_sec", get("timestamp", 0.0)), 0.0)
     if timestamp == 0.0 and "pts_time" in item:

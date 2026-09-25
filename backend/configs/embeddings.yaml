@@ -1,5 +1,5 @@
-input_keyframes_root: ../data/CAM/keyframes
-output_embeddings_root: ../data/CAM/embeddings
+input_keyframes_root: ../data/AIC/keyframes
+output_embeddings_root: ../data/AIC/embeddings
 
 image:
   extensions: [".jpg", ".jpeg", ".png", ".webp"]
@@ -51,7 +51,7 @@ models:
     name: ViT-SO400M-16-SigLIP2-384
     pretrained: webli          # -> resolves to hf-hub:timm/ViT-SO400M-16-SigLIP2-384
     device: auto
-    precision: fp32
+    precision: amp
     batch_size: 8
     normalize: true
 

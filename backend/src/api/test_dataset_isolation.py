@@ -113,3 +113,21 @@ def test_keyframe_resolver_uses_the_file_that_actually_exists(tmp_path, actual_s
     assert resolved.replace("\\", "/").endswith(f"/N001/N001-V001/000000{actual_suffix}")
     assert serialized["image_rel_path"] == f"N001/N001-V001/000000{actual_suffix}"
     assert serialized["image_url"].endswith(f"/N001/N001-V001/000000{actual_suffix}")
+
+
+def test_cam_video_serializer_finds_mov_even_with_stale_mp4_metadata(tmp_path):
+    keyframes_root = tmp_path / "keyframes"
+    video_dir = tmp_path / "videos" / "N001"
+    video_dir.mkdir(parents=True)
+    (video_dir / "N001-V001.mov").write_bytes(b"video-placeholder")
+    item = {
+        "dataset": "N001",
+        "video_id": "N001-V001",
+        "keyframe_id": 1,
+        "video_path": "/old/videos/N001/N001-V001.mp4",
+    }
+
+    serialized = dict_to_result_FAST(item, keyframes_root, tmp_path, "cam")
+
+    assert serialized["video_rel_path"] == "N001/N001-V001.mov"
+    assert serialized["video_url"] == "/static/cam/videos/N001/N001-V001.mov"

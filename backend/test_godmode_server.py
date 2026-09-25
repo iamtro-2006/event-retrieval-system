@@ -21,7 +21,12 @@ class GodModeRelayTests(unittest.TestCase):
             evaluation_id="evaluation",
             task="kis",
             items=[{"video_id": "L01_V001", "frame_id": 42, "timestamp": 1.5}],
-            result={"image_url": "http://localhost/frame.jpg"},
+            result={
+                "image_url": "http://localhost/frame.jpg",
+                "image_rel_path": "L01/L01_V001/000042.jpg",
+                "video_rel_path": "L01/L01_V001.mp4",
+                "map_rel_path": "L01/L01_V001.csv",
+            },
         )
 
     def tearDown(self):
@@ -46,6 +51,9 @@ class GodModeRelayTests(unittest.TestCase):
         self.assertEqual(len(saved), 1)
         self.assertTrue(saved[0]["godmode_verified"])
         self.assertEqual(saved[0]["frame_id"], 42)
+        self.assertEqual(saved[0]["image_rel_path"], "L01/L01_V001/000042.jpg")
+        self.assertEqual(saved[0]["video_rel_path"], "L01/L01_V001.mp4")
+        self.assertEqual(saved[0]["map_rel_path"], "L01/L01_V001.csv")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,7 @@
 # Build exactly one physical index at a time:
 # python scripts/retrieval/run.py --dataset aic|cam
+# For the complete PE-Core + SigLIP2 matrix on both datasets, use
+# scripts/retrieval/rebuild_pe_siglip.py --dataset aic|cam --model pe|siglip2.
 # Every descendant belongs to the selected physical root; child folder names
 # are intentionally not listed here.
 datasets:
@@ -10,7 +12,7 @@ datasets:
       embeddings_root: ../data/AIC/embeddings/embeddings_pe_core_l14_336
       map_keyframes_root: ../data/AIC/map_keyframes
       index:
-        output_dir: ../data/AIC/database/AIC/faiss_hnsw_pe_core_l14_336
+        output_dir: ../data/AIC/database/faiss_hnsw_pe_core_l14_336
     cam:
       keyframes_root: ../data/CAM/keyframes
       embeddings_root: ../data/CAM/embeddings/embeddings_siglip2_so400m_384
@@ -24,7 +26,7 @@ embeddings_root: ../data/AIC/embeddings/embeddings_pe_core_l14_336
 map_keyframes_root: ../data/AIC/map_keyframes
 
 index:
-  output_dir: ../data/AIC/database/AIC/faiss_hnsw_pe_core_l14_336
+  output_dir: ../data/AIC/database/faiss_hnsw_pe_core_l14_336
   index_name: keyframes.faiss
   metadata_name: metadata.csv
   type: hnsw
