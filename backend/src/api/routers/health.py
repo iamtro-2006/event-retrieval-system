@@ -71,13 +71,23 @@ def get_public_config(
 ):
     """Return the public-facing configuration parameters for the frontend."""
     orchestrator = system.orchestrator
+    dataset_cfg = cfg.get("datasets", {})
+    available_datasets = dataset_cfg.get("available", {})
     return {
+        "datasets": {
+            "default": str(dataset_cfg.get("default", "aic")).lower(),
+            "available": [
+                {"key": key, "label": value.get("label", key.upper())}
+                for key, value in available_datasets.items()
+            ],
+        },
         "search": {
             "default_top_k": int(cfg["search"].get("default_top_k", 20)),
             "max_top_k": int(cfg["search"].get("max_top_k", 500)),
             "candidate_multiplier": int(cfg["search"].get("candidate_multiplier", 1)),
             "available_modes": ["semantic", "temporal", "ocr", "asr", "auto"],
             "default_search_mode": "semantic", "default_duration_limit": -1,
+            "default_model_key": clip_index.model_key,
         },
         "ui": {
             "surrounding_radius": int(cfg["ui"].get("surrounding_radius", 5)),
@@ -90,6 +100,7 @@ def get_public_config(
             "provider": "google",
         },
         "model": {
+            "key": clip_index.model_key,
             "name": clip_index.model_name, "pretrained": clip_index.pretrained,
             "device": str(clip_index.device), "precision": clip_index.precision,
             "normalize": bool(clip_index.normalize),

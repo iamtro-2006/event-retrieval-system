@@ -27,6 +27,7 @@ quản lý 1 dict `{model_key: FaissIndex}`, còn `FaissIndex` ở đây luôn c
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 from threading import RLock
 
@@ -51,6 +52,47 @@ METADATA_DISPLAY_COLUMNS = (
     "fps",
     "keyframe_path",
 )
+
+# AIC/CAM build separate FaissIndex objects because each dataset has its own
+# index, metadata and vector cache. The encoder itself is independent of those
+# files, so keep one loaded encoder per effective model configuration.
+_MODEL_CACHE: dict[str, object] = {}
+_MODEL_CACHE_LOCK = RLock()
+
+
+def _shared_loaded_model(
+    model_name, backend, pretrained, precision, device, model_extra, compile_model
+):
+    key = json.dumps(
+        [
+            model_name,
+            backend,
+            pretrained,
+            precision,
+            device,
+            model_extra or {},
+            bool(compile_model),
+        ],
+        sort_keys=True, default=str,
+    )
+    with _MODEL_CACHE_LOCK:
+        loaded = _MODEL_CACHE.get(key)
+        if loaded is None:
+            loaded = load_model(
+                model_name=model_name,
+                backend=backend,
+                pretrained=pretrained,
+                precision=precision,
+                device_name=device,
+                **(model_extra or {}),
+            )
+            if compile_model and hasattr(torch, "compile"):
+                try:
+                    loaded.model = torch.compile(loaded.model, mode="reduce-overhead", fullgraph=False)
+                except Exception as exc:
+                    print(f"[MODEL] torch.compile skipped for '{model_name}': {type(exc).__name__}: {exc}")
+            _MODEL_CACHE[key] = loaded
+        return loaded
 
 
 def resolve_device(device_name: str) -> torch.device:
@@ -150,24 +192,13 @@ class FaissIndex:
             precision = "fp32"
         self.precision = precision
 
-        loaded = load_model(
-            model_name=model_name,
-            backend=backend,
-            pretrained=pretrained,
-            precision=precision,
-            device_name=device,
-            **(model_extra or {}),
+        loaded = _shared_loaded_model(
+            model_name, backend, pretrained, precision, device, model_extra, compile_model
         )
         self.model = loaded.model  # exposes .encode_image(batch) / .encode_text(list[str])
         self.preprocess = loaded.preprocess
         self.embedding_dim = loaded.embedding_dim
         self.supports_text = loaded.supports_text
-        if compile_model and hasattr(torch, "compile"):
-            try:
-                self.model = torch.compile(self.model, mode="reduce-overhead", fullgraph=False)
-            except Exception as exc:
-                print(f"[MODEL] torch.compile skipped for '{self.model_key}': {type(exc).__name__}: {exc}")
-
         if vector_cache_mode is None:
             vector_cache_mode = "ram" if bool(cache_index_vectors) else "none"
 

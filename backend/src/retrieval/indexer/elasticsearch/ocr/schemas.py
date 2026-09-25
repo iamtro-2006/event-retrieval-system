@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 class OCRDocument(BaseModel):
 
+    collection: str = Field(...)
+
     dataset: str = Field(...)
 
     video_id: str = Field(...)

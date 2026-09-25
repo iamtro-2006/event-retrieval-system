@@ -19,6 +19,9 @@ import pandas as pd
 from fastapi import HTTPException
 
 from src.api.legacy.paths import resolve_backend_path
+
+
+IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
 from src.retrieval.index.faiss_index import FaissIndex
 
 
@@ -108,20 +111,45 @@ def resolve_keyframe_path_from_dict(item: dict[str, Any], keyframes_root: Path, 
     video_id = str(item.get("video_id", "") or "")
     frame_id_text = format_keyframe_id_from_dict(item)
 
-    if dataset and video_id:
-        return str(keyframes_root / dataset / video_id / f"{frame_id_text}.jpg")
-    if video_id:
-        return str(keyframes_root / video_id / f"{frame_id_text}.jpg")
-
     keyframe_path = str(item.get("keyframe_path", "") or "")
+    metadata_path = Path(keyframe_path.replace("\\", "/")) if keyframe_path else None
+    metadata_suffix = metadata_path.suffix.lower() if metadata_path else ""
+    metadata_stem = metadata_path.stem if metadata_path else ""
+
+    # Rebuild under the active dataset root first so stale absolute paths in
+    # metadata cannot escape into another collection. Preserve the real image
+    # format instead of assuming every keyframe is a JPEG (CAM uses WebP).
+    if video_id:
+        video_dir = keyframes_root / dataset / video_id if dataset else keyframes_root / video_id
+        names = [metadata_stem, str(item.get("source_name", "") or ""), frame_id_text]
+        suffixes = [metadata_suffix, *IMAGE_EXTENSIONS]
+        seen: set[tuple[str, str]] = set()
+        for name in names:
+            if not name:
+                continue
+            for suffix in suffixes:
+                suffix = suffix.lower()
+                if not suffix or (name, suffix) in seen:
+                    continue
+                seen.add((name, suffix))
+                candidate = video_dir / f"{name}{suffix}"
+                if candidate.exists():
+                    return str(candidate).replace("\\", "/")
+
     if keyframe_path:
         keyframe_path = keyframe_path.replace("\\", "/")
         resolved = resolve_backend_path(backend_dir, keyframe_path)
         if resolved.exists():
-            return str(resolved)
+            return str(resolved).replace("\\", "/")
         # Stale absolute path from an old data location: retry against the
         # current keyframes root using just the filename tail.
-        return str(keyframes_root / Path(keyframe_path).name)
+        return str(keyframes_root / Path(keyframe_path).name).replace("\\", "/")
+
+    # Backward-compatible fallback for incomplete metadata. The path may not
+    # exist yet, but callers still receive the historical JPEG convention.
+    if video_id:
+        video_dir = keyframes_root / dataset / video_id if dataset else keyframes_root / video_id
+        return str(video_dir / f"{frame_id_text}.jpg").replace("\\", "/")
 
     return ""
 
@@ -143,7 +171,7 @@ def find_video_path_from_dict(item: dict[str, Any]) -> str:
 
 
 def serialize_matched_sequence(
-    sequence: list[dict[str, Any]] | Any, keyframes_root: Path, backend_dir: Path
+    sequence: list[dict[str, Any]] | Any, keyframes_root: Path, backend_dir: Path, collection: str = ""
 ) -> list[dict[str, Any]]:
     """Serialize a list of matched temporal sequence frames.
 
@@ -183,6 +211,7 @@ def serialize_matched_sequence(
         score = safe_float(get("score", get("candidate_score", 0.0)), 0.0)
 
         rows.append({
+            "collection": collection,
             "video_id": str(json_safe(get("video_id", "")) or ""),
             "source_name": str(json_safe(get("source_name", "")) or ""),
             "keyframe_id": frame_id_text,
@@ -191,7 +220,7 @@ def serialize_matched_sequence(
             "timestamp_sec": timestamp,
             "fps": safe_float(get("fps", 0), 0.0),
             "keyframe_path": raw_k_path,
-            "image_url": f"/static/keyframes/{image_rel_path}" if image_rel_path else "",
+            "image_url": f"/static/{collection}/keyframes/{image_rel_path}" if collection and image_rel_path else (f"/static/keyframes/{image_rel_path}" if image_rel_path else ""),
             "image_rel_path": image_rel_path,
             "sub_query_idx": safe_int(get("sub_query_idx", idx), idx),
             "sub_query": str(json_safe(get("sub_query", "")) or ""),
@@ -202,7 +231,7 @@ def serialize_matched_sequence(
     return rows
 
 
-def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir: Path) -> dict[str, Any]:
+def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir: Path, collection: str = "") -> dict[str, Any]:
     """High-performance serialization of a metadata row to an API response dictionary."""
     get = item.get  # Localize method lookup for C-speed access
 
@@ -242,17 +271,18 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
     matched_texts = [str(t) for t in matched_texts_raw] if isinstance(matched_texts_raw, (list, tuple)) else []
 
     return {
+        "collection": collection,
         "id": f"{video_id}_{frame_id_text}",
         "video_id": video_id,
         "frame_id": frame_id_number,
         "frame_name": f"{frame_id_text}.jpg",
         "path": f"{video_id}/{frame_id_text}",
         "keyframe_path": raw_k_path,
-        "image_url": f"/static/keyframes/{image_rel_path}",
+        "image_url": f"/static/{collection}/keyframes/{image_rel_path}" if collection else f"/static/keyframes/{image_rel_path}",
         "image_rel_path": image_rel_path,
-        "video_url": f"/static/videos/{video_rel_path}",
+        "video_url": f"/static/{collection}/videos/{video_rel_path}" if collection else f"/static/videos/{video_rel_path}",
         "video_rel_path": video_rel_path,
-        "map_url": f"/static/map-keyframes/{dataset}/{video_id}.csv" if dataset else f"/static/map-keyframes/{video_id}.csv",
+        "map_url": (f"/static/{collection}/map-keyframes/{dataset}/{video_id}.csv" if dataset else f"/static/{collection}/map-keyframes/{video_id}.csv") if collection else (f"/static/map-keyframes/{dataset}/{video_id}.csv" if dataset else f"/static/map-keyframes/{video_id}.csv"),
         "map_rel_path": f"{dataset}/{video_id}.csv" if dataset else f"{video_id}.csv",
         "timestamp": timestamp,
         "similarity": retrieval_score,
@@ -261,7 +291,7 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
         "model_key": str(get("model_key", "") or ""),
         "search_mode": str(get("search_mode", "") or ""),
         "source_models": json_safe(get("source_models", [])),
-        "matched_sequence": serialize_matched_sequence(get("matched_sequence", []), keyframes_root, backend_dir),
+        "matched_sequence": serialize_matched_sequence(get("matched_sequence", []), keyframes_root, backend_dir, collection),
         "matched_texts": matched_texts,
         "ocr_score": safe_float(get("ocr_score"), 0.0) if get("ocr_score") is not None else None,
         "asr_score": safe_float(get("asr_score"), 0.0) if get("asr_score") is not None else None,

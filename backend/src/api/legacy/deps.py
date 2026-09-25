@@ -29,6 +29,21 @@ def get_legacy_system(request: Request) -> RetrievalSystem:
     return system
 
 
+def get_dataset_resources(request: Request, dataset: str) -> tuple[RetrievalSystem, dict[str, Any], LegacyPaths]:
+    key = str(dataset or "").strip().lower()
+    systems = getattr(request.app.state, "retrieval_systems", {})
+    if key not in systems:
+        raise HTTPException(status_code=422, detail=f"Dataset không hợp lệ: {dataset}. Chỉ chấp nhận aic hoặc cam.")
+    system = systems[key]
+    if system is None:
+        error = getattr(request.app.state, "dataset_errors", {}).get(key)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Dataset {key.upper()} chưa có index sẵn sàng" + (f": {error}" if error else "."),
+        )
+    return system, request.app.state.dataset_configs[key], request.app.state.dataset_paths[key]
+
+
 def get_legacy_index(request: Request) -> FaissIndex:
     """`clip_index` tương đương bản gốc — model mặc định (xem
     `Orchestrator.index`, luôn resolve về 1 `FaissIndex` cụ thể kể cả khi

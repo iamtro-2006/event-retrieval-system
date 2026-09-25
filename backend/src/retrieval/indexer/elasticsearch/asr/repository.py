@@ -21,6 +21,7 @@ class ASRRepository:
         """Elasticsearch index mapping for ASR documents."""
         return {
             "properties": {
+                "collection": {"type": "keyword"},
                 "dataset": {"type": "keyword"},
                 "video_id": {"type": "keyword"},
                 "start_time": {"type": "float"},

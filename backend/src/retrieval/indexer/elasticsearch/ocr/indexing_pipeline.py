@@ -23,6 +23,7 @@ class IndexPipeline:
     def index_json(
         self,
         json_path: str | Path,
+        collection: str | None = None,
     ):
 
         json_path = Path(json_path)
@@ -47,6 +48,8 @@ class IndexPipeline:
             documents.append(
 
                 OCRDocument(
+
+                    collection=str(collection or json_path.parents[2].name).lower(),
 
                     dataset=dataset,
 
@@ -85,4 +88,4 @@ class IndexPipeline:
 
         for json_file in json_files:
 
-            self.index_json(json_file)
+            self.index_json(json_file, collection=folder.parent.name)

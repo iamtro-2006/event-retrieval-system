@@ -50,9 +50,9 @@ def test_every_visual_search_branch_forwards_the_selected_model(method: str, ext
 
 
 def test_legacy_requests_preserve_model_selection() -> None:
-    assert SearchRequest(query="car", model_key="model-b").model_key == "model-b"
+    assert SearchRequest(query="car", dataset="aic", model_key="model-b").model_key == "model-b"
     assert (
-        SimilaritySearchRequest(video_id="video", frame_id=7, model_key="model-b").model_key
+        SimilaritySearchRequest(dataset="aic", video_id="video", frame_id=7, model_key="model-b").model_key
         == "model-b"
     )
 
@@ -60,21 +60,28 @@ def test_legacy_requests_preserve_model_selection() -> None:
 def test_legacy_unified_endpoint_forwards_model_selection() -> None:
     orchestrator = _RecordingOrchestrator()
     orchestrator.index = SimpleNamespace(model_key="model-a")
+    system = SimpleNamespace(orchestrator=orchestrator)
+    cfg = {
+        "search": {"default_top_k": 20, "max_top_k": 200, "candidate_multiplier": 5},
+        "translate": {"enabled_default": False},
+    }
+    paths = SimpleNamespace(backend_dir=".", keyframes_root=".", dataset_key="aic")
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(
+        retrieval_systems={"aic": system},
+        dataset_configs={"aic": cfg},
+        dataset_paths={"aic": paths},
+        dataset_errors={"aic": None},
+    )))
     response = asyncio.run(
         search_api(
             payload=SearchRequest(
                 query="car",
+                dataset="aic",
                 model_key="model-b",
                 search_mode="semantic",
                 use_translate=False,
             ),
-            request=SimpleNamespace(),
-            system=SimpleNamespace(orchestrator=orchestrator),
-            cfg={
-                "search": {"default_top_k": 20, "max_top_k": 200, "candidate_multiplier": 5},
-                "translate": {"enabled_default": False},
-            },
-            paths=SimpleNamespace(backend_dir="."),
+            request=request,
         )
     )
 

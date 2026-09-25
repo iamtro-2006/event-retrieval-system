@@ -160,6 +160,7 @@ def build_matrix_and_metadata(
 	embeddings_root: str | Path,
 	keyframes_root: str | Path,
 	map_keyframes_root: str | Path,
+	collection: str | None = None,
 ):
 	embeddings_root = Path(embeddings_root)
 	keyframes_root = Path(keyframes_root)
@@ -202,6 +203,7 @@ def build_matrix_and_metadata(
 		)
 
 		records.append({
+			"collection": str(collection).lower() if collection else None,
 			"dataset": dataset,
 			"video_id": video_id,
 			"keyframe_id": parsed["keyframe_id_str"],

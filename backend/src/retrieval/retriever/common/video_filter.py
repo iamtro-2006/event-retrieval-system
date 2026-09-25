@@ -4,6 +4,7 @@ Never mutate shared indexes: concurrent searches may use different filters.
 """
 from contextvars import ContextVar
 import numpy as np
+import faiss
 
 video_ids_context: ContextVar[frozenset[str]] = ContextVar("video_ids", default=frozenset())
 
@@ -25,25 +26,25 @@ def filtered_faiss_search(index, search_lock, embeddings, k, metadata_records):
         if len(allowed_rows) and allowed_rows.all():
             with search_lock:
                 return index.search(embeddings, min(k, index.ntotal))
-        target = min(k, int(allowed_rows.sum()))
-        if not target:
+        allowed_ids = np.flatnonzero(allowed_rows).astype(np.int64, copy=False)
+        target = min(k, len(allowed_ids))
+        if target == 0:
             return np.empty((len(embeddings), 0), np.float32), np.empty((len(embeddings), 0), np.int64)
-        # Expand each query independently until its filtered candidate pool is
-        # full (or the index is exhausted), before fusion/temporal ranking.
-        output_scores = np.full((len(embeddings), target), -np.inf, np.float32)
-        output_ids = np.full((len(embeddings), target), -1, np.int64)
-        for query_index, embedding in enumerate(embeddings):
-            fetch_k = min(max(k, 64), index.ntotal)
-            while True:
-                with search_lock:
-                    scores, rows = index.search(embedding.reshape(1, -1), fetch_k)
-                valid = rows[0] >= 0
-                positions = np.flatnonzero(valid)
-                positions = positions[allowed_rows[rows[0, positions]]][:target]
-                if len(positions) >= target or fetch_k >= index.ntotal:
-                    output_scores[query_index, :len(positions)] = scores[0, positions]
-                    output_ids[query_index, :len(positions)] = rows[0, positions]
-                    break
-                fetch_k = min(fetch_k * 2, index.ntotal)
-        return output_scores, output_ids
+        # Search an exact FAISS flat index built from every allowed row. This
+        # makes an in-video search rank all keyframes in that video, including
+        # frames absent from the original global result list.
+        with search_lock:
+            try:
+                vectors = np.stack([index.reconstruct(int(row_id)) for row_id in allowed_ids])
+            except Exception as exc:
+                raise RuntimeError(
+                    "Video-filtered search requires reconstructable FAISS vectors"
+                ) from exc
+            subset_index = faiss.IndexFlat(index.d, index.metric_type)
+            subset_index.add(np.ascontiguousarray(vectors, dtype=np.float32))
+            scores, local_rows = subset_index.search(embeddings, target)
+        valid = local_rows >= 0
+        output_ids = np.full(local_rows.shape, -1, dtype=np.int64)
+        output_ids[valid] = allowed_ids[local_rows[valid]]
+        return scores, output_ids
     raise ValueError("Filtered search requires a nonempty allowlist")

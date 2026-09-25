@@ -55,6 +55,7 @@ class LegacyPaths:
     def __init__(self, backend_dir: Path, config_path: Path, cfg: dict[str, Any]) -> None:
         self.backend_dir = backend_dir
         self.config_path = config_path
+        self.dataset_key = str(cfg.get("dataset_key", "")).lower()
         self.keyframes_root = resolve_backend_path(backend_dir, cfg["paths"]["keyframes_root"])
         self.videos_root = resolve_backend_path(backend_dir, cfg["paths"]["videos_root"])
         self.map_keyframe_root = resolve_backend_path(backend_dir, cfg["paths"]["map_keyframe_path"])

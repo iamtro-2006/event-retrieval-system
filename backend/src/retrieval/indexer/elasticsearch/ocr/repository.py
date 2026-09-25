@@ -21,6 +21,7 @@ class OCRRepository:
         """Elasticsearch index mapping for OCR documents."""
         return {
             "properties": {
+                "collection": {"type": "keyword"},
                 "dataset": {"type": "keyword"},
                 "video_id": {"type": "keyword"},
                 "keyframe_id": {"type": "keyword"},

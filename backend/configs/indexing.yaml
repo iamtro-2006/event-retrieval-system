@@ -1,9 +1,30 @@
-keyframes_root: ../data/keyframes
-embeddings_root: ../data/embeddings_pe_core_l14_336
-map_keyframes_root: ../data/map_keyframes
+# Build exactly one physical index at a time:
+# python scripts/retrieval/run.py --dataset aic|cam
+# Every descendant belongs to the selected physical root; child folder names
+# are intentionally not listed here.
+datasets:
+  default: aic
+  available:
+    aic:
+      keyframes_root: ../data/AIC/keyframes
+      embeddings_root: ../data/AIC/embeddings/embeddings_pe_core_l14_336
+      map_keyframes_root: ../data/AIC/map_keyframes
+      index:
+        output_dir: ../data/AIC/database/AIC/faiss_hnsw_pe_core_l14_336
+    cam:
+      keyframes_root: ../data/CAM/keyframes
+      embeddings_root: ../data/CAM/embeddings/embeddings_siglip2_so400m_384
+      map_keyframes_root: ../data/CAM/map-keyframes
+      index:
+        output_dir: ../data/CAM/database/faiss_hnsw_siglip2_so400m_384
+
+# Backward-compatible defaults; the selected dataset overrides these roots.
+keyframes_root: ../data/AIC/keyframes
+embeddings_root: ../data/AIC/embeddings/embeddings_pe_core_l14_336
+map_keyframes_root: ../data/AIC/map_keyframes
 
 index:
-  output_dir: ../data/database/faiss_hnsw_pe_core_l14_336
+  output_dir: ../data/AIC/database/AIC/faiss_hnsw_pe_core_l14_336
   index_name: keyframes.faiss
   metadata_name: metadata.csv
   type: hnsw

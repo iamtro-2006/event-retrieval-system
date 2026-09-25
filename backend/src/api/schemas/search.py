@@ -50,6 +50,7 @@ class BaseSearchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     query: str = Field(..., min_length=1, description="Câu query gốc (tiếng Việt hoặc tiếng Anh).")
+    dataset: str = Field(..., pattern="^(?i:aic|cam)$", description="Physical dataset collection: aic or cam.")
     top_k: int = Field(10, ge=1, le=500)
 
 

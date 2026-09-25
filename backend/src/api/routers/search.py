@@ -44,16 +44,25 @@ router = APIRouter(prefix="/api/search", tags=["search"])
 # ---------------------------------------------------------------------------
 
 
-def get_retrieval_system(request: Request) -> RetrievalSystem:
+def get_retrieval_system(request: Request, dataset: str | None = None) -> RetrievalSystem:
     """Lấy `RetrievalSystem` singleton đã build lúc lifespan (xem
     `api/main.py`). 503 thay vì AttributeError nếu app chưa khởi động xong
     hoặc build_system từng fail — tránh lộ stacktrace nội bộ ra client."""
 
-    system = getattr(request.app.state, "retrieval_system", None)
+    if dataset is not None:
+        key = str(dataset).lower()
+        systems = getattr(request.app.state, "retrieval_systems", {})
+        if key not in systems:
+            raise HTTPException(status_code=422, detail=f"Dataset không hợp lệ: {dataset}")
+        system = systems[key]
+        error = getattr(request.app.state, "dataset_errors", {}).get(key)
+    else:
+        system = getattr(request.app.state, "retrieval_system", None)
+        error = getattr(request.app.state, "retrieval_system_error", None)
     if system is None:
         raise HTTPException(
             status_code=503,
-            detail="Retrieval system chưa sẵn sàng (chưa khởi tạo xong hoặc khởi tạo thất bại).",
+            detail=f"Dataset {(dataset or 'default').upper()} chưa có index sẵn sàng" + (f": {error}" if error else "."),
         )
     return system
 
@@ -118,14 +127,14 @@ def _run_or_503(fn, *, feature_name: str):
 
 
 @router.get("/models", response_model=AvailableModelsResponse)
-def list_available_models(request: Request) -> AvailableModelsResponse:
-    system = get_retrieval_system(request)
+def list_available_models(request: Request, dataset: str | None = None) -> AvailableModelsResponse:
+    system = get_retrieval_system(request, dataset)
     return AvailableModelsResponse(models=system.available_models())
 
 
 @router.post("/semantic", response_model=SearchResponse)
 def search_semantic(payload: SemanticSearchRequest, request: Request) -> SearchResponse:
-    system = get_retrieval_system(request)
+    system = get_retrieval_system(request, payload.dataset)
     df, plan = _run_or_503(
         lambda: system.search_semantic(
             payload.query,
@@ -149,7 +158,7 @@ def search_semantic(payload: SemanticSearchRequest, request: Request) -> SearchR
 
 @router.post("/temporal", response_model=SearchResponse)
 def search_temporal(payload: TemporalSearchRequest, request: Request) -> SearchResponse:
-    system = get_retrieval_system(request)
+    system = get_retrieval_system(request, payload.dataset)
     df, plan = _run_or_503(
         lambda: system.search_temporal(
             payload.query,
@@ -174,7 +183,7 @@ def search_temporal(payload: TemporalSearchRequest, request: Request) -> SearchR
 
 @router.post("/ocr", response_model=SearchResponse)
 def search_ocr(payload: OcrSearchRequest, request: Request) -> SearchResponse:
-    system = get_retrieval_system(request)
+    system = get_retrieval_system(request, payload.dataset)
     df, plan = _run_or_503(
         lambda: system.search_ocr(payload.query, top_k=payload.top_k),
         feature_name="OCR search",
@@ -191,7 +200,7 @@ def search_ocr(payload: OcrSearchRequest, request: Request) -> SearchResponse:
 
 @router.post("/asr", response_model=SearchResponse)
 def search_asr(payload: AsrSearchRequest, request: Request) -> SearchResponse:
-    system = get_retrieval_system(request)
+    system = get_retrieval_system(request, payload.dataset)
     df, plan = _run_or_503(
         lambda: system.search_asr(payload.query, top_k=payload.top_k),
         feature_name="ASR search",
@@ -208,7 +217,7 @@ def search_asr(payload: AsrSearchRequest, request: Request) -> SearchResponse:
 
 @router.post("/auto", response_model=SearchResponse)
 def search_auto(payload: AutoSearchRequest, request: Request) -> SearchResponse:
-    system = get_retrieval_system(request)
+    system = get_retrieval_system(request, payload.dataset)
     df, plan = _run_or_503(
         lambda: system.search_auto(
             payload.query,
@@ -237,7 +246,7 @@ def search_advanced(payload: AdvancedSearchRequest, request: Request) -> Advance
     đầy đủ (semantic_models + temporal on/off dùng chung list, KHÔNG có
     `temporal_models` riêng)."""
 
-    system = get_retrieval_system(request)
+    system = get_retrieval_system(request, payload.dataset)
     fused_df, per_source = _run_or_503(
         lambda: system.search_advanced(
             payload.query,

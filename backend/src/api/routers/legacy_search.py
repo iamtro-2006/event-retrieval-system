@@ -27,10 +27,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
-from src.api.legacy.deps import get_cfg, get_legacy_index, get_legacy_paths, get_legacy_system
+from src.api.legacy.deps import get_dataset_resources
 from src.api.legacy.paths import LegacyPaths
 from src.api.legacy.serializers import (
     dict_to_result_FAST,
@@ -48,7 +48,6 @@ from src.api.schemas.legacy import (
 )
 from src.color_retrieval.palette import COLOR_NAMES, PALETTE_RGB
 from src.color_retrieval.search import get_color_index
-from src.retrieval.index.faiss_index import FaissIndex
 from src.retrieval.retriever.temporal_search.pipeline.search import temporal_search_from_events
 from src.retrieval.system import RetrievalSystem
 from src.retrieval.retriever.common.video_filter import with_video_filter
@@ -57,8 +56,13 @@ router = APIRouter(tags=["legacy-search"])
 
 
 @router.get("/api/video-ids")
-async def get_video_ids(clip_index: FaissIndex = Depends(get_legacy_index)):
+async def get_video_ids(
+    dataset: str,
+    request: Request,
+):
     """Return the unique video IDs in the currently loaded metadata."""
+    system, _cfg, _paths = get_dataset_resources(request, dataset)
+    clip_index = system.orchestrator.index
     values = await run_in_threadpool(lambda: sorted(clip_index._rows_by_video.keys()))
     return {"video_ids": values, "count": len(values)}
 
@@ -77,10 +81,10 @@ async def get_color_palette():
 @router.post("/api/search/color")
 async def search_color_api(
     payload: ColorSearchRequest,
-    clip_index: FaissIndex = Depends(get_legacy_index),
-    cfg: dict[str, Any] = Depends(get_cfg),
-    paths: LegacyPaths = Depends(get_legacy_paths),
+    request: Request,
 ):
+    system, cfg, paths = get_dataset_resources(request, payload.dataset)
+    clip_index = system.orchestrator.index
     if not payload.cells:
         raise HTTPException(status_code=422, detail="Select at least one colour cell")
     cells = [cell.model_dump() if hasattr(cell, "model_dump") else cell.dict() for cell in payload.cells]
@@ -146,22 +150,23 @@ def _serialize_result_frame(results_df: pd.DataFrame, paths: LegacyPaths) -> lis
         "color_score",
     ] if c in results_df.columns]
     records = results_df[cols_to_keep].to_dict(orient="records")
-    return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in records]
+    return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir, paths.dataset_key) for rec in records]
 
 
 @router.get("/api/frame-info")
 async def get_frame_info(
     video_id: str,
     keyframe_id: int,
+    dataset: str,
     request: Request,
-    clip_index: FaissIndex = Depends(get_legacy_index),
-    paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Retrieve detailed metadata for a specific video frame."""
+    system, _cfg, paths = get_dataset_resources(request, dataset)
+    clip_index = system.orchestrator.index
 
     def _fetch():
         row = find_metadata_row(clip_index, video_id, keyframe_id)
-        return dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir)
+        return dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir, paths.dataset_key)
 
     return await run_in_threadpool(_fetch)
 
@@ -169,14 +174,15 @@ async def get_frame_info(
 @router.get("/api/video-preview")
 async def get_video_preview(
     video_id: str,
+    dataset: str,
     request: Request,
     frame_id: int | None = None,
     frame_idx: int | None = None,
     timestamp_ms: int | None = None,
-    clip_index: FaissIndex = Depends(get_legacy_index),
-    paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Resolve a video plus frame_id or milliseconds to the normal video result shape."""
+    system, _cfg, paths = get_dataset_resources(request, dataset)
+    clip_index = system.orchestrator.index
     if frame_id is not None and frame_idx is not None:
         raise HTTPException(status_code=400, detail="Provide only one of frame_id or frame_idx")
     requested_frame = frame_idx if frame_idx is not None else frame_id
@@ -223,7 +229,7 @@ async def get_video_preview(
             values = pd.to_numeric(rows[time_col], errors="coerce")
             target_sec = float(timestamp_ms) / 1000.0
             row = rows.loc[(values - target_sec).abs().idxmin()]
-        result = dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir)
+        result = dict_to_result_FAST(row.to_dict(), paths.keyframes_root, paths.backend_dir, paths.dataset_key)
         if timestamp_ms is not None:
             result["is_preview_timestamp"] = True
             result["timestamp"] = float(timestamp_ms) / 1000.0
@@ -246,9 +252,12 @@ async def get_video_preview(
 @router.get("/api/video-keyframes")
 async def get_video_keyframes(
     video_id: str,
-    clip_index: FaissIndex = Depends(get_legacy_index),
+    dataset: str,
+    request: Request,
 ):
     """Return every indexed keyframe timestamp for a video for timeline overlays."""
+    system, _cfg, _paths = get_dataset_resources(request, dataset)
+    clip_index = system.orchestrator.index
     def _fetch():
         rows = clip_index.metadata[clip_index.metadata["video_id"].astype(str) == str(video_id)]
         if rows.empty:
@@ -275,9 +284,6 @@ async def get_video_keyframes(
 async def search_api(
     payload: SearchRequest,
     request: Request,
-    system: RetrievalSystem = Depends(get_legacy_system),
-    cfg: dict[str, Any] = Depends(get_cfg),
-    paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Execute a multi-modal retrieval search based on the query payload.
 
@@ -297,6 +303,7 @@ async def search_api(
         to "temporal" (a horizontal frame-chain strip), with `matched_texts`
         carrying the segment's transcript.
     """
+    system, cfg, paths = get_dataset_resources(request, payload.dataset)
     orchestrator = system.orchestrator
 
     original_query = payload.query.strip()
@@ -394,7 +401,7 @@ async def search_api(
                 "asr_score", "segment_id",
             ] if c in results_df.columns]
             records = results_df[cols_to_keep].to_dict(orient="records")
-            return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in records]
+            return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir, paths.dataset_key) for rec in records]
 
         results = await run_in_threadpool(_serialize_results)
     except Exception as exc:
@@ -405,11 +412,9 @@ async def search_api(
 
 @router.post("/api/search/multimodal")
 async def search_multimodal_api(
+    request: Request,
     request_json: str = Form(...),
     images: list[UploadFile] = File(default=[]),
-    system: RetrievalSystem = Depends(get_legacy_system),
-    cfg: dict[str, Any] = Depends(get_cfg),
-    paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Search CLIP space with text, uploaded images, or a mixture per clause.
 
@@ -421,6 +426,8 @@ async def search_multimodal_api(
         payload = validator(request_json) if validator else MultimodalSearchRequest.parse_raw(request_json)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Invalid multimodal request: {exc}")
+
+    system, cfg, paths = get_dataset_resources(request, payload.dataset)
 
     mode = payload.search_mode or "semantic"
     if mode not in ("semantic", "temporal", "auto"):
@@ -575,7 +582,9 @@ async def search_multimodal_api(
             return results_df, effective_mode, labels, temporal_events, index.model_key
 
     try:
-        results_df, effective_mode, labels, temporal_events, resolved_model_key = await run_in_threadpool(with_video_filter, payload.video_ids, _search)
+        results_df, effective_mode, labels, temporal_events, resolved_model_key = await run_in_threadpool(
+            with_video_filter, payload.video_ids, _search
+        )
         results = [] if results_df.empty else await run_in_threadpool(_serialize_result_frame, results_df, paths)
     except (ValueError, OSError) as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image query: {exc}")
@@ -611,9 +620,6 @@ async def search_multimodal_api(
 async def search_fusion_api(
     payload: FusionSearchRequest,
     request: Request,
-    system: RetrievalSystem = Depends(get_legacy_system),
-    cfg: dict[str, Any] = Depends(get_cfg),
-    paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Advanced/fusion search (RRF trên nhiều semantic model đã tick +
     temporal/ocr/asr on-off, mỗi nguồn có weight riêng qua `payload.weights`)
@@ -623,6 +629,7 @@ async def search_fusion_api(
     không cần thêm 1 nhánh UI riêng cho fusion.
     """
 
+    system, cfg, paths = get_dataset_resources(request, payload.dataset)
     original_query = payload.query.strip()
     if not original_query:
         raise HTTPException(status_code=400, detail="Query is empty")
@@ -704,7 +711,7 @@ async def search_fusion_api(
     try:
         def _serialize_results():
             records = fused_df.to_dict(orient="records")
-            return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in records]
+            return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir, paths.dataset_key) for rec in records]
 
         results = await run_in_threadpool(_serialize_results)
     except Exception as exc:
@@ -717,12 +724,13 @@ async def search_fusion_api(
 async def get_surrounding_frames(
     video_id: str,
     keyframe_id: int,
+    dataset: str,
     request: Request,
     radius: int = 10,
-    clip_index: FaissIndex = Depends(get_legacy_index),
-    paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Retrieve a sequence of frames surrounding a target keyframe."""
+    system, _cfg, paths = get_dataset_resources(request, dataset)
+    clip_index = system.orchestrator.index
 
     def _fetch_surround():
         metadata_df = clip_index.metadata
@@ -758,7 +766,7 @@ async def get_surrounding_frames(
 
         frames = []
         for rec in records:
-            item = dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir)
+            item = dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir, paths.dataset_key)
             item["is_surround_center"] = safe_int(item.get("frame_id"), -1) == target_keyframe_id
             item["surround_offset"] = safe_int(item.get("frame_id"), 0) - target_keyframe_id
             frames.append(item)
@@ -776,17 +784,16 @@ async def get_surrounding_frames(
 async def similarity_search_api(
     payload: SimilaritySearchRequest,
     request: Request,
-    system: RetrievalSystem = Depends(get_legacy_system),
-    paths: LegacyPaths = Depends(get_legacy_paths),
 ):
     """Execute an image-to-image similarity search based on a source frame."""
+    system, cfg, paths = get_dataset_resources(request, payload.dataset)
     _require_explicit_model_for_multi_model_search(
         system, payload.model_key, feature="similarity search"
     )
     orchestrator = system.orchestrator
 
     def _run_sim_search():
-        top_k = max(1, min(int(payload.top_k or 20), 500))
+        top_k = max(1, min(int(payload.top_k or 20), 25))
         index = orchestrator.semantic_search._resolve(payload.model_key)
 
         row = find_metadata_row(index, payload.video_id, payload.frame_id)
@@ -800,7 +807,9 @@ async def similarity_search_api(
 
     start = time.perf_counter()
     try:
-        source_dict_data, df_results, resolved_model_key = await run_in_threadpool(with_video_filter, payload.video_ids, _run_sim_search)
+        source_dict_data, df_results, resolved_model_key = await run_in_threadpool(
+            with_video_filter, payload.video_ids, _run_sim_search
+        )
     except KeyError as exc:
         raise HTTPException(status_code=400, detail=str(exc).strip('"')) from exc
     except Exception as exc:
@@ -816,7 +825,7 @@ async def similarity_search_api(
         }
 
     def _parse():
-        return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir) for rec in df_results.to_dict(orient="records")]
+        return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir, paths.dataset_key) for rec in df_results.to_dict(orient="records")]
 
     results = await run_in_threadpool(_parse)
 
@@ -824,5 +833,5 @@ async def similarity_search_api(
         "query": f"similarity:{payload.video_id}/{payload.frame_id:06d}",
         "search_mode": "similarity", "model_key": resolved_model_key,
         "latency_ms": latency_ms, "count": len(results),
-        "source": dict_to_result_FAST(source_dict_data, paths.keyframes_root, paths.backend_dir), "results": results,
+        "source": dict_to_result_FAST(source_dict_data, paths.keyframes_root, paths.backend_dir, paths.dataset_key), "results": results,
     }

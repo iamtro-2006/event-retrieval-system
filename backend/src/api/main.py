@@ -36,6 +36,7 @@ import pstats
 import time
 import traceback
 from contextlib import asynccontextmanager
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +63,54 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
     return load_yaml(path)
 
 
+def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[str, Any]) -> dict[str, Any]:
+    """Create one fully isolated runtime config for AIC or CAM."""
+    cfg = deepcopy(base)
+    overrides = spec.get("semantic_models", {})
+    models = []
+    for model in cfg.get("semantic", {}).get("models", []):
+        model_key = str(model.get("model_key", ""))
+        if model_key not in overrides:
+            continue
+        merged = {**model, **overrides[model_key]}
+        # A dataset only needs to declare its index directory. The filenames
+        # are shared by every index built with scripts/retrieval/run.py.
+        index_dir = merged.pop("index_dir", None)
+        if index_dir:
+            index_dir = str(index_dir).rstrip("/\\")
+            merged["index_path"] = f"{index_dir}/keyframes.faiss"
+            merged["metadata_path"] = f"{index_dir}/metadata.csv"
+            merged["vector_cache_path"] = f"{index_dir}/vectors_fp32.npy"
+        if merged.get("enabled", True):
+            models.append(merged)
+    cfg["semantic"] = {
+        **cfg.get("semantic", {}),
+        "default_model_key": cfg.get("semantic", {}).get("default_model_key", "pe-core"),
+        "models": models,
+    }
+    cfg["paths"] = {
+        "keyframes_root": spec["keyframes_root"],
+        "videos_root": spec["videos_root"],
+        "map_keyframe_path": spec["map_keyframes_root"],
+    }
+    cfg["color"] = {"index_path": spec["color_index_path"]}
+
+    for feature in ("ocr", "asr"):
+        feature_cfg = base.get(feature) or {}
+        config_path = feature_cfg.get("config_path") if isinstance(feature_cfg, dict) else feature_cfg
+        if not config_path:
+            cfg[feature] = None
+            continue
+        loaded = load_config(config_path)
+        loaded["elasticsearch"]["index"] = spec[f"{feature}_index"]
+        loaded.setdefault("dataset", {})["root"] = str(Path(spec["root"]) / feature)
+        cfg[feature] = {"cfg": loaded}
+
+    cfg["dataset_key"] = dataset_key
+    cfg.pop("datasets", None)
+    return cfg
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     config_path_str = os.environ.get("CONFIG_PATH", "configs/app.yaml")
@@ -71,7 +120,6 @@ async def lifespan(app: FastAPI):
 
     config = load_config(config_path)
     app.state.cfg = config
-    app.state.legacy_paths = LegacyPaths(REPO_ROOT, config_path, config)
     app.state.should_profile = bool(config.get("debug", {}).get("profile", False))
 
     # OCR/ASR/model load lỗi hạ tầng (thiếu index/checkpoint, ES down...) đã
@@ -80,26 +128,45 @@ async def lifespan(app: FastAPI):
     # thì `build_system()` mới thật sự raise. Giữ pattern degraded-start của
     # nhánh mới: app vẫn lên được, mọi endpoint cần retrieval_system trả 503
     # (xem `get_retrieval_system`/`get_legacy_system`) thay vì app crash.
-    try:
-        app.state.retrieval_system = build_system(config)
-        app.state.retrieval_system_error = None
-    except Exception as exc:  # pragma: no cover - lỗi khởi động hạ tầng
-        print(f"[api.main] build_system() failed: {type(exc).__name__}: {exc}")
-        traceback.print_exc()
-        app.state.retrieval_system = None
-        app.state.retrieval_system_error = str(exc)
+    systems: dict[str, RetrievalSystem | None] = {}
+    runtime_configs: dict[str, dict[str, Any]] = {}
+    runtime_paths: dict[str, LegacyPaths] = {}
+    errors: dict[str, str | None] = {}
+    dataset_cfg = config.get("datasets", {})
+    for dataset_key, spec in dataset_cfg.get("available", {}).items():
+        runtime_cfg = _dataset_runtime_config(config, dataset_key, spec)
+        runtime_configs[dataset_key] = runtime_cfg
+        runtime_paths[dataset_key] = LegacyPaths(REPO_ROOT, config_path, runtime_cfg)
+        try:
+            systems[dataset_key] = build_system(runtime_cfg)
+            errors[dataset_key] = None
+        except Exception as exc:  # pragma: no cover - missing index/model infrastructure
+            print(f"[api.main] build_system({dataset_key}) failed: {type(exc).__name__}: {exc}")
+            traceback.print_exc()
+            systems[dataset_key] = None
+            errors[dataset_key] = str(exc)
 
-    paths: LegacyPaths = app.state.legacy_paths
-    if paths.keyframes_root.exists():
-        app.mount("/static/keyframes", StaticFiles(directory=str(paths.keyframes_root)), name="keyframes")
-    if paths.videos_root.exists():
-        app.mount("/static/videos", StaticFiles(directory=str(paths.videos_root)), name="videos")
-    if paths.map_keyframe_root.exists():
-        app.mount("/static/map-keyframes", StaticFiles(directory=str(paths.map_keyframe_root)), name="map_keyframes")
+    default_dataset = str(dataset_cfg.get("default", "aic")).lower()
+    app.state.retrieval_systems = systems
+    app.state.dataset_configs = runtime_configs
+    app.state.dataset_paths = runtime_paths
+    app.state.dataset_errors = errors
+    app.state.retrieval_system = systems.get(default_dataset)
+    app.state.retrieval_system_error = errors.get(default_dataset)
+    app.state.legacy_paths = runtime_paths[default_dataset]
+
+    for dataset_key, paths in runtime_paths.items():
+        if paths.keyframes_root.exists():
+            app.mount(f"/static/{dataset_key}/keyframes", StaticFiles(directory=str(paths.keyframes_root)), name=f"{dataset_key}_keyframes")
+        if paths.videos_root.exists():
+            app.mount(f"/static/{dataset_key}/videos", StaticFiles(directory=str(paths.videos_root)), name=f"{dataset_key}_videos")
+        if paths.map_keyframe_root.exists():
+            app.mount(f"/static/{dataset_key}/map-keyframes", StaticFiles(directory=str(paths.map_keyframe_root)), name=f"{dataset_key}_map_keyframes")
 
     yield
 
     app.state.retrieval_system = None
+    app.state.retrieval_systems = {}
 
 
 app = FastAPI(

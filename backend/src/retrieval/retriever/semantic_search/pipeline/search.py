@@ -351,6 +351,7 @@ def image_similarity_search(
     top_k: int = 20,
 ) -> pd.DataFrame:
     """Execute an image-to-image similarity search from an already-encoded query embedding."""
+    top_k = max(1, min(int(top_k), 25))
     scores, indices = faiss_search(index, search_lock, image_embedding, top_k, metadata_records)
     rows = []
     for rank, idx in enumerate(indices[0], 1):

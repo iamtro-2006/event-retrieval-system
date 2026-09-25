@@ -77,11 +77,14 @@ def safe_result(payload: VerifiedSubmit) -> dict[str, Any]:
     video_id = str(item.get("video_id") or "")
     frame_id = int(item.get("frame_id") or 0)
     timestamp = float(item.get("timestamp") or 0)
+    dataset = str(source.get("dataset") or source.get("collection") or item.get("dataset") or item.get("collection") or "").strip().lower()
     return {
-        "id": f"godmode:{payload.evaluation_id}:{video_id}:{frame_id}",
+        "id": f"godmode:{payload.evaluation_id}:{dataset}:{video_id}:{frame_id}",
         "video_id": video_id,
         "frame_id": frame_id,
         "timestamp": timestamp,
+        "dataset": dataset,
+        "collection": dataset,
         "image_url": str(source.get("image_url") or ""),
         "video_url": str(source.get("video_url") or ""),
         "similarity": 1.0,
@@ -92,6 +95,8 @@ def safe_result(payload: VerifiedSubmit) -> dict[str, Any]:
         "raw": {
             "frame_idx": frame_id,
             "keyframe_path": str((source.get("raw") or {}).get("keyframe_path") or ""),
+            "dataset": dataset,
+            "collection": dataset,
         },
     }
 
@@ -161,10 +166,11 @@ async def submit(payload: VerifiedSubmit) -> dict[str, Any]:
         return verdict
 
     item = safe_result(payload)
+    database_video_id = f"{item['dataset']}::{item['video_id']}" if item["dataset"] else item["video_id"]
     with connect_db() as db:
         db.execute(
             "INSERT OR REPLACE INTO verified_results VALUES (?, ?, ?, ?, ?, ?)",
-            (payload.evaluation_id, item["video_id"], item["frame_id"], item["timestamp"],
+            (payload.evaluation_id, database_video_id, item["frame_id"], item["timestamp"],
              json.dumps(item, ensure_ascii=False), item["verified_at"]),
         )
         db.execute("""

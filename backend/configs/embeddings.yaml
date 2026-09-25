@@ -1,5 +1,5 @@
-input_keyframes_root: ../data/keyframes
-output_embeddings_root: ../data/embeddings
+input_keyframes_root: ../data/CAM/keyframes
+output_embeddings_root: ../data/CAM/embeddings
 
 image:
   extensions: [".jpg", ".jpeg", ".png", ".webp"]
@@ -30,10 +30,10 @@ models:
   # change `name` to T16-384 / S16-384 / B16-224 / L14-336 / G14-448.
   # Disabled by default because the official perception_models package and
   # checkpoint weights are large optional dependencies.
-  - key: pe_core_g14_448
+  - key: pe_core_l14_336
     enabled: false
     backend: perception_encoder
-    name: PE-Core-G14-448
+    name: PE-Core-L14-336
     pretrained: true          # downloads the official checkpoint from HF
     device: auto
     precision: amp
