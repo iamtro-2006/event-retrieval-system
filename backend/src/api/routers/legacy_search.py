@@ -33,6 +33,7 @@ from fastapi.concurrency import run_in_threadpool
 from src.api.legacy.deps import get_dataset_resources
 from src.api.legacy.paths import LegacyPaths
 from src.api.legacy.serializers import (
+    _resolve_partition_assets,
     dict_to_result_FAST,
     find_metadata_row,
     resolve_keyframe_path_from_dict,
@@ -193,7 +194,8 @@ async def get_video_preview(
 
     def _fetch():
         metadata = clip_index.metadata
-        rows = metadata[metadata["video_id"].astype(str) == str(video_id)].copy()
+        row_positions = clip_index._rows_by_video.get(str(video_id))
+        rows = metadata.iloc[row_positions].copy() if row_positions is not None else metadata.iloc[0:0].copy()
         if rows.empty:
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
         if requested_frame is not None:
@@ -256,17 +258,26 @@ async def get_video_keyframes(
     request: Request,
 ):
     """Return every indexed keyframe timestamp for a video for timeline overlays."""
-    system, _cfg, _paths = get_dataset_resources(request, dataset)
+    system, _cfg, paths = get_dataset_resources(request, dataset)
     clip_index = system.orchestrator.index
     def _fetch():
-        rows = clip_index.metadata[clip_index.metadata["video_id"].astype(str) == str(video_id)]
+        row_positions = clip_index._rows_by_video.get(str(video_id))
+        rows = clip_index.metadata.iloc[row_positions] if row_positions is not None else clip_index.metadata.iloc[0:0]
         if rows.empty:
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
         items = []
         for _, row in rows.iterrows():
+            row_data = row.to_dict()
+            _video_path, map_row = _resolve_partition_assets(row_data, paths.keyframes_root)
             fps = pd.to_numeric(row.get("fps", 0), errors="coerce")
+            if pd.isna(fps) or float(fps) <= 0:
+                fps = pd.to_numeric(map_row.get("fps", 0), errors="coerce")
             frame_idx = pd.to_numeric(row.get("frame_idx", row.get("frame_id", 0)), errors="coerce")
+            if pd.isna(frame_idx) or float(frame_idx) == 0:
+                frame_idx = pd.to_numeric(map_row.get("frame_idx", frame_idx), errors="coerce")
             timestamp = pd.to_numeric(row.get("timestamp_sec", row.get("timestamp", 0)), errors="coerce")
+            if pd.isna(timestamp) or (float(timestamp) == 0 and map_row):
+                timestamp = pd.to_numeric(map_row.get("timestamp_sec", timestamp), errors="coerce")
             if (pd.isna(timestamp) or float(timestamp) < 0) and not pd.isna(fps) and float(fps) > 0 and not pd.isna(frame_idx):
                 timestamp = float(frame_idx) / float(fps)
             if pd.isna(timestamp):
@@ -348,7 +359,6 @@ async def search_api(
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Translate failed: {type(exc).__name__}: {exc}")
-
     try:
         results_df, query_plan = await run_in_threadpool(
             with_video_filter, payload.video_ids, orchestrator.run_search, query=search_query, mode=mode, use_split=use_split,
@@ -365,7 +375,6 @@ async def search_api(
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Search failed: {type(exc).__name__}: {exc}")
-
     latency_ms = round((time.perf_counter() - start) * 1000)
     candidate_k = max(top_k * candidate_multiplier, top_k)
 

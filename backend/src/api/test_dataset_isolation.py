@@ -113,3 +113,77 @@ def test_keyframe_resolver_uses_the_file_that_actually_exists(tmp_path, actual_s
     assert resolved.replace("\\", "/").endswith(f"/N001/N001-V001/000000{actual_suffix}")
     assert serialized["image_rel_path"] == f"N001/N001-V001/000000{actual_suffix}"
     assert serialized["image_url"].endswith(f"/N001/N001-V001/000000{actual_suffix}")
+
+
+def test_keyframe_resolver_preserves_video_group_when_dataset_is_collection(tmp_path):
+    keyframes_root = tmp_path / "keyframes"
+    video_dir = keyframes_root / "L21" / "L21_V001"
+    video_dir.mkdir(parents=True)
+    (video_dir / "000029.jpg").write_bytes(b"image-placeholder")
+    item = {
+        "dataset": "aic",
+        "video_id": "L21_V001",
+        "keyframe_id": "000029",
+        "keyframe_path": "../old/keyframes/000029.jpg",
+    }
+
+    resolved = resolve_keyframe_path_from_dict(item, keyframes_root, tmp_path)
+    serialized = dict_to_result_FAST(item, keyframes_root, tmp_path, "aic")
+
+    assert resolved.replace("\\", "/").endswith("/L21/L21_V001/000029.jpg")
+    assert serialized["image_rel_path"] == "L21/L21_V001/000029.jpg"
+
+
+def test_keyframe_resolver_finds_partitioned_split_video(tmp_path):
+    keyframes_root = tmp_path / "keyframes"
+    video_dir = keyframes_root / "L26_d" / "L26_V383"
+    video_dir.mkdir(parents=True)
+    (video_dir / "000041.jpg").write_bytes(b"image-placeholder")
+    item = {
+        "dataset": "L26",
+        "video_id": "L26_V383",
+        "keyframe_id": "000041",
+        "keyframe_path": "../old/keyframes/L26/L26_V383/000041.jpg",
+    }
+
+    resolved = resolve_keyframe_path_from_dict(item, keyframes_root, tmp_path)
+    serialized = dict_to_result_FAST(item, keyframes_root, tmp_path, "aic")
+
+    assert resolved.replace("\\", "/").endswith("/L26_d/L26_V383/000041.jpg")
+    assert serialized["image_rel_path"] == "L26_d/L26_V383/000041.jpg"
+
+
+def test_result_resolves_partitioned_aic_video_and_map_metadata(tmp_path):
+    dataset_root = tmp_path / "AIC"
+    keyframes_root = dataset_root / "keyframes"
+    video_id = "L26_V087"
+    frame_dir = keyframes_root / "L26_a" / video_id
+    frame_dir.mkdir(parents=True)
+    (frame_dir / "000001.jpg").write_bytes(b"image-placeholder")
+    video_path = dataset_root / "videos" / "L26_a" / f"{video_id}.mp4"
+    video_path.parent.mkdir(parents=True)
+    video_path.write_bytes(b"video-placeholder")
+    map_path = dataset_root / "map_keyframes" / "L26_a" / f"{video_id}.csv"
+    map_path.parent.mkdir(parents=True)
+    map_path.write_text(
+        "keyframe_id,video_id,frame_idx,timestamp_sec,fps\n1,L26_V087,21,0.84,25.0\n",
+        encoding="utf-8",
+    )
+    item = {
+        "dataset": "L26",
+        "video_id": video_id,
+        "keyframe_id": "000001",
+        "keyframe_id_int": 1,
+        "frame_idx": float("nan"),
+        "timestamp_sec": float("nan"),
+        "fps": float("nan"),
+        "keyframe_path": f"../old/keyframes/L26/{video_id}/000001.jpg",
+    }
+
+    result = dict_to_result_FAST(item, keyframes_root, tmp_path, "aic")
+
+    assert result["video_url"] == f"/static/aic/videos/L26_a/{video_id}.mp4"
+    assert result["map_url"] == f"/static/aic/map-keyframes/L26_a/{video_id}.csv"
+    assert result["frame_idx"] == 21
+    assert result["fps"] == 25.0
+    assert result["timestamp"] == 0.84

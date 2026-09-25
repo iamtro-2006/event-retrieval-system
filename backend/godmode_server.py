@@ -77,7 +77,9 @@ def safe_result(payload: VerifiedSubmit) -> dict[str, Any]:
     video_id = str(item.get("video_id") or "")
     frame_id = int(item.get("frame_id") or 0)
     timestamp = float(item.get("timestamp") or 0)
-    dataset = str(source.get("dataset") or source.get("collection") or item.get("dataset") or item.get("collection") or "").strip().lower()
+    candidates = (source.get("collection"), item.get("collection"), source.get("dataset"), item.get("dataset"))
+    dataset = next((value for candidate in candidates
+                    if (value := str(candidate or "").strip().lower()) in {"aic", "cam"}), "")
     return {
         "id": f"godmode:{payload.evaluation_id}:{dataset}:{video_id}:{frame_id}",
         "video_id": video_id,

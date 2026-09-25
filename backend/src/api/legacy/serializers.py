@@ -11,6 +11,8 @@ qua tham số `keyframes_root` thay vì đọc closure global.
 
 from __future__ import annotations
 
+import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +24,65 @@ from src.api.legacy.paths import resolve_backend_path
 
 
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+@lru_cache(maxsize=256)
+def _load_map_rows(map_path: str) -> dict[int, dict[str, Any]]:
+    path = Path(map_path)
+    if not path.is_file():
+        return {}
+    try:
+        frame_map = pd.read_csv(path)
+    except (OSError, ValueError, pd.errors.ParserError):
+        return {}
+    if "keyframe_id" not in frame_map:
+        return {}
+    frame_map["keyframe_id"] = pd.to_numeric(frame_map["keyframe_id"], errors="coerce")
+    frame_map = frame_map.dropna(subset=["keyframe_id"])
+    return {
+        int(row["keyframe_id"]): row
+        for row in frame_map.to_dict(orient="records")
+    }
+
+
+def _resolve_partition_assets(item: dict[str, Any], keyframes_root: Path) -> tuple[str, dict[str, Any]]:
+    video_id = str(item.get("video_id", "") or "")
+    dataset = str(item.get("dataset", "") or "")
+    if not video_id:
+        return "", {}
+
+    keyframe = Path(resolve_keyframe_path_from_dict(item, keyframes_root, keyframes_root.parent))
+    group = keyframe.parent.parent.name if keyframe.is_file() else ""
+    videos_root = keyframes_root.parent / "videos"
+    map_root = keyframes_root.parent / "map_keyframes"
+
+    stored_video_path = str(item.get("video_path", "") or "").replace("\\", "/")
+    if stored_video_path:
+        stored_path = Path(stored_video_path)
+        if not stored_path.is_absolute():
+            stored_path = keyframes_root.parent.parent / stored_path
+        if stored_path.is_file():
+            return str(stored_path), {}
+
+    groups = [group] if group else []
+    groups.extend(
+        split_dir.name
+        for split_dir in sorted(keyframes_root.glob(f"{dataset}_*"))
+        if (split_dir / video_id).is_dir() and split_dir.name not in groups
+    )
+    if dataset and dataset not in groups:
+        groups.append(dataset)
+
+    video_candidates = [videos_root / candidate / f"{video_id}.mp4" for candidate in groups]
+    video_candidates.append(videos_root / f"{video_id}.mp4")
+    video_path = next((path for path in video_candidates if path.is_file()), video_candidates[0])
+
+    map_candidates = [map_root / candidate / f"{video_id}.csv" for candidate in groups]
+    map_candidates.append(map_root / f"{video_id}.csv")
+    map_path = next((path for path in map_candidates if path.is_file()), map_candidates[0])
+    keyframe_id = safe_int(item.get("keyframe_id_int", item.get("keyframe_id", 0)), 0)
+    map_row = _load_map_rows(str(map_path)).get(keyframe_id, {})
+    return str(video_path), map_row
 from src.retrieval.index.faiss_index import FaissIndex
 
 
@@ -120,29 +181,53 @@ def resolve_keyframe_path_from_dict(item: dict[str, Any], keyframes_root: Path, 
     # metadata cannot escape into another collection. Preserve the real image
     # format instead of assuming every keyframe is a JPEG (CAM uses WebP).
     if video_id:
-        video_dir = keyframes_root / dataset / video_id if dataset else keyframes_root / video_id
+        video_dirs = [keyframes_root / dataset / video_id] if dataset else []
+        path_parts = keyframe_path.replace("\\", "/").split("/") if keyframe_path else []
+        group = ""
+        if video_id in path_parts:
+            video_position = path_parts.index(video_id)
+            if video_position:
+                group = path_parts[video_position - 1]
+        if not group or group.lower() in {"aic", "cam", "keyframes"}:
+            match = re.match(r"^([A-Za-z]\d+)[_-]", video_id)
+            group = match.group(1) if match else ""
+        if group:
+            inferred_video_dir = keyframes_root / group / video_id
+            if inferred_video_dir not in video_dirs:
+                video_dirs.append(inferred_video_dir)
+        if dataset and dataset.lower() not in {"aic", "cam"}:
+            for split_dir in sorted(keyframes_root.glob(f"{dataset}_*")):
+                split_video_dir = split_dir / video_id
+                if split_video_dir.is_dir() and split_video_dir not in video_dirs:
+                    video_dirs.append(split_video_dir)
+        if not video_dirs:
+            video_dirs.append(keyframes_root / video_id)
+
         names = [metadata_stem, str(item.get("source_name", "") or ""), frame_id_text]
         suffixes = [metadata_suffix, *IMAGE_EXTENSIONS]
         seen: set[tuple[str, str]] = set()
-        for name in names:
-            if not name:
-                continue
-            for suffix in suffixes:
-                suffix = suffix.lower()
-                if not suffix or (name, suffix) in seen:
+        for video_dir in video_dirs:
+            for name in names:
+                if not name:
                     continue
-                seen.add((name, suffix))
-                candidate = video_dir / f"{name}{suffix}"
-                if candidate.exists():
-                    return str(candidate).replace("\\", "/")
+                for suffix in suffixes:
+                    suffix = suffix.lower()
+                    if not suffix or (name, suffix) in seen:
+                        continue
+                    seen.add((name, suffix))
+                    candidate = video_dir / f"{name}{suffix}"
+                    if candidate.exists():
+                        return str(candidate).replace("\\", "/")
 
     if keyframe_path:
         keyframe_path = keyframe_path.replace("\\", "/")
         resolved = resolve_backend_path(backend_dir, keyframe_path)
         if resolved.exists():
             return str(resolved).replace("\\", "/")
-        # Stale absolute path from an old data location: retry against the
-        # current keyframes root using just the filename tail.
+        # Stale absolute path from an old data location: keep the video folder
+        # when falling back to the filename tail.
+        if video_id:
+            return str(video_dirs[-1] / Path(keyframe_path).name).replace("\\", "/")
         return str(keyframes_root / Path(keyframe_path).name).replace("\\", "/")
 
     # Backward-compatible fallback for incomplete metadata. The path may not
@@ -246,15 +331,26 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
     else:
         image_rel_path = f"{dataset}/{video_id}/{frame_id_text}.jpg" if dataset else f"{video_id}/{frame_id_text}.jpg"
 
-    raw_v_path = find_video_path_from_dict(item)
-    if "videos/" in raw_v_path:
-        video_rel_path = raw_v_path.split("videos/", 1)[1]
+    raw_v_path, map_row = _resolve_partition_assets(item, keyframes_root)
+    normalized_video_path = raw_v_path.replace("\\", "/")
+    if "videos/" in normalized_video_path:
+        video_rel_path = normalized_video_path.split("videos/", 1)[1]
     else:
         video_rel_path = f"{dataset}/{video_id}.mp4" if dataset else f"{video_id}.mp4"
 
     timestamp = safe_float(get("timestamp_sec", get("timestamp", 0.0)), 0.0)
+    if "timestamp_sec" in map_row and (not timestamp or pd.isna(get("timestamp_sec"))):
+        timestamp = safe_float(map_row.get("timestamp_sec"), timestamp)
     if timestamp == 0.0 and "pts_time" in item:
         timestamp = safe_float(get("pts_time"), 0.0)
+    fps = safe_float(get("fps"), 0.0) or safe_float(map_row.get("fps"), 0.0)
+    frame_idx = safe_int(get("frame_idx"), 0)
+    if not frame_idx and map_row:
+        frame_idx = safe_int(map_row.get("frame_idx"), 0)
+    map_rel_path = f"{dataset}/{video_id}.csv" if dataset else f"{video_id}.csv"
+    map_path = keyframes_root.parent / "map_keyframes" / video_rel_path.replace(".mp4", ".csv")
+    if map_path.is_file():
+        map_rel_path = map_path.relative_to(keyframes_root.parent / "map_keyframes").as_posix()
 
     retrieval_score = safe_float(
         get("retrieval_score", get("alignment_score", get("avg_score", get("score", 0.0)))), 0.0
@@ -274,6 +370,8 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
         "collection": collection,
         "id": f"{video_id}_{frame_id_text}",
         "video_id": video_id,
+        "frame_idx": frame_idx,
+        "fps": fps,
         "frame_id": frame_id_number,
         "frame_name": f"{frame_id_text}.jpg",
         "path": f"{video_id}/{frame_id_text}",
@@ -282,8 +380,8 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
         "image_rel_path": image_rel_path,
         "video_url": f"/static/{collection}/videos/{video_rel_path}" if collection else f"/static/videos/{video_rel_path}",
         "video_rel_path": video_rel_path,
-        "map_url": (f"/static/{collection}/map-keyframes/{dataset}/{video_id}.csv" if dataset else f"/static/{collection}/map-keyframes/{video_id}.csv") if collection else (f"/static/map-keyframes/{dataset}/{video_id}.csv" if dataset else f"/static/map-keyframes/{video_id}.csv"),
-        "map_rel_path": f"{dataset}/{video_id}.csv" if dataset else f"{video_id}.csv",
+        "map_url": f"/static/{collection}/map-keyframes/{map_rel_path}" if collection else f"/static/map-keyframes/{map_rel_path}",
+        "map_rel_path": map_rel_path,
         "timestamp": timestamp,
         "similarity": retrieval_score,
         "caption": str(get("caption", "") or ""),
