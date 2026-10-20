@@ -1,20 +1,15 @@
 """Cosine-similarity search over saved embeddings.
 
-Mirrors the pattern from the LAVIS "image and text features extraction"
-tutorial: normalize each embedding to unit length, then a plain matrix
-multiply gives cosine similarity (since for unit vectors, dot product ==
-cosine similarity):
+Normalize each embedding to unit length, then a plain matrix multiply
+gives cosine similarity (since for unit vectors, dot product equals cosine):
 
     images_embedding /= images_embedding.norm(dim=-1, keepdim=True)
     texts_embedding  /= texts_embedding.norm(dim=-1, keepdim=True)
     similarity_images_texts = images_embedding @ texts_embedding.T
 
-The image side embeddings here are the ones already saved to .npy by
-`encode_keyframe_images()` (backend blip2.py with pooling="first" ->
-`image_embeds_proj[:, 0, :]`, the trained ITC projection space, one flat
-256-dim vector per keyframe). This module only handles the matching step;
-producing the text-side embedding (same projection space, same
-`[:, 0, :]` convention) is a separate step done at query time.
+The image embeddings are saved to .npy by `encode_keyframe_images()`.
+This module handles only the matching step. The query encoder must be the
+same model that produced those image vectors.
 """
 
 from __future__ import annotations
@@ -25,9 +20,8 @@ import numpy as np
 
 
 def normalize(embeddings: np.ndarray) -> np.ndarray:
-    """L2-normalize along the last axis. No-op if already unit-norm
-    (e.g. blip2's image_embeds_proj is normalized inside the model already),
-    but always safe/idempotent to call again before a similarity search.
+    """L2-normalize along the last axis. This is idempotent for vectors
+    that are already unit-norm.
     """
     norm = np.linalg.norm(embeddings, axis=-1, keepdims=True)
     return embeddings / np.clip(norm, a_min=1e-12, a_max=None)

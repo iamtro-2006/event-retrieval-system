@@ -18,7 +18,7 @@ class ExtractEmbeddingPipeline:
 
     `cfg["model"]` holds the config for that single model (name, backend,
     pretrained, batch_size, ...). To extract embeddings for several models
-    (e.g. SigLIP2 + DFN + LongCLIP-L + BLIP-2 + PE-Core) in one go, see
+    (e.g. SigLIP2 + DFN + LongCLIP-L + Qwen3-VL + PE-Core) in one go, see
     `run_multi_model()` at the bottom of this file / `scripts/embedding_extraction/run.py`,
     which just constructs one `ExtractEmbeddingPipeline` per entry in
     `cfg["models"]` and writes each one to its own output subfolder.
@@ -35,16 +35,15 @@ class ExtractEmbeddingPipeline:
         # When several models share one config (cfg["models"]: [...]), each
         # model's embeddings are written under its own subfolder so they
         # never collide, keyed by "key" (falls back to the model name).
-        output_subdir = "embeddings_" + model_cfg.get("key") or model_cfg["name"]
-        self.output_root = self.output_root / output_subdir
+        output_subdir = "embeddings_" + (model_cfg.get("key") or model_cfg["name"])
 
         self.batch_size = int(model_cfg["batch_size"])
         self.normalize = bool(model_cfg.get("normalize", True))
         self.overwrite = bool(cfg["save"].get("overwrite", True))
         self.output_ext = str(cfg["save"].get("extension", ".npy"))
 
-        # Backend-specific extras (e.g. `pooling` for BLIP-2 or the
-        # `perception_encoder` dict for PE-Core) pass straight through, so
+        # Backend-specific extras (e.g. the `perception_encoder` dict
+        # for PE-Core) pass straight through, so
         # this pipeline class does not need model-specific branches.
         known_keys = {
             "key", "name", "backend", "pretrained", "device", "precision",
@@ -52,7 +51,6 @@ class ExtractEmbeddingPipeline:
         }
         backend_extra = {k: v for k, v in model_cfg.items() if k not in known_keys}
 
-        self.model_key = output_subdir
         self.model, self.preprocess, self.device, self.precision = load_embedding_model(
             model_name=model_cfg["name"],
             backend=model_cfg.get("backend"),
@@ -62,6 +60,12 @@ class ExtractEmbeddingPipeline:
             logger=self.logger,
             **backend_extra,
         )
+        # Qwen's vLLM and SentenceTransformer vectors use separate artifacts.
+        engine = getattr(self.model, "engine", None)
+        if model_cfg.get("backend") == "qwen3_vl_embedding" and engine:
+            output_subdir += f"_{engine}"
+        self.output_root = self.output_root / output_subdir
+        self.model_key = output_subdir
 
     def scan_video_dirs(self) -> list[Path]:
         if not self.input_root.exists():
@@ -151,6 +155,8 @@ class ExtractEmbeddingPipeline:
                 total_saved += self.process_video_dir(video_dir)
             except Exception as e:
                 self.logger.error("Failed %s: %s", video_dir, e)
+                if self.cfg["model"].get("backend") == "qwen3_vl_embedding":
+                    raise
 
         self.logger.info("Total saved embeddings: %d", total_saved)
 
@@ -215,3 +221,5 @@ def run_multi_model(
             pipeline.run()
         except Exception as e:
             logger.exception("Model '%s' failed, skipping: %s", model_key, e)
+            if models is not None:
+                raise

@@ -5,11 +5,33 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 from fastapi import HTTPException
+from unittest.mock import patch
 
 from src.api.legacy.deps import get_dataset_resources
 from src.api.legacy.serializers import dict_to_result_FAST, resolve_keyframe_path_from_dict
 from src.api.routers.legacy_search import get_frame_info, get_surrounding_frames, get_video_preview
 from src.api.routers.search import get_retrieval_system, list_available_models
+from src.api.main import _dataset_runtime_config
+
+
+@pytest.mark.parametrize("engine", ["vllm", "sentence_transformer"])
+def test_qwen_dataset_index_matches_selected_engine(engine):
+    base = {"semantic": {"default_model_key": "qwen", "models": [
+        {"model_key": "qwen", "backend": "qwen3_vl_embedding", "model_name": "Qwen/Qwen3-VL-Embedding-2B", "model_extra": {"engine": "auto"}}
+    ]}}
+    spec = {
+        "semantic_models": {"qwen": {"index_dir": "../data/AIC/database/faiss_qwen"}},
+        "keyframes_root": "../data/keyframes/AIC",
+        "videos_root": "../data/videos/AIC",
+        "map_keyframes_root": "../data/mapkeyframes/AIC",
+        "color_index_path": "../data/AIC/database/color.npz",
+    }
+    with patch("src.embedding_extraction.models.backends.qwen_vllm.resolve_engine", return_value=engine):
+        cfg = _dataset_runtime_config(base, "aic", spec)
+    model = cfg["semantic"]["models"][0]
+    assert model["model_extra"]["engine"] == engine
+    assert model["index_path"].endswith(f"faiss_qwen_{engine}/keyframes.faiss")
+    assert model["metadata_path"].endswith(f"faiss_qwen_{engine}/metadata.csv")
 
 
 def _request():
@@ -131,3 +153,41 @@ def test_cam_video_serializer_finds_mov_even_with_stale_mp4_metadata(tmp_path):
 
     assert serialized["video_rel_path"] == "N001/N001-V001.mov"
     assert serialized["video_url"] == "/static/cam/videos/N001/N001-V001.mov"
+
+
+def test_serializer_uses_paths_within_dataset_for_type_first_media_layout(tmp_path):
+    keyframes_root = tmp_path / "data" / "keyframes" / "CAM"
+    image_dir = keyframes_root / "N001" / "N001-V001"
+    image_dir.mkdir(parents=True)
+    (image_dir / "000000.webp").write_bytes(b"image-placeholder")
+    video_dir = tmp_path / "data" / "videos" / "CAM" / "N001"
+    video_dir.mkdir(parents=True)
+    (video_dir / "N001-V001.mov").write_bytes(b"video-placeholder")
+    item = {
+        "dataset": "N001",
+        "video_id": "N001-V001",
+        "keyframe_id": "000000",
+        "matched_sequence": [{"dataset": "N001", "video_id": "N001-V001", "keyframe_id": "000000"}],
+    }
+
+    serialized = dict_to_result_FAST(item, keyframes_root, tmp_path, "cam")
+
+    assert serialized["image_rel_path"] == "N001/N001-V001/000000.webp"
+    assert serialized["video_rel_path"] == "N001/N001-V001.mov"
+    assert serialized["map_rel_path"] == "N001/N001-V001.csv"
+    assert serialized["matched_sequence"][0]["image_rel_path"] == "N001/N001-V001/000000.webp"
+
+
+def test_serializer_keeps_remote_media_paths_without_local_files(tmp_path):
+    item = {
+        "dataset": "L21",
+        "video_id": "L21_V001",
+        "keyframe_id": "000001",
+        "keyframe_path": "/old/keyframes/L21/L21_V001/000001.jpg",
+        "video_path": "/old/videos/L21/L21_V001.mp4",
+    }
+
+    serialized = dict_to_result_FAST(item, tmp_path / "data" / "keyframes" / "AIC", tmp_path, "aic")
+
+    assert serialized["image_rel_path"] == "L21/L21_V001/000001.jpg"
+    assert serialized["video_rel_path"] == "L21/L21_V001.mp4"

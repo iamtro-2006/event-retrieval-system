@@ -53,15 +53,3 @@ models:
     precision: fp32
     batch_size: 16
     normalize: true
-
-  # BLIP2
-  - key: blip2_itm_vitg
-    enabled: true
-    backend: blip2
-    name: BLIP2-ViT-G
-    pretrained: Salesforce/blip2-itm-vit-g
-    device: auto
-    precision: fp32
-    batch_size: 16
-    normalize: true
-    pooling: first            # first (default, matches text[:,0,:] later for retrieval) | none (32x256, best recall but needs late-interaction search) | mean

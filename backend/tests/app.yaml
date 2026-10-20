@@ -56,23 +56,6 @@ semantic:
       vector_cache_path: ../data/database/faiss_hnsw_dfn_vit_h14_378/vectors_fp32.npy
       allow_npy_fallback: false
 
-    - model_key: BLIP2
-      enabled: false
-      model_name: BLIP2
-      index_path: data/database/embedding_blip2_itm_vitg/keyframes.faiss
-      metadata_path: data/database/embedding_blip2_itm_vitg/metadata.csv
-      device: auto
-      precision: fp32
-      normalize: true
-      ef_search: 399
-      faiss_threads: 8
-      vector_cache_mode: memmap
-      vector_cache_dtype: float32
-      vector_cache_path: data/database/embedding_blip2_itm_vitg/vectors_fp32.npy
-      allow_npy_fallback: false
-      model_extra:
-        pooling: first
-
 ocr:
   config_path: configs/ocr_extraction.yaml
 

@@ -1,4 +1,4 @@
-input_keyframes_root: ../data/AIC/keyframes
+input_keyframes_root: ../data/keyframes/AIC
 output_embeddings_root: ../data/AIC/embeddings
 
 image:
@@ -14,17 +14,17 @@ save:
 # subfolder: <output_embeddings_root>/<key>/<dataset>/<video>/<frame>.npy
 models:
 
-  # Tencent WeMM multimodal embedding. Kept disabled so normal extraction
-  # runs do not regenerate the canonical 115,402 vectors accidentally.
-  - key: wemm_embedding_2b
+  # Qwen3-VL image/text embedding. Enable explicitly before extracting;
+  # its 2048-d vectors need their own FAISS index, separate from other models.
+  - key: qwen3_vl_embedding_2b
     enabled: false
-    backend: wemm_embedding
-    name: tencent/WeMM-Embedding-2B
+    backend: qwen3_vl_embedding
+    name: Qwen/Qwen3-VL-Embedding-2B
+    engine: auto             # vLLM if available; otherwise SentenceTransformer
     device: auto
     precision: fp16
-    batch_size: 4
+    batch_size: 8
     normalize: false
-    revision: bbd6cd4bf52cfc6716f752a2df80b2706720bd95
 
   # Meta Perception Encoder Core. All PE-Core sizes use the same backend;
   # change `name` to T16-384 / S16-384 / B16-224 / L14-336 / G14-448.
@@ -65,15 +65,3 @@ models:
     precision: fp32
     batch_size: 16
     normalize: true
-
-  # BLIP2
-  - key: blip2_itm_vitg
-    enabled: true
-    backend: blip2
-    name: BLIP2-ViT-G
-    pretrained: Salesforce/blip2-itm-vit-g
-    device: auto
-    precision: fp32
-    batch_size: 16
-    normalize: true
-    pooling: first            # first (default, matches text[:,0,:] later for retrieval) | none (32x256, best recall but needs late-interaction search) | mean

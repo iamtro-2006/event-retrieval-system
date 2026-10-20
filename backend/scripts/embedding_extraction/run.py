@@ -18,8 +18,8 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Model 'key' (or 'name') from the config to run, e.g. "
             "--model siglip2_so400m_384. Repeat the flag for several models "
-            "(--model siglip2_so400m_384 --model blip2_itm_vitg), or pass a "
-            "comma-separated list (--model siglip2_so400m_384,blip2_itm_vitg). "
+            "(--model siglip2_so400m_384 --model qwen3_vl_embedding_2b), or pass a "
+            "comma-separated list (--model siglip2_so400m_384,qwen3_vl_embedding_2b). "
             "If omitted, runs every model in the config with enabled: true."
         ),
     )

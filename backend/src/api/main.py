@@ -73,16 +73,25 @@ def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[s
         if model_key not in overrides:
             continue
         merged = {**model, **overrides[model_key]}
+        if not merged.get("enabled", True):
+            continue
         # A dataset only needs to declare its index directory. The filenames
         # are shared by every index built with scripts/retrieval/run.py.
         index_dir = merged.pop("index_dir", None)
+        if merged.get("backend") == "qwen3_vl_embedding":
+            from src.embedding_extraction.models.backends.qwen_vllm import resolve_engine
+
+            extra = dict(merged.get("model_extra") or {})
+            extra["engine"] = resolve_engine(extra.get("engine"), extra.get("vllm_url"))
+            merged["model_extra"] = extra
+            if index_dir:
+                index_dir = str(index_dir).rstrip("/\\") + "_" + extra["engine"]
         if index_dir:
             index_dir = str(index_dir).rstrip("/\\")
             merged["index_path"] = f"{index_dir}/keyframes.faiss"
             merged["metadata_path"] = f"{index_dir}/metadata.csv"
             merged["vector_cache_path"] = f"{index_dir}/vectors_fp32.npy"
-        if merged.get("enabled", True):
-            models.append(merged)
+        models.append(merged)
     cfg["semantic"] = {
         **cfg.get("semantic", {}),
         "default_model_key": cfg.get("semantic", {}).get("default_model_key", "pe-core"),
@@ -162,6 +171,15 @@ async def lifespan(app: FastAPI):
             app.mount(f"/static/{dataset_key}/videos", StaticFiles(directory=str(paths.videos_root)), name=f"{dataset_key}_videos")
         if paths.map_keyframe_root.exists():
             app.mount(f"/static/{dataset_key}/map-keyframes", StaticFiles(directory=str(paths.map_keyframe_root)), name=f"{dataset_key}_map_keyframes")
+
+    # Type-first URLs expose data/<kind>/<DATASET>/... from the local API.
+    # Each kind can later move to a separate host without changing API results.
+    for kind, attr in (("keyframes", "keyframes_root"), ("videos", "videos_root"), ("mapkeyframes", "map_keyframe_root")):
+        parents = {getattr(paths, attr).parent.resolve() for paths in runtime_paths.values()}
+        if len(parents) == 1:
+            parent = parents.pop()
+            if parent.exists():
+                app.mount(f"/{kind}", StaticFiles(directory=str(parent)), name=f"media_{kind}")
 
     yield
 

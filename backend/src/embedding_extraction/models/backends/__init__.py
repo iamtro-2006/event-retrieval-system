@@ -1,1 +1,1 @@
-# Embedding backends: OpenCLIP, BLIP-2, and Meta Perception Encoder Core.
+# Embedding backends: OpenCLIP, Meta Perception Encoder Core, and Qwen3-VL.

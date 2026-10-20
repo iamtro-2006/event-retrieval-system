@@ -142,9 +142,13 @@ def resolve_keyframe_path_from_dict(item: dict[str, Any], keyframes_root: Path, 
         resolved = resolve_backend_path(backend_dir, keyframe_path)
         if resolved.exists():
             return str(resolved).replace("\\", "/")
-        # Stale absolute path from an old data location: retry against the
-        # current keyframes root using just the filename tail.
-        return str(keyframes_root / Path(keyframe_path).name).replace("\\", "/")
+        # The media may live only on a separate host. Keep its source group
+        # and video directory even when no local copy exists.
+        filename = Path(keyframe_path).name
+        if video_id:
+            video_dir = keyframes_root / dataset / video_id if dataset else keyframes_root / video_id
+            return str(video_dir / filename).replace("\\", "/")
+        return str(keyframes_root / filename).replace("\\", "/")
 
     # Backward-compatible fallback for incomplete metadata. The path may not
     # exist yet, but callers still receive the historical JPEG convention.
@@ -173,8 +177,15 @@ def find_video_path_from_dict(item: dict[str, Any], videos_root: Path | None = N
                 candidate = folder / f"{video_id}{extension}"
                 if candidate.is_file():
                     return str(candidate).replace("\\", "/")
-    if video_path and videos_root is None:
-        return video_path.replace("\\", "/")
+    if video_path:
+        if videos_root is None:
+            return video_path.replace("\\", "/")
+        # Remote media need a stable relative path even when the backend has
+        # no copy to inspect. Rebuild under the active collection root.
+        filename = Path(video_path.replace("\\", "/")).name
+        if Path(filename).suffix.lower() in VIDEO_EXTENSIONS:
+            folder = Path(videos_root) / dataset if dataset else Path(videos_root)
+            return str(folder / filename).replace("\\", "/")
     if not video_id:
         return ""
     # CAM source videos are stored as MOV when metadata lacks video_path.
@@ -182,6 +193,23 @@ def find_video_path_from_dict(item: dict[str, Any], videos_root: Path | None = N
     if dataset:
         return f"data/processed/videos/{dataset}/{video_id}{extension}"
     return f"data/processed/videos/{video_id}{extension}"
+
+
+def _relative_to_media_root(path: str, root: Path) -> str:
+    if not path:
+        return ""
+    try:
+        return Path(path).relative_to(root).as_posix()
+    except ValueError:
+        return ""
+
+
+def _videos_root_for_collection(keyframes_root: Path, collection: str) -> Path:
+    # New layout: data/keyframes/AIC and data/videos/AIC. Preserve the old
+    # sibling layout for callers that still provide data/AIC/keyframes.
+    if keyframes_root.name.casefold() == collection.casefold() and keyframes_root.parent.name.casefold() == "keyframes":
+        return keyframes_root.parent.parent / "videos" / keyframes_root.name
+    return keyframes_root.parent / "videos"
 
 
 def serialize_matched_sequence(
@@ -212,9 +240,8 @@ def serialize_matched_sequence(
         get = item.get  # Localize method lookup for C-speed access
         raw_k_path = resolve_keyframe_path_from_dict(item, keyframes_root, backend_dir)
 
-        if "keyframes/" in raw_k_path:
-            image_rel_path = raw_k_path.split("keyframes/", 1)[1]
-        else:
+        image_rel_path = _relative_to_media_root(raw_k_path, keyframes_root)
+        if not image_rel_path:
             dataset = str(get("dataset", "") or "")
             video_id = str(get("video_id", "") or "")
             frame_id_text = format_keyframe_id_from_dict(item)
@@ -255,15 +282,14 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
     frame_id_number = safe_int(frame_id_text, 0)
 
     raw_k_path = resolve_keyframe_path_from_dict(item, keyframes_root, backend_dir)
-    if "keyframes/" in raw_k_path:
-        image_rel_path = raw_k_path.split("keyframes/", 1)[1]
-    else:
+    image_rel_path = _relative_to_media_root(raw_k_path, keyframes_root)
+    if not image_rel_path:
         image_rel_path = f"{dataset}/{video_id}/{frame_id_text}.jpg" if dataset else f"{video_id}/{frame_id_text}.jpg"
 
-    raw_v_path = find_video_path_from_dict(item, keyframes_root.parent / "videos")
-    if "videos/" in raw_v_path:
-        video_rel_path = raw_v_path.split("videos/", 1)[1]
-    else:
+    videos_root = _videos_root_for_collection(keyframes_root, collection)
+    raw_v_path = find_video_path_from_dict(item, videos_root)
+    video_rel_path = _relative_to_media_root(raw_v_path, videos_root)
+    if not video_rel_path:
         video_rel_path = f"{dataset}/{Path(raw_v_path).name}" if dataset else Path(raw_v_path).name
 
     timestamp = safe_float(get("timestamp_sec", get("timestamp", 0.0)), 0.0)

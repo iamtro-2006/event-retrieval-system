@@ -5,47 +5,13 @@ const RAW_API_BASE_URL =
 
 const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
 
-// Optional root of a single static server opened at the repository `data/`
-// directory. Assets are resolved as /AIC/{kind}/... or /CAM/{kind}/...
-// from the collection returned by the backend.
-const DATA_BASE_URL = (
-  import.meta.env.VITE_DATA_BASE_URL || ""
-).replace(/\/+$/, "");
-
-const KEYFRAMES_BASE_URL = (
-  import.meta.env.VITE_KEYFRAMES_BASE_URL || ""
-).replace(/\/+$/, "");
-
-const VIDEOS_BASE_URL = (
-  import.meta.env.VITE_VIDEOS_BASE_URL || ""
-).replace(/\/+$/, "");
-
-const MAP_KEYFRAMES_BASE_URL = (
-  import.meta.env.VITE_MAP_KEYFRAMES_BASE_URL || ""
-).replace(/\/+$/, "");
-
-const DATASET_MEDIA_BASE_URLS = {
-  aic: {
-    keyframes: (import.meta.env.VITE_AIC_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
-    videos: (import.meta.env.VITE_AIC_VIDEOS_BASE_URL || "").replace(/\/+$/, ""),
-    mapKeyframes: (import.meta.env.VITE_AIC_MAP_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
-  },
-  cam: {
-    keyframes: (import.meta.env.VITE_CAM_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
-    videos: (import.meta.env.VITE_CAM_VIDEOS_BASE_URL || "").replace(/\/+$/, ""),
-    mapKeyframes: (import.meta.env.VITE_CAM_MAP_KEYFRAMES_BASE_URL || "").replace(/\/+$/, ""),
-  },
-};
-
 const resolveMediaUrl = createMediaUrlResolver({
   apiBaseUrl: API_BASE_URL,
-  dataBaseUrl: DATA_BASE_URL,
-  sharedBases: {
-    keyframes: KEYFRAMES_BASE_URL,
-    videos: VIDEOS_BASE_URL,
-    mapKeyframes: MAP_KEYFRAMES_BASE_URL,
+  mediaBases: {
+    keyframes: import.meta.env.VITE_KEYFRAMES_BASE_URL,
+    videos: import.meta.env.VITE_VIDEOS_BASE_URL,
+    mapKeyframes: import.meta.env.VITE_MAP_KEYFRAMES_BASE_URL,
   },
-  datasetBases: DATASET_MEDIA_BASE_URLS,
 });
 
 const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
@@ -169,7 +135,9 @@ function collectionFromResult(item) {
   if (physicalDataset) return physicalDataset;
 
   for (const url of [item?.image_url, item?.video_url, item?.map_url]) {
-    const match = String(url || "").replaceAll("\\", "/").match(/\/(?:static\/)?(aic|cam)\//i);
+    const path = String(url || "").replaceAll("\\", "/");
+    const match = path.match(/\/(?:static\/)?(aic|cam)\//i)
+      || path.match(/\/(?:keyframes|videos|mapkeyframes|map-keyframes)\/(aic|cam)\//i);
     if (match) return match[1].toLowerCase();
   }
   return candidates[0] || "";

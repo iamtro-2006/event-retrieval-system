@@ -46,7 +46,7 @@ Hệ thống retrieval video theo 4 kiểu truy vấn trên cùng 1 tập keyfra
 |---|---|---|
 | Web framework | **FastAPI** + Pydantic (`BaseModel`) | REST API, validate request |
 | Vector search | **FAISS** (`faiss`), HNSW index | ANN search trên embedding CLIP |
-| Embedding model | **PE-Core**, **OpenCLIP**, **BLIP-2** qua model registry | encode text/ảnh thành vector |
+| Embedding model | **PE-Core**, **OpenCLIP**, **Qwen3-VL-Embedding-2B** qua model registry | encode text/ảnh thành vector |
 | Deep learning runtime | **PyTorch** (`torch`, `torchvision`) | chạy CLIP, TransNet, reranker |
 | Numeric tăng tốc | **NumPy**, **SciPy**, **scikit-learn** (`sklearn`), **Numba** (`@njit`) | xử lý ma trận, DP tốc độ C |
 | Dữ liệu bảng | **pandas** | toàn bộ kết quả search là `pd.DataFrame` |

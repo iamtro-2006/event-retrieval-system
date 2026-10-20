@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-MOCK_MODELS = ["siglip2-so400m", "vitH-378-quickgelu", "BLIP2"]
+MOCK_MODELS = ["siglip2-so400m", "vitH-378-quickgelu", "qwen3-vl-embedding-2b"]
 
 MOCK_FRAMES = [
     {

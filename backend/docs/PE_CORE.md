@@ -1,7 +1,7 @@
 # Tích hợp Meta Perception Encoder Core
 
 Backend `perception_encoder` dùng implementation chính thức của Meta và dùng
-chung contract `encode_image` / `encode_text` với OpenCLIP và BLIP-2.
+chung contract `encode_image` / `encode_text` với các backend embedding khác.
 Vì vậy một PE-Core model có thể chạy cả extraction, semantic/image search,
 temporal search và multi-model RRF fusion mà không cần một search pipeline mới.
 

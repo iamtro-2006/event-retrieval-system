@@ -4,7 +4,7 @@
 Đây là bản tổng quát hoá của `ClipFaissIndex` cũ (file cũ:
 `clip_faiss_index.py`, vẫn được giữ lại như 1 shim import ngược để không vỡ
 code cũ — xem cuối file đó). Khác biệt cốt lõi so với bản cũ: class này
-KHÔNG còn hardcode `open_clip` — việc load model (OpenCLIP / BLIP-2 / PE-Core
+KHÔNG còn hardcode `open_clip` — việc load model (OpenCLIP / Qwen3-VL / PE-Core
 / ...) được uỷ quyền hoàn toàn cho
 `src.embedding_extraction.models.registry.load_model(...)`, cùng 1 registry
 dùng để extract embedding offline. Muốn thêm 1 model mới cho search, chỉ cần
@@ -109,7 +109,7 @@ class FaissIndex:
 
     Chỉ chịu trách nhiệm: load FAISS index + metadata CSV, load model qua
     `embedding_extraction.models.registry` (bất kỳ backend nào: open_clip,
-    BLIP-2, PE-Core, ...), encode text/image, quản lý vector cache
+    Qwen3-VL, PE-Core, ...), encode text/image, quản lý vector cache
     (ram/memmap), và resolve metadata row theo (video_id, keyframe) hoặc
     theo time window. Không biết gì về "semantic"/"temporal" — các
     retriever gọi vào `self.index`, `self.search_lock`, `self.metadata_records`
@@ -144,7 +144,7 @@ class FaissIndex:
                 index/metadata riêng, vì mỗi model cho ra embedding space
                 khác nhau — xem indexing.yaml).
             model_name: tên model, có thể là 1 preset key trong
-                `registry.MODEL_PRESETS` (vd "siglip2-so400m", "BLIP2",
+                `registry.MODEL_PRESETS` (vd "siglip2-so400m", "Qwen/Qwen3-VL-Embedding-2B",
                 "PE-Core-L14-336", "long-clipL") hoặc tên model gốc của backend
                 (vd open_clip "ViT-SO400M-16-SigLIP2-384").
             backend/pretrained: override preset nếu cần; có thể bỏ trống nếu
@@ -153,8 +153,7 @@ class FaissIndex:
                 trong `IndexManager` / trong request `advanced_search`
                 (vd "siglip2-so400m"). Mặc định = `model_name`.
             model_extra: kwargs bổ sung truyền thẳng vào backend loader
-                (vd `{"pooling": "first"}` cho BLIP-2 hoặc
-                `{"perception_encoder": {...}}` cho PE-Core).
+                (vd `{"perception_encoder": {...}}` cho PE-Core).
         """
         if faiss_threads is None:
             faiss_threads = max(1, min(os.cpu_count() or 1, 12))
@@ -196,6 +195,14 @@ class FaissIndex:
             model_name, backend, pretrained, precision, device, model_extra, compile_model
         )
         self.model = loaded.model  # exposes .encode_image(batch) / .encode_text(list[str])
+        engine = getattr(self.model, "engine", None)
+        if engine and self.backend == "qwen3_vl_embedding":
+            expected_suffix = f"_{engine}"
+            if not self.index_path.parent.name.endswith(expected_suffix):
+                raise ValueError(
+                    f"Qwen {engine} requires an index directory ending in {expected_suffix}: "
+                    f"{self.index_path.parent}"
+                )
         self.preprocess = loaded.preprocess
         self.embedding_dim = loaded.embedding_dim
         self.supports_text = loaded.supports_text
@@ -358,6 +365,11 @@ class FaissIndex:
 
     @torch.inference_mode()
     def encode_image(self, image_path: str | Path) -> np.ndarray:
+        path_encoder = getattr(self.model, "encode_image_paths", None)
+        if callable(path_encoder):
+            return np.ascontiguousarray(
+                path_encoder([Path(image_path)]), dtype=np.float32
+            )
         with Image.open(image_path) as image:
             tensor = self.preprocess(image.convert("RGB")).unsqueeze(0)
         tensor = tensor.to(self.device, non_blocking=True)

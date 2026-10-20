@@ -17,6 +17,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run retrieval-related pipelines.")
     parser.add_argument("--config", default="configs/indexing.yaml", help="Path to retrieval config YAML.")
     parser.add_argument("--dataset", default=None, help="Physical dataset collection to build (aic or cam).")
+    parser.add_argument("--embeddings-root", default=None, help="Override the selected dataset's embeddings input for build-index.")
+    parser.add_argument("--output-dir", default=None, help="Override the selected dataset's FAISS output directory for build-index.")
     parser.add_argument("--task", choices=["build-index", "build-vector-cache"], default="build-index")
     parser.add_argument("--output", default=None, help="Optional override output path for vector cache.")
     parser.add_argument("--dtype", default=None, help="Optional override dtype for vector cache (float16 or float32).")
@@ -43,6 +45,11 @@ def main() -> None:
         cfg = {**cfg, **selected, "collection": dataset_key, "index": {**cfg.get("index", {}), **selected.get("index", {})}}
 
     if args.task == "build-index":
+        if args.embeddings_root:
+            cfg["embeddings_root"] = args.embeddings_root
+        if args.output_dir:
+            cfg["index"] = {**cfg["index"], "output_dir": args.output_dir}
+
         pipeline = BuildFaissIndexPipeline(cfg)
         pipeline.run()
         return

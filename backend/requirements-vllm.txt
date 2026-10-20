@@ -1,0 +1,3 @@
+# Install in a separate Linux/Python 3.12 environment for the pooling server.
+# Do not install with requirements.txt: vLLM selects its own CUDA/PyTorch build.
+vllm==0.32.0

@@ -26,7 +26,7 @@ def load_embedding_model(
 	logger: logging.Logger | None = None,
 	**extra,
 ) -> tuple:
-	"""Load any supported embedding model (OpenCLIP, BLIP-2, PE-Core, ...).
+	"""Load any supported embedding model (OpenCLIP, PE-Core, Qwen3-VL, ...).
 
 	Kept as `load_clip_model` / returning the same 4-tuple shape for backward
 	compatibility with existing callers - dispatch now goes through

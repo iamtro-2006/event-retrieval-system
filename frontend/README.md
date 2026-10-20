@@ -34,11 +34,11 @@ Sao chép [.env.example](.env.example) rồi đặt các URL cần dùng:
 
 ```dotenv
 VITE_API_BASE_URL=http://127.0.0.1:8000
-VITE_KEYFRAMES_BASE_URL=http://127.0.0.1:3174/{DATASET}/keyframes
-VITE_VIDEOS_BASE_URL=http://127.0.0.1:3174/{DATASET}/videos
-VITE_MAP_KEYFRAMES_BASE_URL=http://127.0.0.1:3174/{DATASET}/map-keyframes
+VITE_KEYFRAMES_BASE_URL=http://127.0.0.1:8000/keyframes
+VITE_VIDEOS_BASE_URL=http://127.0.0.1:8000/videos
+VITE_MAP_KEYFRAMES_BASE_URL=http://127.0.0.1:8000/mapkeyframes
 ```
 
-`{DATASET}` thành `AIC`/`CAM`; `{dataset}` thành chữ thường. Base URL của mỗi loại media phải là HTTP URL tới thư mục chứa relative path API trả về (`image_rel_path`, `video_rel_path`, `map_rel_path`). Không dùng đường dẫn ổ đĩa Windows trong trình duyệt. Server video cần phục vụ đúng tên/đuôi file và hỗ trợ HTTP range để tua.
+Ba base URL có thể ở ba host khác nhau. Mỗi URL trỏ tới thư mục chứa các folder dataset; frontend tự ghép `/<DATASET>/` (ví dụ `AIC/`, `CAM/`) rồi tới relative path API trả về (`image_rel_path`, `video_rel_path`, `map_rel_path`). Local API phục vụ `data/keyframes/<DATASET>/`, `data/videos/<DATASET>/`, `data/mapkeyframes/<DATASET>/` qua `/keyframes/`, `/videos/`, `/mapkeyframes/` khi các thư mục đó tồn tại lúc khởi động. Ví dụ `data/keyframes/AIC/L21/L21_V001/000001.jpg` có URL `http://127.0.0.1:8000/keyframes/AIC/L21/L21_V001/000001.jpg`. Không dùng đường dẫn ổ đĩa Windows trong trình duyệt. Server video cần phục vụ đúng tên/đuôi file và hỗ trợ HTTP range để tua.
 
-Mỗi loại media được chọn theo thứ tự: `VITE_AIC_*` hoặc `VITE_CAM_*` → `VITE_*_BASE_URL` dùng chung → `VITE_DATA_BASE_URL` cũ → URL backend trả về. Có thể để trống loại không cần ghi đè. Các biến DRES (`VITE_SUBMISSION`, `VITE_TEAM_ID`, `VITE_TEAM_PASSWORD`, `VITE_DRES_EVALUATION_ID`), relay (`VITE_GODMODE_ENDPOINT`), dịch (`VITE_GOOGLE_TRANSLATE`) và debug nằm trong `.env.example`. Mọi giá trị `VITE_*` được đưa vào bundle trình duyệt, nên không đặt bí mật dài hạn ở đó.
+Nếu một base URL để trống, frontend dùng URL localhost do backend trả về cho loại media đó. Ba biến này chọn host theo **loại media**; host được chọn phải chứa dataset đang xem. Cấu hình không tự thử host khác khi server trả 404. Các biến DRES (`VITE_SUBMISSION`, `VITE_TEAM_ID`, `VITE_TEAM_PASSWORD`, `VITE_DRES_EVALUATION_ID`), relay (`VITE_GODMODE_ENDPOINT`), dịch (`VITE_GOOGLE_TRANSLATE`) và debug nằm trong `.env.example`. Mọi giá trị `VITE_*` được đưa vào bundle trình duyệt, nên không đặt bí mật dài hạn ở đó.

@@ -6,7 +6,9 @@ FastAPI phục vụ tìm kiếm video theo nội dung hình ảnh (semantic), ch
 
 - `src/api/main.py` tạo ASGI `app`, nạp `CONFIG_PATH` (mặc định `configs/app.yaml`) trong lifespan, tạo `RetrievalSystem` riêng cho AIC/CAM và lưu vào `app.state`. `main.py` ở gốc backend re-export cùng app.
 - `configs/app.yaml` định nghĩa dataset, model semantic đang bật, index, media roots và tính năng runtime. `configs/ocr_extraction.yaml` và `configs/asr_extraction.yaml` được nạp cho OCR/ASR lúc chạy; `embeddings.yaml`, `indexing.yaml`, `kf_extraction.yaml` phục vụ pipeline offline.
+- Media local được xếp theo loại: `../data/keyframes/<DATASET>/`, `../data/videos/<DATASET>/`, `../data/mapkeyframes/<DATASET>/`. API phục vụ các root này qua `/keyframes`, `/videos`, `/mapkeyframes` khi thư mục tồn tại lúc khởi động. Frontend có thể trỏ mỗi loại media sang host riêng.
 - Một model chỉ dùng được khi `enabled`, checkpoint và index tương ứng đều sẵn sàng. API có thể khởi động khi thiếu model/index, nhưng endpoint tìm kiếm của dataset không build được sẽ trả 503. OCR/ASR phụ thuộc Elasticsearch và có thể vắng mặt.
+- `Qwen/Qwen3-VL-Embedding-2B` là model semantic ảnh/text tùy chọn trong registry chung. Engine ưu tiên là vLLM 0.32.0 qua server riêng; SentenceTransformer chỉ là fallback. Mỗi dataset và mỗi engine có embedding/FAISS index 2048 chiều riêng. Xem [hướng dẫn pipeline](docs/PIPELINE_GUIDE.md) để trích và build index. OCR dùng Qwen3-VL-Instruct GGUF là pipeline khác.
 
 ## Cài và chạy
 
@@ -19,6 +21,8 @@ python -m uvicorn src.api.main:app --reload --port 8000
 ```
 
 `requirements.txt` là danh sách Python chung của backend; có gói PyTorch/CUDA, OCR và model nặng nên cần môi trường tương thích. PE-Core đã được pin trong cùng file; xem [docs/PE_CORE.md](docs/PE_CORE.md) về model và license. Relay God Mode có lệnh cài tối giản riêng trong [docs/GODMODE_RELAY.md](docs/GODMODE_RELAY.md). Frontend dùng npm.
+
+vLLM không nằm trong `requirements.txt`: chạy server bằng môi trường Linux/Python 3.12 riêng với `requirements-vllm.txt`. Backend chỉ cần `httpx` đã có trong requirements để gọi server. Nhờ đó vLLM tự chọn bộ PyTorch/CUDA phù hợp mà không ép thay các pin của backend. Cách chạy và chọn engine ở [PIPELINE_GUIDE.md](docs/PIPELINE_GUIDE.md).
 
 `GET /api/health` kiểm tra trạng thái; `/docs` hiển thị OpenAPI. `docker-compose.yaml` khai báo Elasticsearch và Kibana cho chức năng cần Elasticsearch; không khởi chạy API.
 

@@ -27,15 +27,13 @@ from typing import Any
 from src.embedding_extraction.models.backends.base import LoadedModel
 
 BACKEND_OPEN_CLIP = "open_clip"
-BACKEND_BLIP2 = "blip2"
 BACKEND_PERCEPTION_ENCODER = "perception_encoder"
-BACKEND_WEMM_EMBEDDING = "wemm_embedding"
+BACKEND_QWEN3_VL_EMBEDDING = "qwen3_vl_embedding"
 
 _BACKEND_MODULES = {
     BACKEND_OPEN_CLIP: "src.embedding_extraction.models.backends.open_clip",
-    BACKEND_BLIP2: "src.embedding_extraction.models.backends.blip2",
     BACKEND_PERCEPTION_ENCODER: "src.embedding_extraction.models.backends.perception_encoder",
-    BACKEND_WEMM_EMBEDDING: "src.embedding_extraction.models.backends.wemm_embedding",
+    BACKEND_QWEN3_VL_EMBEDDING: "src.embedding_extraction.models.backends.qwen3_vl_embedding",
 }
 
 # Convenience presets for the models used across this project. A config
@@ -47,7 +45,7 @@ _BACKEND_MODULES = {
 # refers to as the human-readable model name; short aliases are included so
 # configs can use whichever spelling is convenient.
 MODEL_PRESETS: dict[str, dict[str, Any]] = {
-    "tencent/WeMM-Embedding-2B": dict(backend=BACKEND_WEMM_EMBEDDING),
+    "Qwen/Qwen3-VL-Embedding-2B": dict(backend=BACKEND_QWEN3_VL_EMBEDDING),
     # --- SigLIP2 so400m (open_clip) ---
     "ViT-SO400M-16-SigLIP2-384": dict(backend=BACKEND_OPEN_CLIP, pretrained="webli"),
     "siglip2-so400m": dict(backend=BACKEND_OPEN_CLIP, pretrained="webli", model_name="ViT-SO400M-16-SigLIP2-384"),
@@ -61,10 +59,6 @@ MODEL_PRESETS: dict[str, dict[str, Any]] = {
     # --- Long-CLIP-L (open_clip, BeichenZhang/LongCLIP-L checkpoint on HF hub) ---
     "LongCLIP-L": dict(backend=BACKEND_OPEN_CLIP, pretrained="hf-hub:BeichenZhang/LongCLIP-L"),
     "long-clipL": dict(backend=BACKEND_OPEN_CLIP, pretrained="hf-hub:BeichenZhang/LongCLIP-L", model_name="LongCLIP-L"),
-
-    # --- BLIP2 ViT-G ITM/ITC (transformers) ---
-    "BLIP2-ViT-G": dict(backend=BACKEND_BLIP2, pretrained="Salesforce/blip2-itm-vit-g"),
-    "BLIP2": dict(backend=BACKEND_BLIP2, pretrained="Salesforce/blip2-itm-vit-g", model_name="BLIP2-ViT-G"),
 
     # --- Meta Perception Encoder Core (official perception_models package) ---
     # All five PE-Core variants are CLIP checkpoints and can therefore be
@@ -104,7 +98,7 @@ def load_model(
     """Single entry point used by both the offline extraction pipeline and
     the online search index to load ANY supported model.
 
-    `model_name` can be a preset key (e.g. "siglip2-so400m", "BLIP2",
+    `model_name` can be a preset key (e.g. "siglip2-so400m",
     "PE-Core-L14-336", "long-clipL") — in which case `backend`/`pretrained` (and,
     for presets whose real underlying model name differs from the key,
     the actual `model_name` passed to the backend) are resolved from

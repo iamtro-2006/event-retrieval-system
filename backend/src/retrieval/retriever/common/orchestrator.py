@@ -534,7 +534,7 @@ class Orchestrator:
 
             # semantic (mỗi model chạy riêng, KHÔNG kết hợp embedding)
             [x] siglip2-so400m   [ ] vitH-378-quickgelu
-            [x] long-clipL       [ ] PE-Core  [ ] BLIP2
+            [x] long-clipL       [ ] PE-Core  [ ] qwen3-vl-embedding-2b
             # temporal
             [x] on/off  (dùng CHUNG danh sách model đã tick ở semantic)
             # ocr
