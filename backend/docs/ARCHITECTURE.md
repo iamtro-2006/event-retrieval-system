@@ -61,9 +61,8 @@ Hệ thống retrieval video theo 4 kiểu truy vấn trên cùng 1 tập keyfra
 | Config | YAML (`pyyaml`) + `python-dotenv` | mỗi subsystem 1 file config riêng |
 | Nộp bài đánh giá | **DRES** (Distributed Retrieval Evaluation Server, qua `requests`) | tích hợp thi đấu dạng competition (AI Challenge / VBS) |
 
-> `requirements.txt` ở repository root là snapshot môi trường Python hiện tại.
-> PE-Core được tách thành `backend/requirements-pe-core.txt` vì là dependency
-> upstream tùy chọn có license riêng.
+> `requirements.txt` trong `backend/` là snapshot môi trường Python backend hiện tại.
+> PE-Core được pin trong cùng file và có license riêng; xem `docs/PE_CORE.md`.
 
 ### 1.2 Nguyên tắc kiến trúc xuyên suốt (bắt buộc phải hiểu trước khi sửa code)
 
@@ -234,8 +233,8 @@ runtime `/api/speech/transcribe` (config `speech.*` trong `app.yaml`:
 | Keyframe extraction | video | ảnh keyframe + map CSV | `configs/kf_extraction.yaml` | `KeyframeExtractionPipeline` |
 | Embedding extraction | ảnh keyframe | vector `.npy` | `configs/embeddings.yaml` | `ExtractEmbeddingPipeline` |
 | FAISS indexing | vector `.npy` + map CSV | `keyframes.faiss` + `metadata.csv` | `configs/indexing.yaml` | `BuildFaissIndexPipeline` |
-| OCR extraction + index | ảnh keyframe | ES index `ocr-*` | `configs/ocr_extraction.yaml` + `configs/ocr.yaml` | `ExtractOCRPipeline` + `IndexPipeline` (ES) |
-| ASR extraction + index | audio | ES index `asr-*` | `configs/asr_extraction.yaml` + `configs/asr.yaml` | script `scripts/asr` + `IndexPipeline` (ES) |
+| OCR extraction + index | ảnh keyframe | ES index `ocr-*` | `configs/ocr_extraction.yaml` | `ExtractOCRPipeline` + `IndexPipeline` (ES) |
+| ASR extraction + index | audio | ES index `asr-*` | `configs/asr_extraction.yaml` | script `scripts/asr` + `IndexPipeline` (ES) |
 
 ---
 
@@ -669,22 +668,17 @@ hoặc muốn test CLIP trực tiếp).
 
 | File | Subsystem | Trường quan trọng |
 |---|---|---|
-| `app.yaml` | Runtime chính (main.py + system.py) | `faiss.*` (path, `ef_search`, cache mode), `model.*` (phải khớp model lúc train embedding), `search.*` (`default_top_k`, `max_top_k`, `candidate_multiplier`), `ui.*` (surrounding radius), `translate.google.*`, `speech.*` (Whisper cho `/api/speech/transcribe`), `debug.profile` |
+| `app.yaml` | Runtime chính (API + retrieval) | `datasets.*`, `semantic.models`, `ocr.config_path`, `asr.config_path`, `search.*`, `translate.*`, `query_enrichment.*` |
 | `ocr_extraction.yaml` | offline OCR pipeline | tham số PaddleOCR/VietOCR |
 | `asr_extraction.yaml` | offline ASR pipeline | tham số faster-whisper cho batch transcribe |
 | `embeddings.yaml` | offline embedding pipeline | model CLIP, batch size, device |
 | `indexing.yaml` | build FAISS index | tham số HNSW (M, efConstruction...), đường dẫn output |
 | `kf_extraction.yaml` | offline keyframe pipeline | threshold TransNetV2, `max_gap`, `histogram threshold` |
 
-> **Không tìm thấy `configs/ocr.yaml`/`configs/asr.yaml`** (dùng bởi
-> `load_ocr_config`/`load_asr_config` cho phần **search-time Elasticsearch
-> connection**, khác với `ocr_extraction.yaml`/`asr_extraction.yaml` là
-> config cho pha **offline extraction**) trong bản zip được cung cấp. Đây là
-> file cấu hình kết nối ES (host, index name, port...) cần thiết để
-> `build_system()` khởi tạo `ocr_search_pipeline`/`asr_search_pipeline` —
-> **nếu thiếu, OCR/ASR search sẽ tự tắt (log warning) chứ không crash**, theo
-> đúng thiết kế "optional subsystem" ở mục 4. Team kế nhiệm cần xác nhận file
-> này có tồn tại trong môi trường triển khai thật hay đã bị .gitignore.
+> Cấu hình runtime OCR/ASR được trỏ từ `configs/app.yaml` tới
+> `configs/ocr_extraction.yaml` và `configs/asr_extraction.yaml`.
+> Nếu Elasticsearch hoặc index không sẵn sàng, subsystem tương ứng có thể
+> bị bỏ qua lúc khởi động.
 
 ---
 
@@ -710,12 +704,10 @@ không phải suy đoán — cộng với quan sát cấu trúc thư mục:
    xoá/tiếp tục.
 4. **Requirements hiện là snapshot lớn**, chưa phải lockfile đa nền tảng;
    nên dựng môi trường sạch và kiểm thử khi thay CUDA/PyTorch hoặc hệ điều hành.
-5. **`configs/ocr.yaml`/`configs/asr.yaml` (config kết nối ES lúc search)
-   không có trong bản zip** — xem mục 9. Cần xác nhận với hạ tầng
-   triển khai thật.
-6. **README con lỗi thời**: `src/README.md`, `src/utils/README.md` mô tả tên
-   thư mục cũ (`embeddings/`, `keyframes/`, `logic/`) — đã ghi chú trong
-   README gốc, nhắc lại ở đây để tránh nhầm khi đọc các file đó.
+5. **Cấu hình OCR/ASR** hiện nằm ở `configs/ocr_extraction.yaml` và
+   `configs/asr_extraction.yaml`; cần kiểm tra kết nối Elasticsearch khi triển khai.
+6. **README con lỗi thời đã được bỏ**; xem `README.md` cho bản đồ
+   module hiện tại.
 7. **Test coverage chưa đầy đủ.** Đã có test cạnh module và mock UI scenarios,
    nhưng vẫn thiếu integration test end-to-end với index/model thật.
 

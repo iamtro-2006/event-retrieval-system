@@ -19,14 +19,15 @@ hiện tại.
 
 ## Cài dependency
 
-Package chính thức chưa được phát hành như một wheel nhẹ trên PyPI. File
-requirements tùy chọn đã pin commit Meta được kiểm thử và `einops` tương thích:
+Package chính thức được pin theo commit Meta trong `backend/requirements.txt`.
+Chạy từ `backend/`:
 
 ```powershell
-python -m pip install --no-deps -r requirements-pe-core.txt
+python -m pip install -r requirements.txt
 ```
 
-Lệnh trên giả định môi trường chính đã được cài bằng `../requirements.txt`.
+Cần Git và quyền truy cập GitHub để cài package từ nguồn.
+
 PE-Core tại revision được pin khai báo **FAIR Noncommercial Research License**;
 người triển khai phải đọc license upstream trước khi phân phối hoặc sử dụng
 thương mại. Repository này không commit source PE-Core, checkpoint hay index.

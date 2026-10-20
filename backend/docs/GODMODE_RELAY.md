@@ -9,9 +9,11 @@ subscribed to the same evaluation ID.
 From `backend/`:
 
 ```powershell
-pip install -r requirements-godmode.txt
+python -m pip install 'fastapi>=0.115,<1' 'requests>=2.31,<3' 'uvicorn[standard]>=0.34,<1'
 uvicorn godmode_server:app --host 0.0.0.0 --port 8081
 ```
+
+The relay can use an isolated, lightweight environment. The backend's full `requirements.txt` already contains these packages.
 
 Optional environment variables:
 
