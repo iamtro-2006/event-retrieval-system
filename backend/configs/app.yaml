@@ -17,7 +17,7 @@ datasets:
       asr_index: asr_v3c
       semantic_models:
         qwen3-vl-embedding-2b:
-          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm
+          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b
 
 # Shared model settings and fallback paths for direct tooling. The API replaces
 # index paths with each dataset's semantic_models.<model_key>.index_dir.
