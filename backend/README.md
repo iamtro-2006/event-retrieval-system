@@ -4,11 +4,11 @@ FastAPI phục vụ tìm kiếm video theo nội dung hình ảnh (semantic), ch
 
 ## Điểm vào và cấu hình
 
-- `src/api/main.py` tạo ASGI `app`, nạp `CONFIG_PATH` (mặc định `configs/app.yaml`) trong lifespan, tạo `RetrievalSystem` riêng cho AIC/CAM và lưu vào `app.state`. `main.py` ở gốc backend re-export cùng app.
+- `src/api/main.py` tạo ASGI `app`, nạp `CONFIG_PATH` (mặc định `configs/app.yaml`) trong lifespan, tạo `RetrievalSystem` cho V3C và lưu vào `app.state`. `main.py` ở gốc backend re-export cùng app.
 - `configs/app.yaml` định nghĩa dataset, model semantic đang bật, index, media roots và tính năng runtime. `configs/ocr_extraction.yaml` và `configs/asr_extraction.yaml` được nạp cho OCR/ASR lúc chạy; `embeddings.yaml`, `indexing.yaml`, `kf_extraction.yaml` phục vụ pipeline offline.
-- Media local được xếp theo loại: `../data/keyframes/<DATASET>/`, `../data/videos/<DATASET>/`, `../data/mapkeyframes/<DATASET>/`. API phục vụ các root này qua `/keyframes`, `/videos`, `/mapkeyframes` khi thư mục tồn tại lúc khởi động. Frontend có thể trỏ mỗi loại media sang host riêng.
+- Media local được xếp theo loại: `../data/keyframes/V3C/`, `../data/videos/V3C/`, `../data/map_keyframes/V3C/`. API phục vụ các root này qua `/keyframes`, `/videos`, `/mapkeyframes` khi thư mục tồn tại lúc khởi động. Frontend có thể trỏ mỗi loại media sang host riêng.
 - Một model chỉ dùng được khi `enabled`, checkpoint và index tương ứng đều sẵn sàng. API có thể khởi động khi thiếu model/index, nhưng endpoint tìm kiếm của dataset không build được sẽ trả 503. OCR/ASR phụ thuộc Elasticsearch và có thể vắng mặt.
-- `Qwen/Qwen3-VL-Embedding-2B` là model semantic ảnh/text tùy chọn trong registry chung. Engine ưu tiên là vLLM 0.32.0 qua server riêng; SentenceTransformer chỉ là fallback. Mỗi dataset và mỗi engine có embedding/FAISS index 2048 chiều riêng. Xem [hướng dẫn pipeline](docs/PIPELINE_GUIDE.md) để trích và build index. OCR dùng Qwen3-VL-Instruct GGUF là pipeline khác.
+- `Qwen/Qwen3-VL-Embedding-2B` là model semantic ảnh/text đang bật, dùng vLLM qua server riêng. Embedding và FAISS index 2048 chiều của V3C nằm trong cây dữ liệu ở [README gốc](../README.md#cấu-trúc-dữ-liệu-v3c). OCR dùng pipeline khác.
 
 ## Cài và chạy
 
@@ -40,7 +40,7 @@ vLLM không nằm trong `requirements.txt`: chạy server bằng môi trường 
 | `src/utils/` | Config, thiết bị, log, seed, video I/O. |
 | `scripts/` | CLI cho keyframe, embedding, OCR/ASR, index, truy vấn và chẩn đoán. |
 
-Luồng offline chính: video → keyframe → embedding → FAISS; OCR, ASR và color có index riêng. Lệnh và cấu trúc dữ liệu ở [PIPELINE_GUIDE.md](PIPELINE_GUIDE.md).
+Luồng offline chính: video → keyframe → embedding → FAISS; OCR, ASR và color có index riêng. Lệnh và cấu trúc dữ liệu ở [PIPELINE_GUIDE.md](docs/PIPELINE_GUIDE.md).
 
 ## API đang hoạt động
 
@@ -48,10 +48,10 @@ Luồng offline chính: video → keyframe → embedding → FAISS; OCR, ASR và
 - `routers/search.py` cung cấp `/api/search/semantic`, `/temporal`, `/ocr`, `/asr`, `/auto`, `/advanced` và `GET /api/search/models` với schema riêng.
 - Router khác cung cấp `/api/health`, `/api/config`, `/api/dres/login`, `/api/dres/submit`, `/api/speech/transcribe`, `/api/translate`.
 
-Router lấy hệ thống đã build từ `app.state`. Khi thay đổi response cho UI, đối chiếu `frontend/src/api/retrievalAPI.js` và `frontend/src/App.jsx`. Mỗi request cần chọn dataset phù hợp; index AIC và CAM độc lập.
+Router lấy hệ thống đã build từ `app.state`. Khi thay đổi response cho UI, đối chiếu `frontend/src/api/retrievalAPI.js` và `frontend/src/App.jsx`. Cấu hình hiện tại dùng dataset `v3c`.
 
 ## Tài liệu chuyên đề
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): giải thích sâu thiết kế/pipeline; đối chiếu code hiện tại trước khi sửa.
-- [PIPELINE_GUIDE.md](PIPELINE_GUIDE.md): chuẩn bị dữ liệu AIC/CAM và build index.
+- [PIPELINE_GUIDE.md](docs/PIPELINE_GUIDE.md): chuẩn bị dữ liệu và build index.
 - [PE-Core](docs/PE_CORE.md) và [God Mode relay](docs/GODMODE_RELAY.md): hướng dẫn phần mở rộng.

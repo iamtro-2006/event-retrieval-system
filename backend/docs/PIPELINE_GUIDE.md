@@ -1,5 +1,32 @@
 # Hướng dẫn chuẩn bị dữ liệu và chạy retrieval
 
+## Cấu hình V3C hiện tại
+
+Các mục AIC/CAM phía dưới là ví dụ lịch sử và không còn khớp cấu hình V3C hiện tại. Cây dữ liệu đang dùng:
+
+```text
+data/
+├── videos/V3C/<video_id>.*
+├── keyframes/V3C/<video_id>/<frame>.jpg
+├── map_keyframes/V3C/<video_id>.csv
+├── embeddings/embeddings_qwen3_vl_embedding_2b_vllm/V3C/<video_id>/<frame>.npy
+└── database/faiss_qwen3_vl_embedding_2b_vllm/
+    ├── keyframes.faiss
+    ├── metadata.csv
+    └── vectors_fp32.npy
+```
+
+`video_id` có năm chữ số (ví dụ `00001`). Chạy các lệnh sau từ `backend/` sau khi chuẩn bị embedding và map CSV:
+
+```bash
+python -m scripts.retrieval.run --task build-index --dataset v3c
+python -m scripts.retrieval.run --task build-vector-cache --config configs/app.yaml --output ../data/database/faiss_qwen3_vl_embedding_2b_vllm/vectors_fp32.npy --dtype float32
+```
+
+Trong `configs/app.yaml`, `semantic_models.qwen3-vl-embedding-2b.index_dir` phải là `../data/database/faiss_qwen3_vl_embedding_2b` **không có** hậu tố `_vllm`; API tự thêm hậu tố engine lúc khởi động. Notebook [kaggle_v3c_server.ipynb](../notebooks/kaggle_v3c_server.ipynb) tải tối đa 100 ZIP embedding và map CSV hiện có, giải nén, build index/cache rồi chạy API và vLLM.
+
+## Ghi chú lịch sử AIC/CAM
+
 Tài liệu này tóm tắt luồng chính cho hai dataset AIC và CAM. Chạy các lệnh Python bên dưới từ thư mục `backend/`. Thay `aic` bằng `cam` khi cần. Đường dẫn trong config được tính tương đối từ `backend/`.
 
 ## 1. Thư mục dữ liệu tham khảo
