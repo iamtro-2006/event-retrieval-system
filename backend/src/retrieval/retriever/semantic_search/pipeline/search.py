@@ -504,6 +504,30 @@ class SearchPipeline:
             df["model_key"] = index.model_key
         return df
 
+    def similarity_search_by_frame(
+        self, video_id: str, frame_id: int, top_k: int = 20, model_key: str | None = None
+    ) -> pd.DataFrame:
+        """Search from an indexed frame vector without reading its image file."""
+        index = self._resolve(model_key)
+        row_id = index._row_by_video_frame.get((str(video_id), int(frame_id)))
+        if row_id is None:
+            raise KeyError(f"Frame not found: {video_id}/{frame_id}")
+
+        vectors = index.index_vectors
+        if vectors is not None:
+            embedding = np.asarray(vectors[int(row_id):int(row_id) + 1], dtype=np.float32)
+        else:
+            with index.search_lock:
+                embedding = np.asarray(index.index.reconstruct(int(row_id)), dtype=np.float32).reshape(1, -1)
+
+        df = image_similarity_search(
+            index.index, index.search_lock, index.metadata_records,
+            np.ascontiguousarray(embedding), f"{video_id}/{int(frame_id):06d}", top_k,
+        )
+        if not df.empty:
+            df["model_key"] = index.model_key
+        return df
+
     def search(
         self,
         events: list[list[str]],

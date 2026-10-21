@@ -20,7 +20,7 @@ class SearchRequest(BaseModel):
     temporal,ocr,asr,auto,advanced}` là các endpoint tách riêng)."""
 
     query: str
-    dataset: str = Field(..., pattern="^(?i:aic|cam)$")
+    dataset: str = Field(..., pattern="^(?i:v3c)$")
     video_ids: list[str] = []
     top_k: int | None = None
     candidate_multiplier: int | None = None
@@ -45,7 +45,7 @@ class MultimodalSearchRequest(BaseModel):
     """JSON metadata carried inside the multipart multimodal request."""
 
     query: str = ""
-    dataset: str = Field(..., pattern="^(?i:aic|cam)$")
+    dataset: str = Field(..., pattern="^(?i:v3c)$")
     video_ids: list[str] = []
     clauses: list[MultimodalClause]
     top_k: int | None = None
@@ -69,7 +69,7 @@ class FusionSearchRequest(BaseModel):
     """
 
     query: str
-    dataset: str = Field(..., pattern="^(?i:aic|cam)$")
+    dataset: str = Field(..., pattern="^(?i:v3c)$")
     semantic_models: list[str] = []
     video_ids: list[str] = []
     temporal: bool = False
@@ -105,7 +105,7 @@ class DresSubmitRequest(BaseModel):
 
 
 class SimilaritySearchRequest(BaseModel):
-    dataset: str = Field(..., pattern="^(?i:aic|cam)$")
+    dataset: str = Field(..., pattern="^(?i:v3c)$")
     video_ids: list[str] = []
     video_id: str
     frame_id: int
@@ -120,7 +120,7 @@ class ColorCell(BaseModel):
 
 
 class ColorSearchRequest(BaseModel):
-    dataset: str = Field(..., pattern="^(?i:aic|cam)$")
+    dataset: str = Field(..., pattern="^(?i:v3c)$")
     cells: list[ColorCell]
     top_k: int | None = None
     video_ids: list[str] = []

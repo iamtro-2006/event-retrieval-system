@@ -35,7 +35,6 @@ from src.api.legacy.paths import LegacyPaths
 from src.api.legacy.serializers import (
     dict_to_result_FAST,
     find_metadata_row,
-    resolve_keyframe_path_from_dict,
     safe_int,
 )
 from src.api.legacy.translate import translate_queries_if_needed, translate_query_if_needed
@@ -798,10 +797,9 @@ async def similarity_search_api(
 
         row = find_metadata_row(index, payload.video_id, payload.frame_id)
         source_dict = row.to_dict()
-        image_path = resolve_keyframe_path_from_dict(source_dict, paths.keyframes_root, paths.backend_dir)
-
-        results_df = orchestrator.semantic_search.similarity_search_by_image(
-            image_path=Path(image_path), top_k=top_k, model_key=index.model_key
+        results_df = orchestrator.semantic_search.similarity_search_by_frame(
+            video_id=payload.video_id, frame_id=payload.frame_id,
+            top_k=top_k, model_key=index.model_key,
         )
         return source_dict, results_df, index.model_key
 
