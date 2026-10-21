@@ -1,7 +1,68 @@
-import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette } from "lucide-react";
+import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette, ChevronDown, Check } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import FusionSettingsModal from "./FusionSettingsModal";
 import { SEARCH_MODES, resolveSearchMode } from "../config/searchModes";
+
+function SearchPicker({ kind, label, value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const hostRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOutside = (event) => {
+      if (!hostRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        hostRef.current?.querySelector(".search-picker-trigger")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const selected = options.find((option) => option.value === value);
+  return (
+    <div className={`search-picker search-picker--${kind}`} ref={hostRef}>
+      <button
+        type="button"
+        className="search-select search-picker-trigger"
+        aria-label={`${label}: ${selected?.label ?? value}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{selected?.label ?? value}</span>
+        <ChevronDown size={12} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="search-picker-menu" role="listbox" aria-label={label}>
+          <div className="search-picker-heading">{label}</div>
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="search-picker-option"
+              role="option"
+              aria-selected={option.value === value}
+              title={option.label}
+              onClick={() => { onChange(option.value); setOpen(false); }}
+            >
+              <span className="search-picker-option-label">{option.label}</span>
+              {option.shortcut && <span className="search-picker-shortcut">{option.shortcut}</span>}
+              {option.value === value && <Check size={13} aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SearchBar({
   query = "",
@@ -382,16 +443,14 @@ export default function SearchBar({
 
           <div className="search-chat-controls">
             {!isFusion && modelOptions.length > 0 && (
-              <select className="search-select" value={model} onChange={(e) => onModelChange(e.target.value)}>
-                {modelOptions.map((modelKey) => (
-                  <option key={modelKey} value={modelKey}>{modelKey}</option>
-                ))}
-              </select>
+              <SearchPicker kind="model" label="Model" value={model}
+                options={modelOptions.map((modelKey) => ({ value: modelKey, label: modelKey }))}
+                onChange={onModelChange} />
             )}
 
-            <select className="search-select" value={mode} onChange={(e) => onModeChange(e.target.value)}>
-              {SEARCH_MODES.map(({ key, label, shortcut }) => <option key={key} value={key}>{label} ({shortcut})</option>)}
-            </select>
+            <SearchPicker kind="mode" label="Search mode" value={mode}
+              options={SEARCH_MODES.map(({ key, label, shortcut }) => ({ value: key, label, shortcut }))}
+              onChange={onModeChange} />
 
             {isTemporal && (
               <input

@@ -33,7 +33,7 @@ export default function SettingsPanel({
       <div className="settings-section dataset-settings-section">
         <h4>Dataset</h4>
         <div className="dataset-selector" role="group" aria-label="Search dataset">
-          {["aic", "cam"].map((dataset) => (
+          {["v3c"].map((dataset) => (
             <button
               key={dataset}
               type="button"

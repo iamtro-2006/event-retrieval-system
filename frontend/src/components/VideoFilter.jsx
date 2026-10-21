@@ -46,7 +46,7 @@ export function VideoFilterProvider({ children }) {
   </VideoFilterContext.Provider>;
 }
 
-export function VideoFilterBar({ dataset = "aic" }) {
+export function VideoFilterBar({ dataset = "v3c" }) {
   const { ids, enabled, setEnabled, add, save, notify, open, setOpen, remove } = useVideoFilter();
   const [catalog, setCatalog] = useState([]);
   const [query, setQuery] = useState("");

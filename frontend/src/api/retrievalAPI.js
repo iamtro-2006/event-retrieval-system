@@ -131,13 +131,13 @@ function assertModelIsolation(data, requestedModelKey, label) {
 function collectionFromResult(item) {
   const candidates = [item?.collection, item?.raw?.collection, item?.dataset, item?.raw?.dataset]
     .map((value) => String(value || "").trim().toLowerCase());
-  const physicalDataset = candidates.find((value) => value === "aic" || value === "cam");
+  const physicalDataset = candidates.find((value) => value === "v3c");
   if (physicalDataset) return physicalDataset;
 
   for (const url of [item?.image_url, item?.video_url, item?.map_url]) {
     const path = String(url || "").replaceAll("\\", "/");
-    const match = path.match(/\/(?:static\/)?(aic|cam)\//i)
-      || path.match(/\/(?:keyframes|videos|mapkeyframes|map-keyframes)\/(aic|cam)\//i);
+    const match = path.match(/\/(?:static\/)?(v3c)\//i)
+      || path.match(/\/(?:keyframes|videos|mapkeyframes|map-keyframes)\/(v3c)\//i);
     if (match) return match[1].toLowerCase();
   }
   return candidates[0] || "";
@@ -167,7 +167,7 @@ export async function getBackendConfig() {
   return response.json();
 }
 
-export async function getAvailableModels(dataset = "aic") {
+export async function getAvailableModels(dataset = "v3c") {
   const response = await fetch(apiUrl(`/api/search/models?dataset=${encodeURIComponent(dataset)}`), {
     headers: NGROK_HEADER,
   });
@@ -180,7 +180,7 @@ export async function getAvailableModels(dataset = "aic") {
   return Array.isArray(data.models) ? data.models : [];
 }
 
-export async function getVideoIds(dataset = "aic") {
+export async function getVideoIds(dataset = "v3c") {
   const response = await fetch(apiUrl(`/api/video-ids?dataset=${encodeURIComponent(dataset)}`), { headers: NGROK_HEADER });
   if (!response.ok) throw new Error("Could not load video ID metadata. Try again.");
   const data = await response.json();
@@ -611,7 +611,7 @@ export function normalizeResults(results, fallbackDataset = "") {
     const similarity = Number(item.similarity ?? 0);
     const raw = item.raw || {};
     const inferredCollection = collectionFromResult(item);
-    const collection = inferredCollection === "aic" || inferredCollection === "cam"
+    const collection = inferredCollection === "v3c"
       ? inferredCollection
       : String(fallbackDataset || inferredCollection).toLowerCase();
 
@@ -642,7 +642,7 @@ export function normalizeResults(results, fallbackDataset = "") {
       collection,
       // `raw.dataset` is the source corpus/group label (for example `l22`),
       // while API `collection` is the physical dataset registered for requests
-      // (`aic` or `cam`). Actions such as surrounding/similarity must use the
+      // (`v3c`). Actions such as surrounding/similarity must use the
       // latter.
       dataset: String(collection || fallbackDataset || item.dataset || raw.dataset || "").toLowerCase(),
       video_id: item.video_id || "unknown_video",

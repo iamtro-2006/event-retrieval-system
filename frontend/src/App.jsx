@@ -68,7 +68,7 @@ function getErrorMessage(error, fallback = "Unexpected error") {
 function toSubmissionItem(result, dataset) {
   const candidates = [result?.dataset, result?.collection, dataset]
     .map((value) => String(value || "").trim().toLowerCase());
-  const sourceDataset = candidates.find((value) => value === "aic" || value === "cam") || "";
+  const sourceDataset = candidates.find((value) => value === "v3c") || "";
   const frameId = Number(result?.raw?.frame_idx ?? result?.frame_idx ?? result?.frame_id ?? 0);
   const timestamp = Number(result?.timestamp ?? result?.timestamp_sec ?? 0);
   return {
@@ -174,7 +174,7 @@ function RetrievalApp() {
   // ── Settings ─────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
-    dataset: "aic",
+    dataset: "v3c",
     useTranslate: true,
     topK: 20,
     candidateMultiplier: 5,
@@ -568,7 +568,7 @@ function RetrievalApp() {
         }
 
         try {
-          const models = await getAvailableModels(config.datasets?.default ?? "aic");
+          const models = await getAvailableModels(config.datasets?.default ?? "v3c");
           if (alive && Array.isArray(models) && models.length > 0) {
             setAvailableModels(models);
             setModel((prev) => (models.includes(prev) ? prev : (models.includes(configuredDefaultModel) ? configuredDefaultModel : models[0])));
