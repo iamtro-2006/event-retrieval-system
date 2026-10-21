@@ -173,7 +173,12 @@ class FaissIndex:
         self._set_ef_search(int(ef_search))
         self.search_lock = RLock()
 
-        self.metadata = pd.read_csv(self.metadata_path, low_memory=False)
+        self.metadata = pd.read_csv(
+            self.metadata_path,
+            low_memory=False,
+            dtype={"collection": str, "dataset": str, "video_id": str,
+                   "keyframe_id": str, "source_name": str},
+        )
         if len(self.metadata) != self.index.ntotal:
             raise ValueError(
                 f"Metadata/index mismatch for model '{self.model_key}': "

@@ -6,7 +6,7 @@ project:
 method: distribution
 
 paths:
-  input_dir: ../data/raw/videos
+  input_dir: ../data/videos
   output_dir: ../data
 
 logging:
@@ -30,15 +30,6 @@ frame_loader:
   num_workers: 0
   pin_memory: true
   persistent_workers: false
-
-embedding:
-  model_name: PE-Core-L14-336
-  backend: perception_encoder
-  pretrained: true
-  batch_size: 8
-  device: auto
-  precision: fp16
-  skip_existing: true
 
 keyframe:
   min_scene_frames: 3

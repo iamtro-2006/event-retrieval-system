@@ -64,7 +64,7 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
 
 
 def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[str, Any]) -> dict[str, Any]:
-    """Create one fully isolated runtime config for AIC or CAM."""
+    """Create one isolated runtime config for the selected dataset."""
     cfg = deepcopy(base)
     overrides = spec.get("semantic_models", {})
     models = []

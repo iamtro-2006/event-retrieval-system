@@ -33,7 +33,8 @@ def get_dataset_resources(request: Request, dataset: str) -> tuple[RetrievalSyst
     key = str(dataset or "").strip().lower()
     systems = getattr(request.app.state, "retrieval_systems", {})
     if key not in systems:
-        raise HTTPException(status_code=422, detail=f"Dataset không hợp lệ: {dataset}. Chỉ chấp nhận aic hoặc cam.")
+        allowed = ", ".join(sorted(systems))
+        raise HTTPException(status_code=422, detail=f"Dataset không hợp lệ: {dataset}. Chỉ chấp nhận {allowed}.")
     system = systems[key]
     if system is None:
         error = getattr(request.app.state, "dataset_errors", {}).get(key)

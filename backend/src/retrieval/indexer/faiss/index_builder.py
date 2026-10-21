@@ -6,6 +6,7 @@ import re
 import faiss
 import numpy as np
 import pandas as pd
+from tqdm.auto import tqdm
 
 
 IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
@@ -126,7 +127,7 @@ def load_map_row(
 	if not map_path.exists():
 		return {}
 
-	df = pd.read_csv(map_path)
+	df = pd.read_csv(map_path, dtype={"video_id": str})
 
 	if df.empty:
 		return {}
@@ -174,7 +175,7 @@ def build_matrix_and_metadata(
 	vectors = []
 	records = []
 
-	for embedding_path in embedding_paths:
+	for embedding_path in tqdm(embedding_paths, desc="Load embeddings", unit="file"):
 		dataset, video_id, parsed = parse_embedding_path(
 			embedding_path=embedding_path,
 			embeddings_root=embeddings_root,
@@ -252,7 +253,12 @@ def create_faiss_index(
 	else:
 		raise ValueError(f"Unsupported index_type: {index_type}")
 
-	index.add(matrix)
+	batch_size = 10_000
+	with tqdm(total=len(matrix), desc="Build FAISS index", unit="vector") as progress:
+		for start in range(0, len(matrix), batch_size):
+			batch = matrix[start:start + batch_size]
+			index.add(batch)
+			progress.update(len(batch))
 	return index
 
 
