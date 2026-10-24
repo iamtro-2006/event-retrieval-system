@@ -68,7 +68,7 @@ function getErrorMessage(error, fallback = "Unexpected error") {
 function toSubmissionItem(result, dataset) {
   const candidates = [result?.dataset, result?.collection, dataset]
     .map((value) => String(value || "").trim().toLowerCase());
-  const sourceDataset = candidates.find((value) => value === "v3c") || "";
+  const sourceDataset = candidates.find((value) => value === "v3c" || value === "lhe") || "";
   const frameId = Number(result?.raw?.frame_idx ?? result?.frame_idx ?? result?.frame_id ?? 0);
   const timestamp = Number(result?.timestamp ?? result?.timestamp_sec ?? 0);
   return {
@@ -118,7 +118,7 @@ export default function App() {
 }
 
 function RetrievalApp() {
-  const { activeIds } = useVideoFilter();
+  const { activeIds, save: saveVideoFilter, setEnabled: setVideoFilterEnabled } = useVideoFilter();
   const defaultSubmission = useMemo(() => getDefaultSubmissionSettings(), []);
   const defaultGodModeEndpoint = useMemo(() => getGodModeEndpoint(), []);
   const searchIdRef = useRef(0);
@@ -137,6 +137,7 @@ function RetrievalApp() {
   const [colorGrid, setColorGrid] = useState(() => [...EMPTY_COLOR_GRID]);
   const [model, setModel] = useState("");
   const [availableModels, setAvailableModels] = useState([]);
+  const [availableDatasets, setAvailableDatasets] = useState([{ key: "v3c", label: "V3C" }]);
   const [semanticModelRoles, setSemanticModelRoles] = useState({ local: null, global: null });
   const [mode, setMode] = useState("text");
   const [query, setQuery] = useState("");
@@ -542,6 +543,7 @@ function RetrievalApp() {
 
         if (!alive) return;
         setSemanticModelRoles(config.semantic_model_roles || { local: null, global: null });
+        if (Array.isArray(config.datasets?.available)) setAvailableDatasets(config.datasets.available);
 
         setSettings((prev) => ({
           ...prev,
@@ -714,13 +716,15 @@ function RetrievalApp() {
   const handleSettingsChange = useCallback((nextSettings) => {
     if (nextSettings.dataset !== settings.dataset) {
       handleReset();
+      saveVideoFilter([]);
+      setVideoFilterEnabled(false);
       setGodModeResults(godModeResults);
       setColorGrid([...EMPTY_COLOR_GRID]);
       setPreviewOpen(false);
       setColorModalOpen(false);
     }
     setSettings(nextSettings);
-  }, [godModeResults, handleReset, settings.dataset]);
+  }, [godModeResults, handleReset, saveVideoFilter, setVideoFilterEnabled, settings.dataset]);
 
   const handleSearch = useCallback(
     async (payload) => {
@@ -1369,6 +1373,7 @@ function RetrievalApp() {
         <SettingsPanel
           open={settingsOpen}
           settings={settings}
+          availableDatasets={availableDatasets}
           dres={dres}
           onChange={handleSettingsChange}
           onClose={handleCloseSettings}

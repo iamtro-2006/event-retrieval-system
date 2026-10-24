@@ -3,6 +3,7 @@ import { X, SlidersHorizontal, ShieldCheck, LogIn, LogOut, Crown } from "lucide-
 export default function SettingsPanel({
   open,
   settings,
+  availableDatasets = [],
   dres,
   onChange,
   onClose,
@@ -33,7 +34,7 @@ export default function SettingsPanel({
       <div className="settings-section dataset-settings-section">
         <h4>Dataset</h4>
         <div className="dataset-selector" role="group" aria-label="Search dataset">
-          {["v3c"].map((dataset) => (
+          {availableDatasets.map(({ key: dataset, label }) => (
             <button
               key={dataset}
               type="button"
@@ -41,7 +42,7 @@ export default function SettingsPanel({
               aria-pressed={settings.dataset === dataset}
               onClick={() => updateField("dataset", dataset)}
             >
-              {dataset.toUpperCase()}
+              {label || dataset.toUpperCase()}
             </button>
           ))}
         </div>
