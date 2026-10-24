@@ -87,7 +87,7 @@ def safe_result(payload: VerifiedSubmit) -> dict[str, Any]:
             item.get("collection"), item.get("dataset"),
         )
     ]
-    dataset = next((value for value in datasets if value in {"aic", "cam"}), "")
+    dataset = next((value for value in datasets if value in {"v3c", "lhe"}), "")
     return {
         "id": f"godmode:{payload.evaluation_id}:{dataset}:{video_id}:{frame_id}",
         "video_id": video_id,

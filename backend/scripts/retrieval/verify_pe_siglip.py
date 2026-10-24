@@ -57,7 +57,7 @@ def verify(dataset: str, model: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=["aic", "cam"], required=True)
+    parser.add_argument("--dataset", choices=["aic"], required=True)
     parser.add_argument("--model", choices=list(MODELS), required=True)
     args = parser.parse_args()
     verify(args.dataset, args.model)

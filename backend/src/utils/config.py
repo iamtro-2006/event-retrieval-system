@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 import yaml
@@ -55,6 +55,7 @@ class EmbeddingConfig:
     device: str = "auto"
     precision: str = "fp16"
     skip_existing: bool = True
+    sample_fps: float | None = None
 
 
 @dataclass
@@ -62,10 +63,23 @@ class KeyframeConfig:
     min_scene_frames: int = 3
     max_scene_gap_frames: int = 5000
     max_scene_seconds: float | None = 20.0
-    hist_threshold: float = 0.90
-    min_hist_bins: int = 10
+    dedup_threshold: float = 0.98
+    mmr_budget_fraction: float = 0.5
+    anchors_per_shot: int = 3
+    mmr_relevance_weight: float = 0.4
+    final_similarity_threshold: float = 0.97
+    min_hist_bins: int = 5
     image_quality: int = 95
     save_images: bool = True
+    skip_existing: bool = True
+
+
+@dataclass
+class OmniConfig:
+    weights_path: Path | None = None
+    cache_dir: Path = Path("weights/omni")
+    overlap: int = 10
+    decode_batch_size: int = 8
     skip_existing: bool = True
 
 
@@ -78,6 +92,7 @@ class AppConfig:
     frame_loader: FrameLoaderConfig
     embedding: EmbeddingConfig
     keyframe: KeyframeConfig
+    omni: OmniConfig = field(default_factory=OmniConfig)
 
 
 def _resolve(base: Path, value: str | Path) -> Path:
@@ -107,6 +122,7 @@ def load_config(config_path: str | Path) -> AppConfig:
     frame_loader = raw.get("frame_loader", {})
     embedding = raw.get("embedding", {})
     keyframe = raw.get("keyframe", {})
+    omni = raw.get("omni", {})
 
     return AppConfig(
         project=ProjectConfig(
@@ -124,8 +140,8 @@ def load_config(config_path: str | Path) -> AppConfig:
             filename=str(logging.get("filename", "extract_keyframes.log")),
         ),
         transnet=TransNetConfig(
-            repo_dir=_resolve(root, transnet["repo_dir"]),
-            weights_path=_resolve(root, transnet["weights_path"]),
+            repo_dir=_resolve(root, transnet.get("repo_dir", "external/TransNetV2")),
+            weights_path=_resolve(root, transnet.get("weights_path", "weights/transnetv2-pytorch-weights.pth")),
             threshold=float(transnet.get("threshold", 0.5)),
             batch_size=int(transnet.get("batch_size", 500)),
             context_frames=int(transnet.get("context_frames", 25)),
@@ -147,6 +163,7 @@ def load_config(config_path: str | Path) -> AppConfig:
             device=str(embedding.get("device", "auto")),
             precision=str(embedding.get("precision", "fp16")),
             skip_existing=_as_bool(embedding.get("skip_existing", True), True),
+            sample_fps=float(embedding['sample_fps']) if embedding.get('sample_fps') is not None else None,
         ),
         keyframe=KeyframeConfig(
             min_scene_frames=int(keyframe.get("min_scene_frames", 3)),
@@ -156,10 +173,21 @@ def load_config(config_path: str | Path) -> AppConfig:
                 if keyframe.get("max_scene_seconds", 20.0) is None
                 else float(keyframe.get("max_scene_seconds", 20.0))
             ),
-            hist_threshold=float(keyframe.get("hist_threshold", 0.90)),
-            min_hist_bins=int(keyframe.get("min_hist_bins", 10)),
+            dedup_threshold=float(keyframe.get("dedup_threshold", 0.98)),
+            mmr_budget_fraction=float(keyframe.get("mmr_budget_fraction", 0.5)),
+            anchors_per_shot=int(keyframe.get("anchors_per_shot", 3)),
+            mmr_relevance_weight=float(keyframe.get("mmr_relevance_weight", 0.4)),
+             final_similarity_threshold=float(keyframe.get("final_similarity_threshold", 0.97)),
+            min_hist_bins=int(keyframe.get("min_hist_bins", 5)),
             image_quality=int(keyframe.get("image_quality", 95)),
             save_images=_as_bool(keyframe.get("save_images", True), True),
             skip_existing=_as_bool(keyframe.get("skip_existing", True), True),
+        ),
+        omni=OmniConfig(
+            weights_path=_resolve(root, omni["weights_path"]) if omni.get("weights_path") else None,
+            cache_dir=_resolve(root, omni.get("cache_dir", "weights/omni")),
+            overlap=int(omni.get("overlap", 10)),
+            decode_batch_size=int(omni.get("decode_batch_size", 8)),
+            skip_existing=_as_bool(omni.get("skip_existing", True), True),
         ),
     )

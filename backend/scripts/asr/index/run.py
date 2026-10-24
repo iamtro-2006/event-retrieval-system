@@ -28,13 +28,13 @@ def load_config(dataset: str) -> dict:
         raise ValueError(f"Unknown dataset '{dataset}'. Available: {sorted(available)}")
     spec = available[dataset]
     cfg["elasticsearch"]["index"] = spec["asr_index"]
-    cfg.setdefault("dataset", {})["root"] = str(Path(spec["root"]) / "asr")
+    cfg.setdefault("dataset", {})["root"] = str(Path(spec["root"]) / "asr" / dataset.upper())
     return cfg
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build an isolated ASR index for AIC or CAM")
-    parser.add_argument("--dataset", choices=["aic", "cam"], required=True)
+    parser = argparse.ArgumentParser(description="Build an isolated ASR index for V3C or LHE")
+    parser.add_argument("--dataset", choices=["v3c", "lhe"], required=True)
     args = parser.parse_args()
     cfg = load_config(args.dataset)
     es_cfg = cfg["elasticsearch"]

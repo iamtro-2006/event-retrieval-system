@@ -31,9 +31,41 @@ def _histogram(frame: np.ndarray, min_bins: int) -> np.ndarray | None:
     return cv2.normalize(hist, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX).flatten()
 
 
-def histogram_dedup(video_path: Path, frame_indexes: list[int], threshold: float, min_bins: int) -> list[int]:
+class EmbeddingDeduplicator:
+    """Chronological cosine dedup against all accepted candidates, on CPU or CUDA.
+
+    Call accept only AFTER the flat-color filter, so a rejected flat frame cannot
+    suppress a later valid frame with a similar embedding.
+    """
+    def __init__(self, features: np.ndarray, frame_indexes: list[int], threshold: float = .98, device='cpu'):
+        import torch
+        import torch.nn.functional as F
+        if not np.isfinite(threshold) or not 0 <= threshold <= 1:
+            raise ValueError('Embedding dedup threshold must be in [0,1]')
+        values = np.asarray(features,dtype=np.float32)
+        if values.ndim != 2 or len(values) != len(frame_indexes) or not np.isfinite(values).all():
+            raise ValueError('Candidate embeddings must be finite and aligned with frame indexes')
+        if frame_indexes != sorted(set(frame_indexes)):
+            raise ValueError('Dedup candidates must be sorted and unique')
+        self.vectors = F.normalize(torch.as_tensor(values,device=device),dim=1)
+        self.kept = torch.empty_like(self.vectors)
+        self.rows = {index:row for row,index in enumerate(frame_indexes)}
+        self.count = 0
+        self.threshold = threshold
+
+    def accept(self, frame_index: int) -> bool:
+        vector = self.vectors[self.rows[frame_index]]
+        if self.count and bool((self.kept[:self.count] @ vector > self.threshold).any()):
+            return False
+        self.kept[self.count] = vector
+        self.count += 1
+        return True
+
+
+def embedding_dedup(video_path: Path, frame_indexes: list[int], features: np.ndarray,
+                    threshold: float, min_bins: int) -> list[int]:
     keep: list[int] = []
-    keep_hists: list[np.ndarray] = []
+    dedup = EmbeddingDeduplicator(features,frame_indexes,threshold)
 
     for idx in frame_indexes:
         frame = read_frame(video_path, idx)
@@ -43,16 +75,8 @@ def histogram_dedup(video_path: Path, frame_indexes: list[int], threshold: float
         if hist is None:
             continue
 
-        duplicate = False
-        for kept_hist in keep_hists:
-            denom = np.linalg.norm(hist) * np.linalg.norm(kept_hist)
-            sim = float(np.dot(hist, kept_hist) / denom) if denom > 0 else 0.0
-            if sim > threshold:
-                duplicate = True
-                break
-        if not duplicate:
+        if dedup.accept(idx):
             keep.append(idx)
-            keep_hists.append(hist)
 
     return sorted(keep)
 
@@ -63,7 +87,7 @@ def extract_keyframe_indexes(
     features: np.ndarray,
     min_scene_frames: int,
     max_gap: int,
-    hist_threshold: float,
+    dedup_threshold: float,
     min_hist_bins: int,
     logger: logging.Logger | None = None,
     max_scene_seconds: float | None = None,
@@ -87,21 +111,28 @@ def extract_keyframe_indexes(
         local = select_cluster_keyframes(sub, min_scene_frames)
         selected.extend([start + idx for idx in local])
 
-    deduped = histogram_dedup(video_path, sorted(set(selected)), hist_threshold, min_hist_bins)
+    candidates = sorted(set(selected))
+    deduped = embedding_dedup(video_path,candidates,features[candidates],dedup_threshold,min_hist_bins)
     if logger:
         logger.info("Selected keyframes: %s before_dedup=%d after_dedup=%d", video_path.name, len(set(selected)), len(deduped))
     return deduped
 
 
-def save_keyframe_map(indexes: list[int], video_path: Path, csv_path: Path) -> None:
+def save_keyframe_map(indexes: list[int], video_path: Path, csv_path: Path,
+                      fps: float | None = None, timestamps: np.ndarray | None = None) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    fps = get_video_fps(video_path)
+    fps = get_video_fps(video_path) if fps is None else fps
+    if not np.isfinite(fps) or fps <= 0:
+        raise ValueError('Original video FPS must be positive')
+    times = [idx/fps for idx in indexes] if timestamps is None else np.asarray(timestamps,dtype=np.float64)
+    if len(times) != len(indexes) or not np.isfinite(times).all():
+        raise ValueError('Keyframe timestamps must align with source frame indexes')
     pd.DataFrame(
         {
             "keyframe_id": list(range(len(indexes))),
             "video_id": video_path.stem,
             "frame_idx": indexes,
-            "timestamp_sec": [idx / fps if fps > 0 else 0.0 for idx in indexes],
+            "timestamp_sec": times,
             "fps": [fps] * len(indexes),
         }
     ).to_csv(csv_path, index=False)

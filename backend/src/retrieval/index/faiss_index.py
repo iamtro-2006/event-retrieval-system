@@ -53,7 +53,7 @@ METADATA_DISPLAY_COLUMNS = (
     "keyframe_path",
 )
 
-# AIC/CAM build separate FaissIndex objects because each dataset has its own
+# V3C/LHE build separate FaissIndex objects because each dataset has its own
 # index, metadata and vector cache. The encoder itself is independent of those
 # files, so keep one loaded encoder per effective model configuration.
 _MODEL_CACHE: dict[str, object] = {}

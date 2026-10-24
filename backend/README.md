@@ -4,11 +4,11 @@ FastAPI phục vụ tìm kiếm video theo nội dung hình ảnh (semantic), ch
 
 ## Điểm vào và cấu hình
 
-- `src/api/main.py` tạo ASGI `app`, nạp `CONFIG_PATH` (mặc định `configs/app.yaml`) trong lifespan, tạo `RetrievalSystem` cho V3C và lưu vào `app.state`. `main.py` ở gốc backend re-export cùng app.
+- `src/api/main.py` tạo ASGI `app`, nạp `CONFIG_PATH` (mặc định `configs/app.yaml`) trong lifespan, tạo `RetrievalSystem` riêng cho V3C và LHE rồi lưu vào `app.state`. `main.py` ở gốc backend re-export cùng app.
 - `configs/app.yaml` định nghĩa dataset, model semantic đang bật, index, media roots và tính năng runtime. `configs/ocr_extraction.yaml` và `configs/asr_extraction.yaml` được nạp cho OCR/ASR lúc chạy; `embeddings.yaml`, `indexing.yaml`, `kf_extraction.yaml` phục vụ pipeline offline.
-- Media local được xếp theo loại: `../data/keyframes/V3C/`, `../data/videos/V3C/`, `../data/map_keyframes/V3C/`. API phục vụ các root này qua `/keyframes`, `/videos`, `/mapkeyframes` khi thư mục tồn tại lúc khởi động. Frontend có thể trỏ mỗi loại media sang host riêng.
+- Media local được xếp theo loại và dataset: `../data/keyframes/{V3C,LHE}/`, `../data/videos/{V3C,LHE}/`, `../data/map_keyframes/{V3C,LHE}/`. API phục vụ các root này qua `/keyframes`, `/videos`, `/mapkeyframes` khi thư mục tồn tại lúc khởi động. Frontend có thể trỏ mỗi loại media sang host riêng.
 - Một model chỉ dùng được khi `enabled`, checkpoint và index tương ứng đều sẵn sàng. API có thể khởi động khi thiếu model/index, nhưng endpoint tìm kiếm của dataset không build được sẽ trả 503. OCR/ASR phụ thuộc Elasticsearch và có thể vắng mặt.
-- `Qwen/Qwen3-VL-Embedding-2B` là model semantic ảnh/text đang bật, dùng vLLM qua server riêng. Embedding và FAISS index 2048 chiều của V3C nằm trong cây dữ liệu ở [README gốc](../README.md#cấu-trúc-dữ-liệu-v3c). OCR dùng pipeline khác.
+- `Qwen/Qwen3-VL-Embedding-2B` là model semantic ảnh/text duy nhất của cả V3C và LHE, dùng vLLM qua server riêng. Mỗi dataset có FAISS index 2048 chiều riêng; xem [README gốc](../README.md#cấu-trúc-dữ-liệu-v3c-và-lhe). OCR dùng pipeline khác.
 
 ## Cài và chạy
 
@@ -48,7 +48,7 @@ Luồng offline chính: video → keyframe → embedding → FAISS; OCR, ASR và
 - `routers/search.py` cung cấp `/api/search/semantic`, `/temporal`, `/ocr`, `/asr`, `/auto`, `/advanced` và `GET /api/search/models` với schema riêng.
 - Router khác cung cấp `/api/health`, `/api/config`, `/api/dres/login`, `/api/dres/submit`, `/api/speech/transcribe`, `/api/translate`.
 
-Router lấy hệ thống đã build từ `app.state`. Khi thay đổi response cho UI, đối chiếu `frontend/src/api/retrievalAPI.js` và `frontend/src/App.jsx`. Cấu hình hiện tại dùng dataset `v3c`.
+Router lấy hệ thống đã build từ `app.state`. Khi thay đổi response cho UI, đối chiếu `frontend/src/api/retrievalAPI.js` và `frontend/src/App.jsx`. Cấu hình hiện tại dùng `v3c` và `lhe`, mặc định `v3c`.
 
 ## Tài liệu chuyên đề
 

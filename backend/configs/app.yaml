@@ -1,7 +1,7 @@
 # Runtime config for the API (`src.api.main` -> `src.retrieval.system.build_system`).
 # Keep this file as the single source of truth for online search.
 
-# V3C uses one Qwen3-VL embedding index.
+# V3C and LHE each use one isolated Qwen3-VL vLLM embedding index.
 datasets:
   default: v3c
   available:
@@ -18,6 +18,19 @@ datasets:
       semantic_models:
         qwen3-vl-embedding-2b:
           index_dir: ../data/database/faiss_qwen3_vl_embedding_2b
+    lhe:
+      label: LHE
+      root: ../data
+      keyframes_root: ../data/keyframes
+      videos_root: ../data/videos
+      map_keyframes_root: ../data/map_keyframes
+      database_root: ../data/database
+      color_index_path: ../data/database/color_5x5_lhe.npz
+      ocr_index: ocr_lhe
+      asr_index: asr_lhe
+      semantic_models:
+        qwen3-vl-embedding-2b:
+          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_lhe
 
 # Shared model settings and fallback paths for direct tooling. The API replaces
 # index paths with each dataset's semantic_models.<model_key>.index_dir.

@@ -112,7 +112,7 @@ def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[s
             continue
         loaded = load_config(config_path)
         loaded["elasticsearch"]["index"] = spec[f"{feature}_index"]
-        loaded.setdefault("dataset", {})["root"] = str(Path(spec["root"]) / feature)
+        loaded.setdefault("dataset", {})["root"] = str(Path(spec["root"]) / feature / dataset_key.upper())
         cfg[feature] = {"cfg": loaded}
 
     cfg["dataset_key"] = dataset_key
@@ -147,7 +147,16 @@ async def lifespan(app: FastAPI):
         runtime_configs[dataset_key] = runtime_cfg
         runtime_paths[dataset_key] = LegacyPaths(REPO_ROOT, config_path, runtime_cfg)
         try:
-            systems[dataset_key] = build_system(runtime_cfg)
+            system = build_system(runtime_cfg)
+            manager = system.orchestrator.index_manager
+            indexes = [index for _, index in manager.items()] if manager else [system.orchestrator.index]
+            for index in indexes:
+                if "dataset" not in index.metadata:
+                    raise ValueError(f"Index {dataset_key} thiếu cột dataset trong metadata")
+                groups = set(index.metadata["dataset"].dropna().astype(str).str.casefold())
+                if groups != {dataset_key.casefold()}:
+                    raise ValueError(f"Index {dataset_key} chứa source groups {sorted(groups)}; cần build lại index riêng")
+            systems[dataset_key] = system
             errors[dataset_key] = None
         except Exception as exc:  # pragma: no cover - missing index/model infrastructure
             print(f"[api.main] build_system({dataset_key}) failed: {type(exc).__name__}: {exc}")

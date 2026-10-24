@@ -8,7 +8,6 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from src.keyframe_extraction.baselines import extract_kfeavi
 from src.utils.config import load_config
 
 
@@ -34,13 +33,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    if args.video is None:
-        raise SystemExit("--video is required")
+    if args.video is None and (args.method != 'vlm' or args.input_dir is None):
+        raise SystemExit("--video is required, or use --method vlm --input-dir")
 
-    video = args.video.resolve()
+    video = args.video.resolve() if args.video else None
     output_dir = args.output_dir.resolve()
-    image_dir = output_dir / "keyframes" / video.parent.name / video.stem
-    map_path = output_dir / "map_keyframes" / video.parent.name / f"{video.stem}.csv"
 
     if args.method == "distribution":
         # Keep the statistically strongest pipeline as the single distribution entrypoint.
@@ -60,6 +57,9 @@ def main() -> None:
         return
 
     if args.method == "kfeavi":
+        from src.keyframe_extraction.baselines import extract_kfeavi
+        image_dir = output_dir / "keyframes" / video.parent.name / video.stem
+        map_path = output_dir / "map_keyframes" / video.parent.name / f"{video.stem}.csv"
         if map_path.exists() and not args.overwrite:
             raise SystemExit(f"Output exists; use --overwrite: {map_path}")
         if args.overwrite and image_dir.exists():
@@ -80,10 +80,14 @@ def main() -> None:
     elif args.video is not None:
         cfg.paths.input_dir = video.parent
     cfg.paths.output_dir = output_dir
+    if args.overwrite:
+        cfg.omni.skip_existing = False
+        cfg.embedding.skip_existing = False
+        cfg.keyframe.skip_existing = False
 
     from src.keyframe_extraction.pipeline.extract_keyframes import KeyframeExtractionPipeline
 
-    KeyframeExtractionPipeline(cfg).run()
+    KeyframeExtractionPipeline(cfg).run(videos=[video] if video else None)
 
 
 if __name__ == "__main__":

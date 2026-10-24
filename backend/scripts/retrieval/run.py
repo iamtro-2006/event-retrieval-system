@@ -16,7 +16,7 @@ def load_yaml(path: Path) -> dict[str, object]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run retrieval-related pipelines.")
     parser.add_argument("--config", default="configs/indexing.yaml", help="Path to retrieval config YAML.")
-    parser.add_argument("--dataset", default=None, help="Physical dataset collection to build (aic or cam).")
+    parser.add_argument("--dataset", default=None, help="Physical dataset collection to build (v3c or lhe).")
     parser.add_argument("--embeddings-root", default=None, help="Override the selected dataset's embeddings input for build-index.")
     parser.add_argument("--output-dir", default=None, help="Override the selected dataset's FAISS output directory for build-index.")
     parser.add_argument("--task", choices=["build-index", "build-vector-cache"], default="build-index")
@@ -64,14 +64,37 @@ def main() -> None:
         if not models:
             raise ValueError("No enabled semantic models found in app config.")
         selected = models[0]
+        index_path = selected["index_path"]
+        cache_path = selected.get("vector_cache_path")
+        if args.dataset:
+            available = (cfg.get("datasets") or {}).get("available", {})
+            dataset_key = args.dataset.lower()
+            if dataset_key not in available:
+                raise ValueError(f"Unknown dataset '{dataset_key}'. Available datasets: {sorted(available)}")
+            model_key = selected["model_key"]
+            index_dir = available[dataset_key]["semantic_models"][model_key]["index_dir"]
+            engine = selected.get("model_extra", {}).get("engine", "vllm")
+            index_dir = str(index_dir).rstrip("/\\") + "_" + engine
+            index_path = f"{index_dir}/keyframes.faiss"
+            cache_path = f"{index_dir}/vectors_fp32.npy"
         faiss_cfg = {
-            "index_path": selected["index_path"],
-            "vector_cache_path": selected.get("vector_cache_path"),
+            "index_path": index_path,
+            "vector_cache_path": cache_path,
             "vector_cache_dtype": selected.get("vector_cache_dtype", "float32"),
         }
         model_cfg = {"normalize": selected.get("normalize", True)}
     else:
-        faiss_cfg = cfg.get("faiss", {})
+        if args.dataset:
+            available = (cfg.get("datasets") or {}).get("available", {})
+            dataset_key = args.dataset.lower()
+            if dataset_key not in available:
+                raise ValueError(f"Unknown dataset '{dataset_key}'. Available datasets: {sorted(available)}")
+            index_dir = available[dataset_key]["index"]["output_dir"]
+            faiss_cfg = {"index_path": f"{index_dir}/keyframes.faiss",
+                         "vector_cache_path": f"{index_dir}/vectors_fp32.npy",
+                         "vector_cache_dtype": "float32"}
+        else:
+            faiss_cfg = cfg.get("faiss", {})
         model_cfg = cfg.get("model", {})
 
     raw_index_path = Path(str(faiss_cfg["index_path"]).replace("\\", "/"))

@@ -10,7 +10,6 @@ import numpy as np
 import torch
 from tqdm import tqdm
 from src.utils.config import FrameLoaderConfig
-from src.embedding_extraction.models.frame_loader import build_frame_loader, iter_frame_batches
 from src.embedding_extraction.models.registry import load_model as _load_model
 
 def load_clip_model(model_name: str, pretrained: str | None, precision: str = "fp32", device_name: str = "auto", backend: str | None = None, logger: logging.Logger | None = None, **extra):
@@ -38,7 +37,21 @@ def encode_video_frames(
 	batch_size: int,
 	loader_cfg: FrameLoaderConfig,
 	logger: logging.Logger | None = None,
-) -> np.ndarray:
+	sample_plan: dict | None = None,
+	decode_batch_size: int | None = None,
+	quality_scenes: np.ndarray | None = None,
+	min_hist_bins: int = 5,
+) -> np.ndarray | dict:
+	if loader_cfg.backend == "nvdec":
+		from src.embedding_extraction.models.gpu_encoder import encode_cuda_video_frames
+		if device.type != "cuda":
+			raise ValueError("NVDEC embedding requires CUDA")
+		return encode_cuda_video_frames(model, video_path, output_path, batch_size,
+			loader_cfg.image_size or 336, sample_plan, decode_batch_size,
+			quality_scenes, min_hist_bins)
+	if sample_plan is not None:
+		raise ValueError("Timestamp-sampled embedding requires the NVDEC backend")
+	from src.embedding_extraction.models.frame_loader import build_frame_loader, iter_frame_batches
 	output_path.parent.mkdir(parents=True, exist_ok=True)
 	loader = build_frame_loader(
 		video_path=video_path,

@@ -153,7 +153,7 @@ def build(dataset: str, model: str, batch_size: int, threads: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=["aic", "cam"], required=True)
+    parser.add_argument("--dataset", choices=["aic"], required=True)
     parser.add_argument("--model", choices=list(MODELS), required=True)
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--threads", type=int, default=4)

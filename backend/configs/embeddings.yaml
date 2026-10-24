@@ -8,7 +8,7 @@ save:
   overwrite: false
   extension: ".npy"
 
-# Output: ../data/embeddings/embeddings_qwen3_vl_embedding_2b_vllm/V3C/<video>/<frame>.npy
+# Output: ../data/embeddings/embeddings_qwen3_vl_embedding_2b_vllm/{V3C,LHE}/<video>/<frame>.npy
 models:
   - key: qwen3_vl_embedding_2b
     enabled: true

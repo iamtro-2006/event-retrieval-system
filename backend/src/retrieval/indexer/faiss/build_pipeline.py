@@ -20,6 +20,7 @@ class BuildFaissIndexPipeline:
             keyframes_root=self.cfg["keyframes_root"],
             map_keyframes_root=self.cfg["map_keyframes_root"],
             collection=self.cfg.get("collection"),
+            source_groups=self.cfg.get("source_groups"),
         )
 
         self.logger.info("Embedding matrix shape: %s", matrix.shape)

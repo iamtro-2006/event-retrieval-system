@@ -15,21 +15,29 @@ logging:
   log_to_file: true
   filename: extract_keyframes.log
 
-transnet:
-  repo_dir: external/TransNetV2
-  weights_path: weights/transnetv2-pytorch-weights.pth
-  threshold: 0.5
-  batch_size: 500
-  context_frames: 25
-  device: auto
+omni:
+  weights_path: null  # pinned official OmniShotCut v1.5 checkpoint
+  cache_dir: weights/omni
+  overlap: 10
+  decode_batch_size: 8
   skip_existing: true
 
 frame_loader:
-  backend: decord
-  image_size: null
+  backend: nvdec  # T4/NVDEC; no silent CPU decode fallback
+  image_size: 336
   num_workers: 0
   pin_memory: true
   persistent_workers: false
+
+embedding:
+  model_name: PE-Core-L14-336
+  backend: perception_encoder
+  pretrained: "true"
+  batch_size: 16
+  sample_fps: 3.0  # Only embed/sample candidates inside general shots, in source timestamps.
+  device: cuda
+  precision: fp16
+  skip_existing: true
 
 keyframe:
   min_scene_frames: 3
@@ -37,8 +45,11 @@ keyframe:
   # now prefers the FPS-aware duration limit below.
   max_scene_gap_frames: 5000
   max_scene_seconds: 20.0
-  hist_threshold: 0.95
-  min_hist_bins: 10
+  mmr_budget_fraction: 0.50  # Final keyframes / clustered candidates; anchors can exceed budget.
+  anchors_per_shot: 3
+  mmr_relevance_weight: 0.40  # 0.4 representative - 0.6 similarity to selected.
+  final_similarity_threshold: 0.97  # Global PE-Core cosine dedup after MMR.
+  min_hist_bins: 5  # Reject only nearly uniform color; no dark-pixel gate.
   image_quality: 95
   save_images: true
   skip_existing: true

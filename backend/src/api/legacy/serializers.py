@@ -119,7 +119,7 @@ def resolve_keyframe_path_from_dict(item: dict[str, Any], keyframes_root: Path, 
 
     # Rebuild under the active dataset root first so stale absolute paths in
     # metadata cannot escape into another collection. Preserve the real image
-    # format instead of assuming every keyframe is a JPEG (CAM uses WebP).
+    # format instead of assuming every keyframe is a JPEG.
     if video_id:
         video_dir = keyframes_root / dataset / video_id if dataset else keyframes_root / video_id
         names = [metadata_stem, str(item.get("source_name", "") or ""), frame_id_text]
@@ -188,8 +188,11 @@ def find_video_path_from_dict(item: dict[str, Any], videos_root: Path | None = N
             return str(folder / filename).replace("\\", "/")
     if not video_id:
         return ""
-    # CAM source videos are stored as MOV when metadata lacks video_path.
+    # Older N-prefixed source videos use MOV when metadata lacks video_path.
     extension = ".mov" if video_id.upper().startswith("N") else ".mp4"
+    if videos_root is not None:
+        folder = Path(videos_root) / dataset if dataset else Path(videos_root)
+        return str(folder / f"{video_id}{extension}").replace("\\", "/")
     if dataset:
         return f"data/processed/videos/{dataset}/{video_id}{extension}"
     return f"data/processed/videos/{video_id}{extension}"
@@ -311,7 +314,7 @@ def dict_to_result_FAST(item: dict[str, Any], keyframes_root: Path, backend_dir:
     matched_texts = [str(t) for t in matched_texts_raw] if isinstance(matched_texts_raw, (list, tuple)) else []
 
     return {
-        # `dataset` is the physical index/API dataset (aic/cam). The metadata
+        # `dataset` is the physical index/API dataset (v3c/lhe). The metadata
         # row's own `dataset` value is only the source group (e.g. L22) and is
         # preserved inside `raw` for path construction and diagnostics.
         "dataset": collection,

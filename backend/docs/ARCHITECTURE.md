@@ -151,28 +151,29 @@ trong `scripts/`.
 **Output:** danh sách file ảnh keyframe (`data/processed/keyframes/<video_id>/*.jpg`)
 + 1 file `map_keyframes/<video_id>.csv` map `keyframe_id -> frame_idx, timestamp_sec, fps`.
 
-Thuật toán (mã giả, xem `models/detector.py` + `models/clustering.py` +
-`models/selector.py`):
+Thuật toán VLM (mã giả, xem `models/omni_detector.py`, `models/clustering.py`,
+`models/selector.py` và đường CUDA trong `models/gpu_selection.py`):
 
 ```
-detect_scenes(video):
-    frames = decode_video(video)                 # decord/ffmpeg
-    predictions = TransNetV2(frames)              # xác suất "frame là ranh giới scene"
-    scenes = predictions_to_scenes(predictions, threshold)
-    scenes = split_large_scenes(scenes, max_gap)  # scene quá dài -> chia nhỏ thêm
+scenes = merge_subsecond_shots(OmniShotCut(video).general_ranges_inclusive())
+plan = sample_general_shots_by_pts(scenes, sample_fps=3, max_seconds=20)
+plan, features, kept_scenes = quality_and_PE_Core_L_one_nvdec_pass(video, plan)
+candidate_indexes = []
 
-for each scene:
-    features = CNN_features(frames_in_scene)      # đặc trưng thị giác thô, dùng cho cluster
-    centroids = init_centroids(features)           # k-means init
-    cluster_ids = select_cluster_keyframes(features, min_frames=3)
-    candidate_indexes = 1 frame đại diện / cluster
+for sample_start, sample_end in plan.sample_ranges:
+    local = features[sample_start:sample_end + 1]
+    indexes = select_cluster_keyframes(local, min_frames=3)
+    candidate_indexes.extend(plan.frame_indexes[sample_start + indexes])
 
-    # loại các keyframe gần giống nhau về mặt histogram màu
-    final_indexes = histogram_dedup(video_path, candidate_indexes, threshold, min_bins)
+mmr_indexes = select_shot_mmr(candidate_indexes, candidate_features, kept_scenes)
+final_indexes = dedup_selected_keyframes(mmr_indexes, PE_embeddings, sharpness,
+                                         threshold=.97, novelty_weight=.6)
 
-save_keyframe_images(final_indexes, video_path, output_dir, image_quality)
-save_keyframe_map(final_indexes, video_path, csv_path)
+export_selected_cuda(video, final_indexes, output_dir, image_quality)
+save_keyframe_map(final_indexes, video_path, csv_path, timestamps=source_pts)
 ```
+
+VLM dùng OmniShotCut v1.5 thay TransNetV2 và PE-Core-L14-336 lấy mẫu 3 FPS. Mọi shot ngắn dưới 1 giây được gộp với shot kế bên; shot toàn mẫu đồng màu (<=5 bin) bị bỏ, shot trượt các gate khác giữ mẫu không đồng màu tốt nhất. Clustering và shot MMR chọn keyframe, sau đó xử lý các cặp cosine >0,97 theo độ mới so với keyframe lân cận (60%) và độ nét (40%) đã lưu từ quality gate. Đường NVDEC chạy decode/preprocess/inference/quality/JPEG encode trên GPU với bộ đệm hữu hạn; ghi file/ZIP/upload vẫn dùng CPU. Notebook và giới hạn được mô tả trong [notebooks/README.md](../notebooks/README.md).
 
 Điều phối bởi `KeyframeExtractionPipeline` (`pipeline/extract_keyframes.py`),
 config ở `configs/kf_extraction.yaml`. Chạy: `python scripts/keyframe_extraction/run.py`.
@@ -708,8 +709,8 @@ không phải suy đoán — cộng với quan sát cấu trúc thư mục:
    `configs/asr_extraction.yaml`; cần kiểm tra kết nối Elasticsearch khi triển khai.
 6. **README con lỗi thời đã được bỏ**; xem `README.md` cho bản đồ
    module hiện tại.
-7. **Test coverage chưa đầy đủ.** Đã có test cạnh module và mock UI scenarios,
-   nhưng vẫn thiếu integration test end-to-end với index/model thật.
+7. **Chưa có bộ test tự động trong repo sau đợt dọn dẹp này.** Khi thay
+   pipeline hoặc runtime GPU, cần kiểm tra trên dữ liệu thật trước khi dùng output.
 
 ---
 

@@ -162,15 +162,20 @@ def build_matrix_and_metadata(
 	keyframes_root: str | Path,
 	map_keyframes_root: str | Path,
 	collection: str | None = None,
+	source_groups: list[str] | None = None,
 ):
 	embeddings_root = Path(embeddings_root)
 	keyframes_root = Path(keyframes_root)
 	map_root = Path(map_keyframes_root)
 
 	embedding_paths = collect_embedding_files(embeddings_root)
+	if source_groups:
+		allowed = {group.casefold() for group in source_groups}
+		embedding_paths = [path for path in embedding_paths
+			if path.relative_to(embeddings_root).parts[0].casefold() in allowed]
 
 	if not embedding_paths:
-		raise RuntimeError(f"No embedding files found in: {embeddings_root}")
+		raise RuntimeError(f"No embedding files found in: {embeddings_root} for source groups {source_groups}")
 
 	vectors = []
 	records = []
