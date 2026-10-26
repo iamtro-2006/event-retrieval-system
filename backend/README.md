@@ -1,5 +1,7 @@
 # Backend
 
+Để test UI/chat/tool mà không tải model, dùng [mock server + Codex](docs/MOCK_SERVER.md) trên cổng 8001. Điểm vào độc lập: `mock_server:app`. Dùng `requirements-mock.txt` và môi trường `.venv-mock`; không cần cài dependencies GPU. Codex hiện chưa gọi `RetrievalSystem` và chưa có bộ skill nghiệp vụ. Hướng dẫn clone/chạy trên máy khác, model/effort và kiểm thử nằm trong tài liệu trên.
+
 FastAPI phục vụ tìm kiếm video theo nội dung hình ảnh (semantic), chuỗi sự kiện (temporal), chữ trong khung hình (OCR), lời thoại (ASR), cùng fusion, color, multimodal và DRES. Ví dụ lệnh dưới đây bắt đầu ở gốc repo và chuyển vào `backend/`.
 
 ## Điểm vào và cấu hình
@@ -52,6 +54,15 @@ Router lấy hệ thống đã build từ `app.state`. Khi thay đổi response 
 
 ## Tài liệu chuyên đề
 
-- [ARCHITECTURE.md](ARCHITECTURE.md): giải thích sâu thiết kế/pipeline; đối chiếu code hiện tại trước khi sửa.
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md): giải thích sâu thiết kế/pipeline; đối chiếu code hiện tại trước khi sửa.
 - [PIPELINE_GUIDE.md](docs/PIPELINE_GUIDE.md): chuẩn bị dữ liệu và build index.
 - [PE-Core](docs/PE_CORE.md) và [God Mode relay](docs/GODMODE_RELAY.md): hướng dẫn phần mở rộng.
+
+## Metadata cho trình phát video
+
+`GET /api/video-keyframes` lấy ảnh và thời gian từ metadata FAISS của đúng dataset,
+trả thêm `image_url`, `image_rel_path`, `fps` và chỉ số keyframe để FE dựng dải ảnh.
+`keyframe_id` là chỉ số ảnh sparse; `frame_idx` là frame thật trong video. Helper
+contract ở `src/api/legacy/video_keyframes.py`; serializer media hiện có vẫn tạo
+đường dẫn tương đối theo root dataset. Không đọc CSV ở FE và không sửa thuật toán
+retrieval. Mock có cùng contract, dùng CSV dưới `MOCK_DATA_ROOT` khi có mapping.

@@ -32,6 +32,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from src.api.legacy.deps import get_dataset_resources
 from src.api.legacy.paths import LegacyPaths
+from src.api.legacy.video_keyframes import build_video_keyframes
 from src.api.legacy.serializers import (
     dict_to_result_FAST,
     find_metadata_row,
@@ -254,27 +255,15 @@ async def get_video_keyframes(
     dataset: str,
     request: Request,
 ):
-    """Return every indexed keyframe timestamp for a video for timeline overlays."""
-    system, _cfg, _paths = get_dataset_resources(request, dataset)
+    """Return ordered keyframe identities, image URLs and playback timestamps."""
+    system, _cfg, paths = get_dataset_resources(request, dataset)
     clip_index = system.orchestrator.index
     def _fetch():
         rows = clip_index.metadata[clip_index.metadata["video_id"].astype(str) == str(video_id)]
         if rows.empty:
             raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
-        items = []
-        for _, row in rows.iterrows():
-            fps = pd.to_numeric(row.get("fps", 0), errors="coerce")
-            frame_idx = pd.to_numeric(row.get("frame_idx", row.get("frame_id", 0)), errors="coerce")
-            timestamp = pd.to_numeric(row.get("timestamp_sec", row.get("timestamp", 0)), errors="coerce")
-            if (pd.isna(timestamp) or float(timestamp) < 0) and not pd.isna(fps) and float(fps) > 0 and not pd.isna(frame_idx):
-                timestamp = float(frame_idx) / float(fps)
-            if pd.isna(timestamp):
-                continue
-            items.append({
-                "keyframe_id": str(row.get("keyframe_id", row.get("keyframe_id_int", ""))),
-                "frame_idx": int(frame_idx) if not pd.isna(frame_idx) else None,
-                "timestamp": float(timestamp),
-            })
+        items = build_video_keyframes(rows.to_dict(orient="records"), lambda record:
+            dict_to_result_FAST(record, paths.keyframes_root, paths.backend_dir, paths.dataset_key))
         return {"video_id": str(video_id), "keyframes": items}
     return await run_in_threadpool(_fetch)
 
@@ -726,8 +715,9 @@ async def get_surrounding_frames(
     dataset: str,
     request: Request,
     radius: int = 10,
+    all_frames: bool = False,
 ):
-    """Retrieve a sequence of frames surrounding a target keyframe."""
+    """Return neighbors, or the complete ordered keyframe list for browsing."""
     system, _cfg, paths = get_dataset_resources(request, dataset)
     clip_index = system.orchestrator.index
 
@@ -760,7 +750,7 @@ async def get_surrounding_frames(
         start_pos = max(0, center_pos - radius_val)
         end_pos = min(len(video_df), center_pos + radius_val + 1)
 
-        surrounding_df = video_df.iloc[start_pos:end_pos]
+        surrounding_df = video_df if all_frames else video_df.iloc[start_pos:end_pos]
         records = surrounding_df.to_dict(orient="records")
 
         frames = []
@@ -776,6 +766,7 @@ async def get_surrounding_frames(
     return {
         "video_id": video_id, "center_frame_id": int(keyframe_id),
         "radius": r_val, "count": len(frames_result), "frames": frames_result,
+        "all_frames": all_frames,
     }
 
 

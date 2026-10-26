@@ -1,5 +1,9 @@
 # Backend Architecture — Event Retrieval System
 
+> Phạm vi: tài liệu này mô tả backend retrieval thật (`main:app` / `src.api.main:app`,
+> cổng 8000). Mock server và agent Codex chạy riêng ở cổng 8001, chưa nối vào pipeline
+> retrieval. Xem [MOCK_SERVER.md](MOCK_SERVER.md) cho kiến trúc và cách chạy phần đó.
+
 **Tài liệu handover kỹ thuật chi tiết.** README.md ở root là bản tóm tắt
 "đọc trong 5 phút"; tài liệu này là bản đầy đủ để một team mới có thể tiếp
 quản, sửa bug, và mở rộng hệ thống mà không cần hỏi lại người viết ban đầu.

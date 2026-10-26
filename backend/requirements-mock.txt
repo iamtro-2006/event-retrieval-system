@@ -1,0 +1,6 @@
+# Standalone mock + Codex bridge; no torch/FAISS/Elasticsearch required.
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+pydantic>=2.9,<3
+pillow>=10,<13
+python-multipart>=0.0.18,<1
