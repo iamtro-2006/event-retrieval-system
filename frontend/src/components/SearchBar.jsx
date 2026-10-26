@@ -1,9 +1,11 @@
-import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette, ChevronDown, Check } from "lucide-react";
+import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette, ChevronDown, Check, Square, ArrowUp } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import FusionSettingsModal from "./FusionSettingsModal";
+import AgentReasoningPicker from "./AgentReasoningPicker";
+import "./SearchBar.css";
 import { SEARCH_MODES, resolveSearchMode } from "../config/searchModes";
 
-function SearchPicker({ kind, label, value, options, onChange }) {
+function SearchPicker({ kind, label, value, options, onChange, disabled = false }) {
   const [open, setOpen] = useState(false);
   const hostRef = useRef(null);
 
@@ -35,6 +37,7 @@ function SearchPicker({ kind, label, value, options, onChange }) {
         aria-label={`${label}: ${selected?.label ?? value}`}
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => setOpen((current) => !current)}
       >
         <span>{selected?.label ?? value}</span>
@@ -73,6 +76,12 @@ export default function SearchBar({
   disabled = false,
   durationLimit = -1,
   reasoningEnabled = false,
+  agentAvailable = false,
+  agentConfig,
+  contextFrameCount = 0,
+  colorSelectionCount = 0,
+  onClearContext,
+  onStop,
   availableModels = [],
   semanticModelRoles,
   fusionConfig,
@@ -89,17 +98,11 @@ export default function SearchBar({
   onInsertClauseImages,
   onOpenColorSearch,
   onRemoveClauseImage,
-  expandedByDefault = false,
   onSearch,
 }) {
   const [recording, setRecording] = useState(false);
   const [fusionModalOpen, setFusionModalOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
-  // The home composer starts expanded; the bottom composer starts compact
-  // and expands only when the query wraps past the normal height.
-  const [isExpanded, setIsExpanded] = useState(expandedByDefault);
-  const expandedRef = useRef(expandedByDefault);
-
   // The backend is the only source of truth for loaded indexes. Never show
   // guessed/fallback model keys because selecting one produces an invalid
   // model_key for the active dataset.
@@ -116,47 +119,16 @@ export default function SearchBar({
   const isFusion = mode === "fusion";
   const isColor = mode === "color";
   const activeModeLabel = SEARCH_MODES.find((item) => item.key === mode)?.label ?? "Semantic";
-  const searchPlaceholder = `${activeModeLabel} Search`;
+  const searchPlaceholder = reasoningEnabled ? "Ask the assistant or describe what to find…" : `${activeModeLabel} Search`;
   const hasQueryImages = clauseImages.some((items) => items.length > 0);
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
-      // Measure against the collapsed 40px textarea rather than using a
-      // character-count heuristic. A short query can wrap on a narrow
-      // viewport, while a long query may still fit on a wide one.
-      const probe = el.cloneNode(true);
-      probe.style.position = "absolute";
-      probe.style.visibility = "hidden";
-      probe.style.pointerEvents = "none";
-      probe.style.left = "-100000px";
-      probe.style.top = "0";
-      probe.style.width = `${Math.max(1, el.clientWidth)}px`;
-      probe.style.height = "40px";
-      probe.style.minHeight = "40px";
-      probe.style.maxHeight = "40px";
-      probe.style.overflow = "hidden";
-      probe.style.whiteSpace = "pre-wrap";
-      probe.value = el.value;
-      document.body.appendChild(probe);
-      const shouldExpand = probe.scrollHeight > 40 || query.includes("\n");
-      probe.remove();
-
-      // Do not measure the expanded layout and immediately collapse it again:
-      // the expanded textarea is wider, so the same text can fit on one line
-      // after expansion and create an expand/collapse feedback loop.
-      if (!expandedRef.current && shouldExpand) {
-        expandedRef.current = true;
-        setIsExpanded(true);
-      } else if (expandedRef.current && !query.trim()) {
-        expandedRef.current = false;
-        setIsExpanded(false);
-      }
-
       el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+      el.style.height = `${Math.min(el.scrollHeight, 92)}px`;
     });
-  }, [query]);
+  }, []);
 
   useEffect(() => {
     resizeTextarea();
@@ -167,16 +139,16 @@ export default function SearchBar({
   }, []);
 
   function runSearch(nextQuery) {
-    if (isColor) { onOpenColorSearch?.(); return; }
-    const cleanQuery = String(nextQuery || "").trim();
+    if (isColor && !reasoningEnabled && !colorSelectionCount) { onOpenColorSearch?.(); return; }
+    const cleanQuery = String(nextQuery || "").trim() || (isColor && !reasoningEnabled ? "Search selected colors" : "");
     if ((!cleanQuery && !hasQueryImages) || loading || disabled) return;
-    const searchMode = resolveSearchMode(mode);
+    const searchMode = reasoningEnabled ? "auto" : resolveSearchMode(mode);
     onSearch({
       query: cleanQuery,
       searchMode,
       durationLimit: searchMode === "temporal" ? Number(durationLimit) : -1,
       fusionConfig: searchMode === "fusion" ? fusionConfig : null,
-      reasoning: false,
+      reasoning: reasoningEnabled,
     });
   }
 
@@ -255,6 +227,11 @@ export default function SearchBar({
   }
 
   function handleKeyDown(e) {
+    if (e.nativeEvent?.isComposing) return;
+    if (reasoningEnabled) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+      return;
+    }
     const noCommandModifier = !e.ctrlKey && !e.metaKey && !e.altKey;
     const addSemantic = e.shiftKey && noCommandModifier && (
       e.key === "+" || e.key === ":" || e.code === "Equal"
@@ -355,15 +332,20 @@ export default function SearchBar({
       className={[
         "search-wrapper",
         loading ? "searching-active" : "",
-        isExpanded || hasQueryImages ? "expanded" : "",
+        "expanded",
         recording ? "voice-recording-active" : "",
       ].filter(Boolean).join(" ")}
       onSubmit={handleSubmit}
     >
       <div className="search-inner">
+        {isColor && colorSelectionCount > 0 && <div className="composer-context-chip">{colorSelectionCount}/25 color cells
+          <button type="button" onClick={onOpenColorSearch}>Edit canvas</button></div>}
+        {contextFrameCount > 0 && <div className="composer-context-chip">{contextFrameCount} frames attached
+          <button type="button" onClick={onClearContext} aria-label="Remove frame context"><X size={12} /></button></div>}
         {!hasQueryImages ? <textarea
           ref={textareaRef}
           className="search-chat-textarea"
+          aria-label="Main search"
           value={query}
           rows={1}
           placeholder={
@@ -424,97 +406,102 @@ export default function SearchBar({
 
         <div className="search-chat-footer">
           <input ref={fileInputRef} className="query-image-input" type="file" accept="image/*" multiple
-
             onChange={(event) => { insertFiles(event.target.files); event.target.value = ""; }} />
           <div className="search-add-menu-host">
-          <button type="button" className="search-icon-button" aria-label="Add image or color canvas"
-            aria-expanded={addMenuOpen} title="Add query input" onClick={() => setAddMenuOpen((value) => !value)}>
-            <Plus size={20} />
-          </button>
-          {addMenuOpen && <div className="search-add-menu" role="menu">
-            <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }}>
-              <ImagePlus size={16} /><span>Image query</span>
+            <button type="button" className="search-icon-button" aria-label="Add image or color canvas"
+              aria-expanded={addMenuOpen} title="Add query input" onClick={() => setAddMenuOpen((value) => !value)}>
+              <Plus size={20} />
             </button>
-            <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); onOpenColorSearch?.(); }}>
-              <Palette size={16} /><span>Colour canvas</span>
-            </button>
-          </div>}
+            {addMenuOpen && <div className="search-add-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }}>
+                <ImagePlus size={16} /><span>Image query</span>
+              </button>
+              <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); onOpenColorSearch?.(); }}>
+                <Palette size={16} /><span>Colour canvas</span>
+              </button>
+            </div>}
           </div>
 
           <div className="search-chat-controls">
-            {!isFusion && modelOptions.length > 0 && (
-              <SearchPicker kind="model" label="Model" value={model}
-                options={modelOptions.map((modelKey) => ({ value: modelKey, label: modelKey }))}
-                onChange={onModelChange} />
-            )}
-
-            <SearchPicker kind="mode" label="Search mode" value={mode}
-              options={SEARCH_MODES.map(({ key, label, shortcut }) => ({ value: key, label, shortcut }))}
-              onChange={onModeChange} />
-
-            {isTemporal && (
-              <input
-                className="search-duration-input"
-                type="number"
-                value={durationLimit}
-                min={-1}
-                step={1}
-                title="-1 searches the entire video; values above 0 limit the duration in seconds"
-                onChange={(e) => onDurationLimitChange?.(Number(e.target.value))}
-              />
-            )}
-
-            {/* ── LLM reasoning toggle ─────────────────────────────────── */}
-            {(
+            <div className="composer-options">
               <button
                 type="button"
                 className={["rerank-tag", reasoningEnabled ? "rerank-tag--active" : ""].filter(Boolean).join(" ")}
                 aria-label={reasoningEnabled ? "Disable Reasoning" : "Enable Reasoning"}
                 title={
                   reasoningEnabled
-                    ? "Reasoning preview is enabled but is not connected to the search pipeline"
-                    : "Reasoning preview is currently display-only"
+                    ? "Assistant uses tools to search and inspect frames"
+                    : "Enable assistant chat and tool use"
                 }
                 onClick={() => onReasoningToggle?.(!reasoningEnabled)}
-                disabled={disabled}
+                aria-pressed={reasoningEnabled}
+                disabled={disabled || !agentAvailable || loading}
               >
                 <Zap size={13} />
                 <span>Reasoning</span>
               </button>
-            )}
 
-            {isFusion && (
+              {!reasoningEnabled && !isFusion && modelOptions.length > 0 && (
+                <SearchPicker kind="model" label="Model" value={model}
+                  options={modelOptions.map((modelKey) => ({ value: modelKey, label: modelKey }))}
+                  onChange={onModelChange} />
+              )}
+
+              {!reasoningEnabled && <SearchPicker kind="mode" label="Search mode" value={mode}
+                options={SEARCH_MODES.map(({ key, label, shortcut }) => ({ value: key, label, shortcut }))}
+                onChange={onModeChange} />}
+
+              {!reasoningEnabled && isTemporal && (
+                <input
+                  className="search-duration-input"
+                  type="number"
+                  value={durationLimit}
+                  min={-1}
+                  step={1}
+                  title="-1 searches the entire video; values above 0 limit the duration in seconds"
+                  onChange={(e) => onDurationLimitChange?.(Number(e.target.value))}
+                />
+              )}
+
+              {reasoningEnabled && agentConfig && <AgentReasoningPicker config={agentConfig} disabled={loading} />}
+
+              {!reasoningEnabled && isFusion && (
+                <button
+                  type="button"
+                  className={["search-icon-button", "fusion-settings-btn", fusionConfig?.hasConfig ? "has-config" : ""].filter(Boolean).join(" ")}
+                  aria-label="Configure Fusion search"
+                  title="Configure models, methods, and weights for Fusion search"
+                  onClick={() => setFusionModalOpen(true)}
+                  disabled={disabled}
+                >
+                  <Settings2 size={18} />
+                </button>
+              )}
+
+            </div>
+            <div className="composer-actions">
               <button
                 type="button"
-                className={["search-icon-button", "fusion-settings-btn", fusionConfig?.hasConfig ? "has-config" : ""].filter(Boolean).join(" ")}
-                aria-label="Configure Fusion search"
-                title="Configure models, methods, and weights for Fusion search"
-                onClick={() => setFusionModalOpen(true)}
+                className={["search-icon-button", "mic-button", recording ? "recording" : ""].filter(Boolean).join(" ")}
+                aria-label={recording ? "Stop voice search" : "Voice search"}
+                onClick={handleMicClick}
                 disabled={disabled}
               >
-                <Settings2 size={18} />
+                <Mic size={18} />
+                {recording && <span className="mic-live-dot" />}
               </button>
-            )}
 
-            <button
-              type="button"
-              className={["search-icon-button", "mic-button", recording ? "recording" : ""].filter(Boolean).join(" ")}
-              aria-label={recording ? "Stop voice search" : "Voice search"}
-              onClick={handleMicClick}
-              disabled={disabled}
-            >
-              <Mic size={18} />
-              {recording && <span className="mic-live-dot" />}
-            </button>
-
-            <button
-              type="submit"
-              className="search-submit"
-              disabled={loading || disabled || (!isColor && !query.trim() && !hasQueryImages)}
-              aria-label="Search"
-            >
-              <Search size={18} />
-            </button>
+              <button
+                type={loading ? "button" : "submit"}
+                className={`search-submit${loading ? " is-stop" : ""}`}
+                onClick={loading ? onStop : undefined}
+                disabled={!loading && (disabled || ((reasoningEnabled || !isColor) && !query.trim() && !hasQueryImages))}
+                aria-label={loading ? "Stop current run" : reasoningEnabled ? "Send to assistant" : "Search"}
+                title={loading ? "Stop current run" : reasoningEnabled ? "Send message" : "Search"}
+              >
+                {loading ? <Square size={15} fill="currentColor" /> : reasoningEnabled ? <ArrowUp size={19} /> : <Search size={18} />}
+              </button>
+            </div>
           </div>
         </div>
       </div>

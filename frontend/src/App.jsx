@@ -9,6 +9,8 @@ import {
   useTransition,
 } from "react";
 import Sidebar from "./components/Sidebar";
+import AgentChat from "./components/AgentChat";
+import { selectAgentSettings } from "./utils/agentModels";
 import { VideoFilterProvider, VideoFilterBar, useVideoFilter } from "./components/VideoFilter";
 import SearchBar from "./components/SearchBar";
 import ResultToolbar from "./components/ResultToolbar";
@@ -63,6 +65,10 @@ const DEFAULT_SIMILAR_MODAL = Object.freeze({
 
 function getErrorMessage(error, fallback = "Unexpected error") {
   return error?.message || String(error || fallback);
+}
+
+function focusMainComposer() {
+  requestAnimationFrame(() => document.querySelector(".search-wrapper textarea, .search-wrapper .inline-query-text-input")?.focus());
 }
 
 function toSubmissionItem(result, dataset) {
@@ -122,8 +128,10 @@ function RetrievalApp() {
   const defaultSubmission = useMemo(() => getDefaultSubmissionSettings(), []);
   const defaultGodModeEndpoint = useMemo(() => getGodModeEndpoint(), []);
   const searchIdRef = useRef(0);
+  const agentControllerRef = useRef(null);
   const toastTimersRef = useRef(new Map());
   const surroundReqRef = useRef(0);
+  const surroundCacheRef = useRef(new Map());
   const similarReqRef = useRef(0);
   const rerankRunRef = useRef(0);
   const resultListRef = useRef(null);
@@ -160,6 +168,14 @@ function RetrievalApp() {
   const [columns, setColumns] = useState(4);
   const [grouped, setGrouped] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [mockServer, setMockServer] = useState(false);
+  const [agentAvailable, setAgentAvailable] = useState(false);
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [agentEpoch, setAgentEpoch] = useState(0);
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const [agentSettings, setAgentSettings] = useState({ provider: "codex", model: "", reasoningEffort: "", workers: 3 });
+  const [agentConnection, setAgentConnection] = useState({ models: [], checking: false });
+  const [agentContextIds, setAgentContextIds] = useState([]);
 
   // ── Modal state ───────────────────────────────────────
   const [surroundModal, setSurroundModal] = useState(DEFAULT_SURROUND_MODAL);
@@ -220,14 +236,56 @@ function RetrievalApp() {
     latency,
     count,
     lastQuery,
-    loading,
+    loading: retrievalLoading,
     error,
     search,
     searchMultimodal,
     searchWithFusion,
     searchByColor,
+    applyExternalResults,
+    cancel: cancelSearch,
     reset,
   } = useRetrievalSearch();
+  const loading = retrievalLoading || agentBusy;
+
+  const handleAgentResults = useCallback((rows, chatQuery) => {
+    setSelected(null);
+    setRerankResultsData(null);
+    setGroupSearchOverrides({});
+    setGodModeResults([]);
+    startTransition(() => applyExternalResults(normalizeResults(rows, settings.dataset), chatQuery));
+  }, [applyExternalResults, settings.dataset]);
+
+  const handleAgentBusy = useCallback((value) => {
+    setAgentBusy(value);
+    if (value) {
+      rerankRunRef.current += 1;
+      setReranking(false);
+      setRerankResultsData(null);
+    }
+  }, []);
+
+  const handleNewAgentChat = useCallback(() => {
+    setAgentContextIds([]);
+    applyExternalResults([], "");
+    setRerankResultsData(null);
+    setSelected(null);
+  }, [applyExternalResults]);
+
+  const handleAgentConnection = useCallback((value) => {
+    setAgentConnection((previous) => ({ ...previous, ...value }));
+    if (value.models?.length) {
+      setAgentSettings((previous) => selectAgentSettings(previous, value.models));
+    }
+  }, []);
+
+  const handleStopRun = useCallback(() => {
+    agentControllerRef.current?.stop();
+    cancelSearch();
+    searchIdRef.current += 1;
+    rerankRunRef.current += 1;
+    setReranking(false);
+  }, [cancelSearch]);
 
   const baseResults = rerankResultsData ?? rawResults;
   const results = useMemo(() => {
@@ -348,6 +406,22 @@ function RetrievalApp() {
     });
   }, []);
 
+  const handleComposeSuggestion = useCallback((text, { frameIds = [] } = {}) => {
+    handleQueryChange(text);
+    setAgentContextIds(frameIds);
+    setReasoningEnabled(true);
+    focusMainComposer();
+  }, [handleQueryChange]);
+
+  const handleAgentAccepted = useCallback(() => {
+    handleQueryChange("");
+    setAgentContextIds([]);
+    setClauseImages((previous) => {
+      previous.flat().forEach((item) => URL.revokeObjectURL(item.url));
+      return [[]];
+    });
+  }, [handleQueryChange]);
+
   const handleModeChange = useCallback((nextMode) => {
     setMode(nextMode);
   }, []);
@@ -427,39 +501,6 @@ function RetrievalApp() {
     setQuery(composeQuery(nextClauses, nextConnectors));
   }, [clauseImages, queryClauses, queryConnectors]);
 
-  const handleClausesChange = useCallback((nextClauses, options = {}) => {
-    const normalized = nextClauses?.length ? nextClauses : [""];
-    let nextConnectors = [...queryConnectors];
-    if (Number.isInteger(options.removedIndex)) {
-      const connectorIndex = options.removedIndex === 0 ? 0 : options.removedIndex - 1;
-      nextConnectors.splice(connectorIndex, 1);
-    } else if (normalized.length > queryClauses.length) {
-      nextConnectors.push(options.connector === "THEN" ? "THEN" : "AND");
-    }
-    nextConnectors = nextConnectors.slice(0, Math.max(0, normalized.length - 1));
-    setQueryClauses(normalized);
-    setQueryConnectors(nextConnectors);
-    setClauseImages((previous) => {
-      if (Number.isInteger(options.removedIndex)) {
-        previous[options.removedIndex]?.forEach((item) => URL.revokeObjectURL(item.url));
-        const remaining = previous.filter((_, index) => index !== options.removedIndex);
-        return normalized.map((_, index) => remaining[index] ?? []);
-      }
-      return normalized.map((_, index) => previous[index] ?? []);
-    });
-    setQuery(composeQuery(normalized, nextConnectors));
-  }, [queryClauses.length, queryConnectors]);
-
-  const handleAddClauseImages = useCallback((clauseIndex, files) => {
-    const accepted = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
-    if (!accepted.length) return;
-    setClauseImages((previous) => {
-      const next = queryClauses.map((_, index) => [...(previous[index] ?? [])]);
-      next[Math.max(0, Math.min(clauseIndex, next.length - 1))].push(...accepted.map(createImageAttachment));
-      return next;
-    });
-  }, [queryClauses]);
-
   const handleInsertClauseImages = useCallback((clauseIndex, offset, files) => {
     const accepted = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
     if (!accepted.length) return;
@@ -511,6 +552,17 @@ function RetrievalApp() {
       disabled: !backendReady,
       durationLimit,
       reasoningEnabled,
+      agentAvailable,
+      contextFrameCount: agentContextIds.length,
+      colorSelectionCount: selectedColorCells(colorGrid).length,
+      onClearContext: () => setAgentContextIds([]),
+      onStop: handleStopRun,
+      agentConfig: {
+        ...agentSettings,
+        ...agentConnection,
+        onModelChange: (model) => setAgentSettings((previous) => selectAgentSettings({ ...previous, model }, agentConnection.models || [])),
+        onEffortChange: (reasoningEffort) => setAgentSettings((previous) => ({ ...previous, reasoningEffort })),
+      },
       availableModels,
       semanticModelRoles,
       fusionConfig,
@@ -521,15 +573,17 @@ function RetrievalApp() {
       onModeChange: handleModeChange,
       onQueryChange: handleQueryChange,
       onInlineClauseChange: handleInlineClauseChange,
-      onAddClauseImages: handleAddClauseImages,
       onInsertClauseImages: handleInsertClauseImages,
       onOpenColorSearch: () => setColorModalOpen(true),
       onRemoveClauseImage: handleRemoveClauseImage,
       onDurationLimitChange: setDurationLimit,
-      onReasoningToggle: setReasoningEnabled,
+      onReasoningToggle: (value) => {
+        setReasoningEnabled(value);
+        if (value) { setSidebarExpanded(true); setAgentPanelOpen(true); agentControllerRef.current?.refresh(); }
+      },
       onFusionConfigChange: setFusionConfig,
     }),
-    [query, theme, model, mode, loading, backendReady, durationLimit, reasoningEnabled, availableModels, semanticModelRoles, fusionConfig, queryClauses, queryConnectors, clauseImages, handleModeChange, handleQueryChange, handleInlineClauseChange, handleAddClauseImages, handleInsertClauseImages, handleRemoveClauseImage]
+    [query, theme, model, mode, loading, backendReady, durationLimit, reasoningEnabled, agentAvailable, agentSettings, agentConnection, agentContextIds.length, colorGrid, handleStopRun, availableModels, semanticModelRoles, fusionConfig, queryClauses, queryConnectors, clauseImages, handleModeChange, handleQueryChange, handleInlineClauseChange, handleInsertClauseImages, handleRemoveClauseImage]
   );
 
   // ── Bootstrap ────────────────────────────────────────
@@ -542,6 +596,8 @@ function RetrievalApp() {
         const config = await getBackendConfig();
 
         if (!alive) return;
+        setMockServer(Boolean(config.mock));
+        setAgentAvailable(Boolean(config.agent?.available));
         setSemanticModelRoles(config.semantic_model_roles || { local: null, global: null });
         if (Array.isArray(config.datasets?.available)) setAvailableDatasets(config.datasets.available);
 
@@ -580,7 +636,7 @@ function RetrievalApp() {
         }
 
         setBackendReady(true);
-        setBackendStatus("Backend connected");
+        setBackendStatus(config.mock ? "Mock backend connected · random dataset images" : "Backend connected");
       } catch (err) {
         if (!alive) return;
         setBackendReady(false);
@@ -684,6 +740,9 @@ function RetrievalApp() {
 
   // ── Main actions ─────────────────────────────────────
   const handleReset = useCallback(() => {
+    setAgentEpoch((value) => value + 1);
+    setAgentBusy(false);
+    setAgentContextIds([]);
     searchIdRef.current += 1;
     rerankRunRef.current += 1;
     surroundReqRef.current += 1;
@@ -732,7 +791,25 @@ function RetrievalApp() {
       const cleanQuery = String(query || "").trim();
 
       const hasImages = clauseImages.some((items) => items.length > 0);
+      if ((payload?.searchMode || resolvedMode) === "color" && !(payload?.reasoning ?? reasoningEnabled)) {
+        await handleColorSearch();
+        return;
+      }
       if ((!cleanQuery && !hasImages) || loading || !backendReady) return;
+
+      if (payload?.reasoning ?? reasoningEnabled) {
+        if (!agentAvailable) {
+          pushToast("warning", "Assistant unavailable", "Start the mock backend to use Reasoning.");
+          return;
+        }
+        await agentControllerRef.current?.send(cleanQuery, {
+          files: clauseImages.flat().map((item) => item.file),
+          frameIds: agentContextIds,
+          searchMode: "auto",
+          colorCells: selectedColorCells(colorGrid),
+        });
+        return;
+      }
 
       scrollResultsToTop();
       setGodModeResults([]);
@@ -819,7 +896,7 @@ function RetrievalApp() {
         pushToast("warning", "Search failed", getErrorMessage(err));
       }
     },
-    [backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, queryConnectors, resolvedMode, scrollResultsToTop, search, searchMultimodal, searchWithFusion, settings]
+    [agentAvailable, agentContextIds, reasoningEnabled, colorGrid, handleColorSearch, backendReady, clauseImages, durationLimit, fusionConfig, loading, model, pushToast, queryClauses, queryConnectors, resolvedMode, scrollResultsToTop, search, searchMultimodal, searchWithFusion, settings]
   );
 
   const handleSearchInVideo = useCallback(
@@ -869,16 +946,6 @@ function RetrievalApp() {
     },
     [backendReady, fusionConfig, model, pushToast, resolvedMode, settings]
   );
-
-  const handleSidebarSearch = useCallback(() => {
-    handleSearch({
-      query,
-      searchMode: resolvedMode,
-      durationLimit: resolvedMode === "temporal" ? Number(durationLimit) : -1,
-      fusionConfig: resolvedMode === "fusion" ? fusionConfig : null,
-      reasoning: false,
-    });
-  }, [durationLimit, fusionConfig, handleSearch, query, resolvedMode]);
 
   // Debounce automatic reranking and ignore stale updates.
   useEffect(() => {
@@ -938,20 +1005,28 @@ function RetrievalApp() {
       if (!result) return;
 
       const reqId = ++surroundReqRef.current;
+      const dataset = result.dataset || result.collection || settings.dataset;
+      const cacheKey = `${dataset}:${result.video_id}`;
+      const cached = surroundCacheRef.current.get(cacheKey);
 
       setModalOrder((prev) => [...prev.filter((x) => x !== "surround"), "surround"]);
       setSurroundModal({
         open: true,
-        center: result,
-        frames: [result],
-        loading: true,
+        center: { ...result },
+        frames: cached || [result],
+        loading: !cached,
       });
 
+      if (cached) return;
+
       try {
-        const dataset = result.dataset || result.collection || settings.dataset;
-        const frames = await getSurroundingFrames(dataset, result.video_id, result.frame_id, 12);
+        const frames = await getSurroundingFrames(dataset, result.video_id, result.frame_id, 10, { allFrames: true });
 
         if (reqId !== surroundReqRef.current) return;
+        surroundCacheRef.current.set(cacheKey, frames);
+        if (surroundCacheRef.current.size > 6) {
+          surroundCacheRef.current.delete(surroundCacheRef.current.keys().next().value);
+        }
 
         setSurroundModal({
           open: true,
@@ -1223,30 +1298,30 @@ function RetrievalApp() {
     <div className={rootClassName}>
       <div className={`ambient-bg ${loading && !isHeavyDataset ? "ambient-searching" : ""}`} />
 
-      <div className={`app-root ${sidebarExpanded ? "sidebar-is-expanded" : ""}`}>
+      <div className={`app-root ${sidebarExpanded || agentPanelOpen ? "sidebar-is-expanded" : ""}`}>
+        {mockServer && <div className="mock-server-banner"><strong>MOCK SERVER</strong><span>Random {settings.dataset.toUpperCase()} images · simulated ranking</span></div>}
         <Sidebar
+          onFocusComposer={focusMainComposer}
+          onOpenChat={() => { setSidebarExpanded(true); setAgentPanelOpen(true); agentControllerRef.current?.refresh(); }}
           theme={theme}
-          mode={mode}
-          queryClauses={queryClauses}
-          queryConnectors={queryConnectors}
-          clauseImages={clauseImages}
-          expanded={sidebarExpanded}
-          loading={loading}
-          disabled={!backendReady}
-          onToggleExpanded={() => setSidebarExpanded((value) => !value)}
-          onModeChange={handleModeChange}
-          onClausesChange={handleClausesChange}
-          onAddClauseImages={handleAddClauseImages}
-          onRemoveClauseImage={handleRemoveClauseImage}
-          onSearch={handleSidebarSearch}
+          expanded={sidebarExpanded || agentPanelOpen}
+          chatOpen={agentPanelOpen}
+          chatAvailable={agentAvailable}
+          onCloseChat={() => setAgentPanelOpen(false)}
+          onToggleExpanded={() => { setAgentPanelOpen(false); setSidebarExpanded((value) => !value); }}
           onToggleTheme={handleToggleTheme}
           onReset={handleReset}
           onOpenSettings={handleOpenSettings}
           onOpenPreview={() => setPreviewOpen(true)}
-          colorGrid={colorGrid}
-          onColorGridChange={setColorGrid}
-          onColorSearch={handleColorSearch}
-        />
+        >
+          {agentAvailable && <AgentChat ref={agentControllerRef} key={`${settings.dataset}-${agentEpoch}-${agentSettings.provider}-${agentSettings.model}`} dataset={settings.dataset}
+            topK={settings.topK} videoIds={activeIds} enabled={backendReady && !retrievalLoading}
+            provider={agentSettings.provider} model={agentSettings.model} workers={agentSettings.workers}
+            reasoningEffort={agentSettings.reasoningEffort}
+            open={agentPanelOpen} onOpenChange={(open) => { setSidebarExpanded(true); setAgentPanelOpen(open); }} onConnection={handleAgentConnection}
+            onCompose={handleComposeSuggestion} onAccepted={handleAgentAccepted}
+            onResults={handleAgentResults} onBusyChange={handleAgentBusy} onNewChat={handleNewAgentChat} />}
+        </Sidebar>
 
         <main className={hasResults ? "main-layout has-results" : "main-layout is-home"}>
           <VideoFilterBar key={settings.dataset} dataset={settings.dataset} />
@@ -1259,7 +1334,7 @@ function RetrievalApp() {
 
               <h1 className="main-title">Multimodal Retrieval System</h1>
 
-              <SearchBar {...searchBarProps} expandedByDefault onSearch={handleSearch} />
+              <SearchBar {...searchBarProps} onSearch={handleSearch} />
             </section>
           )}
 
@@ -1343,7 +1418,7 @@ function RetrievalApp() {
               </section>
 
               <div className={`bottom-search-zone ${loading ? "is-searching" : ""}`}>
-                <SearchBar {...searchBarProps} expandedByDefault={false} onSearch={handleSearch} />
+                <SearchBar {...searchBarProps} onSearch={handleSearch} />
 
                 <p className="footer-note">
                   Retrieval results may be inaccurate. Verify them against the source video.
@@ -1368,7 +1443,9 @@ function RetrievalApp() {
         <PreviewVideoModal key={settings.dataset} open={previewOpen} dataset={settings.dataset} onClose={() => setPreviewOpen(false)} onSubmit={handleResultAction} />
 
         <ColorSearchModal open={colorModalOpen} value={colorGrid} onChange={setColorGrid}
-          loading={loading} onClose={() => setColorModalOpen(false)} onSearch={handleColorSearch} />
+          loading={loading} onClose={() => setColorModalOpen(false)} onSearch={() => {
+            setMode("color"); setColorModalOpen(false); focusMainComposer();
+          }} />
 
         <SettingsPanel
           open={settingsOpen}

@@ -5,18 +5,24 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "dev:mock": "vite --mode mock --host 127.0.0.1",
+    "build:mock": "vite build --mode mock",
+    "test:agent": "node --test scripts/agent-stream.test.mjs scripts/agent-models.test.mjs",
+    "test:video": "node --test scripts/video-keyframes.test.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:ui-mocks": "node scripts/validate-mock-scenarios.mjs",
-    "test:media-urls": "node --test src/api/mediaUrls.test.js"
+    "test:ui-mocks": "node scripts/validate-mock-scenarios.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@tanstack/react-virtual": "^3.14.22",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {

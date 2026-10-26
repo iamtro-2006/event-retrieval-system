@@ -19,6 +19,12 @@ const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 let activeSearchController = null;
 let activeSearchRequestId = 0;
 
+export function cancelRetrievalRequest() {
+  activeSearchRequestId += 1;
+  activeSearchController?.abort();
+  activeSearchController = null;
+}
+
 function apiUrl(path) {
   return `${API_BASE_URL}/${String(path).replace(/^\/+/, "")}`;
 }
@@ -615,12 +621,12 @@ export function normalizeResults(results, fallbackDataset = "") {
       ? inferredCollection
       : String(fallbackDataset || inferredCollection).toLowerCase();
 
-    const imageUrl = resolveMediaUrl(
+    const imageUrl = item.mock ? item.image_url : resolveMediaUrl(
       collection, "keyframes", item.image_rel_path,
       item.image_url || makeKeyframeUrl(item.keyframe_path)
     );
 
-    const videoUrl = resolveMediaUrl(collection, "videos", item.video_rel_path, item.video_url);
+    const videoUrl = item.mock ? item.video_url : resolveMediaUrl(collection, "videos", item.video_rel_path, item.video_url);
 
     const mapUrl = resolveMediaUrl(
       collection, "mapKeyframes", item.map_rel_path, item.map_url ?? raw.map_url
@@ -697,6 +703,8 @@ export function normalizeResults(results, fallbackDataset = "") {
         avg_score: safeNumber(item.temporal?.avg_score ?? raw.avg_score, similarity),
       },
       raw,
+      mock: Boolean(item.mock),
+      synthetic_timing: Boolean(item.synthetic_timing),
     };
   });
 }
@@ -712,7 +720,7 @@ function normalizeMatchedSequence(sequence, parentCollection = "") {
     const score = Number(item.score ?? item.candidate_score ?? 0);
     const collection = collectionFromResult(item) || parentCollection;
 
-    const imageUrl = resolveMediaUrl(
+    const imageUrl = item.mock ? item.image_url : resolveMediaUrl(
       collection, "keyframes", item.image_rel_path,
       item.image_url || makeKeyframeUrl(item.keyframe_path)
     );
@@ -766,12 +774,13 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
-export async function getSurroundingFrames(dataset, videoId, keyframeId, radius = 10) {
+export async function getSurroundingFrames(dataset, videoId, keyframeId, radius = 10, { allFrames = false } = {}) {
   const params = new URLSearchParams({
     dataset,
     video_id: videoId,
     keyframe_id: String(keyframeId),
     radius: String(radius),
+    all_frames: String(allFrames),
   });
 
   const response = await fetch(apiUrl(`/api/surrounding-frames?${params}`), {
@@ -874,11 +883,15 @@ export async function getVideoPreview(dataset, videoId, { frameId, timestampMs }
   return normalizeResults([await response.json()], dataset)[0];
 }
 
-export async function getVideoKeyframes(dataset, videoId) {
+export async function getVideoKeyframes(dataset, videoId, { signal } = {}) {
   const params = new URLSearchParams({ dataset, video_id: videoId });
-  const response = await fetch(apiUrl(`/api/video-keyframes?${params}`), { headers: NGROK_HEADER });
+  const response = await fetch(apiUrl(`/api/video-keyframes?${params}`), { headers: NGROK_HEADER, signal });
   if (!response.ok) throw new Error(`Cannot load video keyframes (${response.status})`);
-  return response.json();
+  const data = await response.json();
+  return { ...data, keyframes: (data.keyframes || []).map((frame) => ({
+    ...frame,
+    image_url: resolveMediaUrl(dataset, "keyframes", frame.image_rel_path, frame.image_url),
+  })) };
 }
 
 export async function getFrameIdxAtTimestamp(dataset, videoId, timestampMs) {

@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useVideoFilter } from "../components/VideoFilter";
-import { searchRetrieval, searchFusion, searchMultimodalRetrieval, similaritySearch, searchColorRetrieval } from "../api/retrievalAPI";
+import { searchRetrieval, searchFusion, searchMultimodalRetrieval, similaritySearch, searchColorRetrieval, cancelRetrievalRequest } from "../api/retrievalAPI";
 
 export function useRetrievalSearch() {
   const { activeIds } = useVideoFilter();
@@ -252,6 +252,24 @@ export function useRetrievalSearch() {
     }
   }
 
+  const applyExternalResults = useCallback((rows, query) => {
+    requestIdRef.current += 1;
+    setResults(rows);
+    setCount(rows.length);
+    setLastQuery(query);
+    setLatency(null);
+    setSubQueries([]);
+    setSearchMode("agent");
+    setError("");
+    setLoading(false);
+  }, []);
+
+  const cancel = useCallback(() => {
+    requestIdRef.current += 1;
+    cancelRetrievalRequest();
+    setLoading(false);
+  }, []);
+
   function reset() {
     requestIdRef.current += 1;
 
@@ -281,6 +299,8 @@ export function useRetrievalSearch() {
     searchWithFusion,
     searchSimilar,
     searchByColor,
+    applyExternalResults,
+    cancel,
     reset,
   };
 }

@@ -72,7 +72,7 @@ const ResultCard = memo(function ResultCard({
           onLoad={onImgLoad}
         />
 
-        <span className="score-badge">{score}%</span>
+        <span className="score-badge">{result.mock ? "MOCK" : `${score}%`}</span>
         <VideoVotes videoId={result.video_id} />
 
         <button className="play-button" type="button" onClick={handlePlay}

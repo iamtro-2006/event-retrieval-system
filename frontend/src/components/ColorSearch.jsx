@@ -3,7 +3,7 @@ import { Redo2, RotateCcw, Search, Undo2, X } from "lucide-react";
 import { COLOR_PALETTE, EMPTY_COLOR_GRID, selectedColorCells } from "../utils/colorGrid";
 const COLOR_HEX = Object.fromEntries(COLOR_PALETTE);
 
-export function ColorGridEditor({ value, onChange, compact = false, onSearch, loading = false }) {
+export function ColorGridEditor({ value, onChange, compact = false, onSearch, loading = false, submitLabel = "Search colors" }) {
   const [selected, setSelected] = useState("blue");
   const [undo, setUndo] = useState([]);
   const [redo, setRedo] = useState([]);
@@ -57,7 +57,7 @@ export function ColorGridEditor({ value, onChange, compact = false, onSearch, lo
       </div>
     </div>
     {onSearch && <button className="color-search-submit" type="button" disabled={loading || !selectedColorCells(value).length} onClick={onSearch}>
-      <Search size={16} /> {loading ? "Searching..." : "Search colors"}
+      <Search size={16} /> {loading ? "Working..." : submitLabel}
     </button>}
     <small>Click/drag to paint · right-click to clear a cell</small>
   </div>;
@@ -78,7 +78,7 @@ export default function ColorSearchModal({ open, value, onChange, onClose, onSea
     <section className="color-modal" role="dialog" aria-modal="true" aria-label="Dominant color search" onClick={(event) => event.stopPropagation()}>
       <header><div><strong>Dominant Color Search</strong><span>Paint the remembered colors on the 5 × 5 frame grid</span></div>
         <button type="button" onClick={onClose} aria-label="Close color canvas"><X size={18} /></button></header>
-      <ColorGridEditor value={value} onChange={onChange} onSearch={onSearch} loading={loading} />
+      <ColorGridEditor value={value} onChange={onChange} onSearch={onSearch} loading={loading} submitLabel="Use canvas in main search" />
     </section>
   </div>;
 }

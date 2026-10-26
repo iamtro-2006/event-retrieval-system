@@ -1,211 +1,28 @@
-import {
-  AudioLines, Blend, ChevronLeft, ChevronRight, Clock3, Flame, Gem, Menu, Moon,
-  ImagePlus, Orbit, Plus, ScanText, Search, Settings, Sparkles, Sun, Trash2, Video, X,
-  WandSparkles, History, Palette,
-} from "lucide-react";
-import { useState } from "react";
+import { ChevronLeft, ChevronRight, History, MessageSquare, Moon, Plus, Search, Settings, Sparkles, Sun, Video } from "lucide-react";
 import { useVideoFilter } from "./VideoFilter";
-import { ColorGridEditor } from "./ColorSearch";
-import { SEARCH_MODES } from "../config/searchModes";
 
-const MODE_ICONS = { text: Search, temporal: Clock3, auto: WandSparkles, ocr: ScanText, asr: AudioLines, fusion: Blend, color: Palette };
-
-const BRAND_VARIANTS = [
-  { icon: Sparkles, className: "is-blue", label: "Spark" },
-  { icon: Orbit, className: "is-violet", label: "Orbit" },
-  { icon: Flame, className: "is-coral", label: "Flame" },
-  { icon: Gem, className: "is-emerald", label: "Gem" },
-];
-
-const getModeLabel = (mode) => SEARCH_MODES.find((item) => item.key === mode)?.label ?? "Semantic";
-const getConnector = (mode) => mode === "temporal" || mode === "auto" ? "THEN" : "AND";
-
-export default function Sidebar({
-  theme, mode, queryClauses, queryConnectors = [], clauseImages = [[]], expanded, loading, disabled, onToggleExpanded,
-  onModeChange, onClausesChange, onAddClauseImages, onRemoveClauseImage, onSearch, onToggleTheme, onReset,
-  onOpenSettings, onOpenPreview,
-  colorGrid, onColorGridChange, onColorSearch,
-}) {
-  const clauses = queryClauses?.length ? queryClauses : [""];
+export default function Sidebar({ theme, expanded, onToggleExpanded, onReset, onOpenSettings,
+  onOpenPreview, onToggleTheme, onFocusComposer, onOpenChat, chatOpen, chatAvailable, onCloseChat, children }) {
   const videoFilter = useVideoFilter();
-  const [brandVariant, setBrandVariant] = useState(0);
-  const activeBrand = BRAND_VARIANTS[brandVariant];
-  const BrandIcon = activeBrand.icon;
-
-  function handleBrandClick() {
-    setBrandVariant((current) => (current + 1) % BRAND_VARIANTS.length);
-    onReset?.();
-  }
-
-  const updateClause = (index, value) => onClausesChange?.(
-    clauses.map((clause, clauseIndex) => clauseIndex === index ? value : clause)
-  );
-  const addClause = (connector) => onClausesChange?.([...clauses, ""], { connector });
-  const removeClause = (index) => onClausesChange?.(
-    clauses.length === 1 ? [""] : clauses.filter((_, clauseIndex) => clauseIndex !== index),
-    { removedIndex: index }
-  );
-  const imageQueryPosition = (clauseIndex, imageIndex) => {
-    let position = 1;
-    for (let index = 0; index < clauseIndex; index += 1) {
-      position += (clauses[index]?.trim() ? 1 : 0) + (clauseImages[index]?.length ?? 0);
-    }
-    return position + (clauses[clauseIndex]?.trim() ? 1 : 0) + imageIndex;
-  };
-
-  return (
-    <aside className={`sidebar ${expanded ? "is-expanded" : ""}`}>
-      <div className="sidebar-top">
-        {videoFilter && <button className="sidebar-button" type="button" title="Video ID cache" aria-label="Video ID cache history"
-          aria-expanded={videoFilter.open} onClick={() => videoFilter.setOpen(!videoFilter.open)}>
-          <History size={20} />{expanded && <span>Video cache ({videoFilter.ids.length})</span>}
-        </button>}
-        <div className="sidebar-brand-row">
-          <button
-            className={`logo-button brand-variant ${activeBrand.className}`}
-            onClick={handleBrandClick}
-            title={`New search · ${activeBrand.label}`}
-            aria-label="New search and change brand icon"
-          >
-            <BrandIcon size={24} />
-          </button>
-          {expanded && <div className="sidebar-brand-copy"><strong>VIRETA</strong><span>Video Retrieval</span></div>}
-        </div>
-
-        <div className="mode-menu-host">
-          <button className="sidebar-button" aria-label="Choose search mode" aria-haspopup="menu" title="Search modes">
-            <Menu size={20} />
-            {expanded && <span>Search modes</span>}
-          </button>
-          {!expanded && (
-            <div className="mode-hover-card" role="menu">
-              <p className="mode-hover-eyebrow">SEARCH BY</p>
-              {SEARCH_MODES.map(({ key, label, description, shortcut }) => {
-                const Icon = MODE_ICONS[key];
-                return (
-                <button type="button" role="menuitem" key={key}
-                  className={`mode-hover-option ${mode === key ? "active" : ""}`}
-                  title={`${label} (${shortcut})`}
-                  onClick={() => onModeChange?.(key)}>
-                  <span className="mode-hover-icon"><Icon size={17} /></span>
-                  <span><strong>{label}</strong><small>{description} · {shortcut}</small></span>
-                </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <button className="sidebar-button sidebar-expand-button" onClick={onToggleExpanded}
-          aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
-          title={expanded ? "Collapse sidebar" : "Expand sidebar"}>
-          {expanded ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-          {expanded && <span>Collapse panel</span>}
-        </button>
-
-        {!expanded && <>
-          <button className="sidebar-button" onClick={onReset} title="New search" aria-label="New search"><Plus size={20} /></button>
-          <button className="sidebar-button" onClick={onOpenPreview} title="Preview video" aria-label="Preview video"><Video size={20} /></button>
-        </>}
-
-        {expanded && (
-          <div className="sidebar-expanded-content">
-            <section className="sidebar-section">
-              <p className="sidebar-section-label">ACTIVE MODE</p>
-              <h2>{getModeLabel(mode)} Search</h2>
-              <div className="expanded-mode-list">
-                {SEARCH_MODES.map(({ key, label, shortcut }) => {
-                  const Icon = MODE_ICONS[key];
-                  return (
-                  <button type="button" key={key} className={mode === key ? "active" : ""}
-                    title={`${label} (${shortcut})`}
-                    onClick={() => onModeChange?.(key)}>
-                    <Icon size={16} /><span>{label}</span>
-                  </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            {mode === "color" && <section className="sidebar-section sidebar-color-search">
-              <p className="sidebar-section-label">COLOR CANVAS</p>
-              <ColorGridEditor compact value={colorGrid} onChange={onColorGridChange} onSearch={onColorSearch} loading={loading} />
-            </section>}
-
-            {mode !== "color" && <section className="sidebar-section clause-builder">
-              <div className="clause-builder-heading">
-                <div>
-                  <p className="sidebar-section-label">QUERY BUILDER</p>
-                  <span>Use AND for semantic alternatives, THEN for ordered events</span>
-                </div>
-                <div className="clause-add-actions">
-                  <button type="button" onClick={() => addClause("AND")} aria-label="Add semantic clause" title="Add semantic clause (Shift + +)"><Plus size={14} /> AND</button>
-                  <button type="button" onClick={() => addClause("THEN")} aria-label="Add temporal clause" title="Add temporal clause (Shift + |)"><Plus size={14} /> THEN</button>
-                </div>
-              </div>
-
-              <div className="clause-stack">
-                {clauses.map((clause, index) => (
-                  <div className="clause-block" key={index}>
-                    {index > 0 && <div className="clause-connector"><span /><strong>{queryConnectors[index - 1] || getConnector(mode)}</strong><span /></div>}
-                    <div className="clause-input-shell">
-                      <span className="clause-number">{String(index + 1).padStart(2, "0")}</span>
-                      <textarea rows={2} value={clause}
-                        placeholder={`${getModeLabel(mode)} Search`}
-                        onChange={(event) => updateClause(index, event.target.value)}
-                        onPaste={(event) => {
-                          const images = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
-                          if (!images.length) return;
-                          event.preventDefault();
-                          onAddClauseImages?.(index, images);
-                        }} />
-                      <label className="clause-attach-button" title="Attach image to this clause">
-                        <ImagePlus size={14} />
-                        <input type="file" accept="image/*" multiple onChange={(event) => {
-                          onAddClauseImages?.(index, event.target.files);
-                          event.target.value = "";
-                        }} />
-                      </label>
-                      <button type="button" onClick={() => removeClause(index)} aria-label={`Remove clause ${index + 1}`}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    {(clauseImages[index] ?? []).length > 0 && (
-                      <div className="clause-image-strip">
-                        {clauseImages[index].map((item, imageIndex) => (
-                          <div className="clause-image-chip" key={item.id} title={item.name}>
-                            <img src={item.url} alt={item.name} />
-                            <span>Q{String(imageQueryPosition(index, imageIndex)).padStart(2, "0")}</span>
-                            <button type="button" onClick={() => onRemoveClauseImage?.(index, item.id)} aria-label={`Remove ${item.name}`}>
-                              <X size={10} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <button type="button" className="sidebar-run-search" onClick={onSearch}
-                disabled={loading || disabled || (!clauses.some((clause) => clause.trim()) && !clauseImages.some((items) => items.length > 0))}>
-                <Search size={17} /><span>{loading ? "Searching..." : "Run search"}</span>
-              </button>
-            </section>}
-
-            <button className="sidebar-preview-wide" type="button" onClick={onOpenPreview}><Video size={17} /> Preview video</button>
-          </div>
-        )}
-      </div>
-
-      <div className="sidebar-bottom">
-        <button className="sidebar-button" onClick={onOpenSettings} title="Settings"><Settings size={20} />{expanded && <span>Settings</span>}</button>
-        <button className="sidebar-button" onClick={onToggleTheme} title="Toggle theme">
-          {theme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
-          {expanded && <span>{theme === "dark" ? "Dark theme" : "Light theme"}</span>}
-        </button>
-        <div className="avatar">T</div>
-      </div>
-    </aside>
-  );
+  return <aside className={`sidebar ${expanded ? "is-expanded" : ""} ${chatOpen ? "is-chat-open" : ""}`}>
+    <div className="sidebar-top">
+      <button className="sidebar-button" type="button" aria-label="Video ID cache history" title="Video ID cache"
+        onClick={() => videoFilter?.setOpen(!videoFilter.open)}><History size={20} />{expanded && <span>Video cache</span>}</button>
+      <div className="sidebar-brand-row"><button type="button" className="logo-button brand-variant is-blue" aria-label="New search and change brand icon"
+        title="New search" onClick={onReset}><Sparkles size={24} /></button>
+        {expanded && <div className="sidebar-brand-copy"><strong>VIRETA</strong><span>Video Retrieval</span></div>}</div>
+      <button className="sidebar-button sidebar-expand-button" type="button" onClick={chatOpen ? onCloseChat : onToggleExpanded}
+        aria-label={chatOpen ? "Back to navigation" : expanded ? "Collapse sidebar" : "Expand sidebar"}>{expanded ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}{expanded && <span>{chatOpen ? "Back to menu" : "Collapse"}</span>}</button>
+      <button className="sidebar-button" type="button" onClick={onReset} aria-label="New search" title="New search"><Plus size={20} />{expanded && <span>New search</span>}</button>
+      <button className="sidebar-button" type="button" onClick={onFocusComposer} aria-label="Focus main search" title="Main search"><Search size={20} />{expanded && <span>Main search</span>}</button>
+      {chatAvailable && <button className="sidebar-button" type="button" onClick={onOpenChat} aria-label="Open assistant log" title="Assistant log"><MessageSquare size={20} />{expanded && <span>Assistant log</span>}</button>}
+      <button className="sidebar-button" type="button" onClick={onOpenPreview} aria-label="Preview video" title="Preview video"><Video size={20} />{expanded && <span>Preview video</span>}</button>
+    </div>
+    {children}
+    <div className="sidebar-bottom">
+      <button className="sidebar-button" type="button" onClick={onOpenSettings} title="Settings"><Settings size={20} />{expanded && <span>Settings</span>}</button>
+      <button className="sidebar-button" type="button" onClick={onToggleTheme} title="Toggle theme">{theme === "dark" ? <Moon size={20} /> : <Sun size={20} />}{expanded && <span>Theme</span>}</button>
+      <div className="avatar">T</div>
+    </div>
+  </aside>;
 }

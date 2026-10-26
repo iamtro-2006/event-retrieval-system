@@ -26,7 +26,7 @@ export default function SettingsPanel({
           Retrieval Settings
         </h3>
 
-        <button type="button" onClick={onClose}>
+        <button type="button" aria-label="Close settings" onClick={onClose}>
           <X size={17} />
         </button>
       </div>
