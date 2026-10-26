@@ -14,11 +14,12 @@ from src.ocr_extraction.models.qwen_engine import extract_text_lines, load_qwen_
 
 
 class ExtractOCRPipeline:
-    """Runs OCR extraction with one of two engines (extraction.engine):
+    """Runs OCR extraction with one of three engines (extraction.engine):
 
         "qwen"           -> full-frame OCR via Qwen3-VL-4B-Instruct (VLM).
-                            Default. Falls back to "paddle_vietocr" at
-                            runtime if the Qwen model fails to load.
+                            Falls back to the configured Paddle recognizer
+                            if the Qwen model fails to load.
+        "paddle"         -> PaddleOCR detection and recognition only.
         "paddle_vietocr" -> text DETECTION with PaddleOCR, text RECOGNITION
                             with either PaddleOCR's own recognizer or
                             VietOCR (extraction.recognizer: "vietocr").
@@ -93,11 +94,11 @@ class ExtractOCRPipeline:
                 )
             except Exception as e:
                 self.logger.warning(
-                    "Qwen load failed (%s: %s) - falling back to paddle_vietocr", type(e).__name__, e
+                    "Qwen load failed (%s: %s) - falling back to PaddleOCR", type(e).__name__, e
                 )
-                self.engine = "paddle_vietocr"
+                self.engine = "paddle_vietocr" if self.recognizer == "vietocr" else "paddle"
 
-        if self.engine == "paddle_vietocr":
+        if self.engine in ("paddle", "paddle_vietocr"):
             model_cfg = extraction_cfg["model"]
             self.model = load_ocr_model(
                 ocr_version=model_cfg["ocr_version"],
@@ -110,7 +111,7 @@ class ExtractOCRPipeline:
                 logger=self.logger,
             )
 
-            if self.recognizer == "vietocr":
+            if self.engine == "paddle_vietocr" and self.recognizer == "vietocr":
                 from src.ocr_extraction.models.vietocr_engine import load_vietocr_model
 
                 vietocr_cfg = extraction_cfg.get("vietocr", {})
@@ -209,7 +210,10 @@ class ExtractOCRPipeline:
                         vis_path.parent.mkdir(parents=True, exist_ok=True)
                         res.save_to_img(str(vis_path))
 
-                if self.engine == "paddle_vietocr":
+                if self.engine == "paddle":
+                    texts = paddle_texts
+
+                elif self.engine == "paddle_vietocr":
                     texts = self._recognize(img, boxes, paddle_texts)
 
                 elif self.engine == "qwen": 

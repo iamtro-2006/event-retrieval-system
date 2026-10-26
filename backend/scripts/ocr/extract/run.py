@@ -12,7 +12,7 @@ from src.utils.logger import setup_logger
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the OCR extraction pipeline (Qwen3-VL by default, PaddleOCR+VietOCR fallback, per config)."
+        description="Run the OCR extraction pipeline (PaddleOCR, PaddleOCR+VietOCR, or Qwen3-VL, per config)."
     )
     parser.add_argument("--config", default="configs/ocr_extraction.yaml", help="Path to ocr config YAML.")
     return parser.parse_args()

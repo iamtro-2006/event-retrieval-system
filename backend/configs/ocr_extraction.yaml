@@ -40,29 +40,29 @@ extraction:
   num_workers: 0
   skip_existing: true
 
-  # "qwen"           -> full-frame OCR via Qwen3-VL-4B-Instruct (VLM). Default.
-  #                     On load/inference failure, automatically falls back to
-  #                     "paddle_vietocr" below (no config change needed).
+  # "qwen"           -> full-frame OCR via Qwen3-VL-4B-Instruct (VLM).
+  #                     On model-load failure, falls back to the configured Paddle recognizer.
+  # "paddle"         -> PaddleOCR detection + recognition, without Qwen/VietOCR.
   # "paddle_vietocr" -> PaddleOCR detection + PaddleOCR/VietOCR recognition
   #                     (see recognizer: below), the original pipeline.
-  engine: "qwen"
+  engine: "paddle"
 
-  # Only used when engine == "paddle_vietocr":
+  # Used by "paddle_vietocr" and as the Qwen fallback; "paddle" always uses PaddleOCR.
   # "paddleocr" -> use PaddleOCR's own recognizer (fast, but NOT reliable
   #                for Vietnamese diacritics).
   # "vietocr"   -> PaddleOCR is used ONLY to detect text-region boxes;
   #                each crop is recognized by VietOCR instead (supports
   #                Vietnamese). Slower (no native batching in vietocr).
-  recognizer: "vietocr"
+  recognizer: "paddleocr"
 
   # PaddleOCR: text DETECTION model (and detector-only usage when
   # recognizer == "vietocr"; text_recognition_model_name is still loaded
   # because PaddleOCR() is a single combined pipeline, but its rec output
-  # is discarded in that mode). Only loaded when engine == "paddle_vietocr".
+  # is discarded in that mode). Loaded by all three engines.
   model:
     ocr_version: "PP-OCRv6"
     text_detection_model_name: "PP-OCRv6_small_det"
-    text_recognition_model_name: "PP-OCRv6_medium_rec"
+    text_recognition_model_name: "PP-OCRv6_small_rec"
     use_doc_orientation_classify: false
     use_doc_unwarping: false
     use_textline_orientation: false
