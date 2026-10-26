@@ -44,15 +44,12 @@ def main() -> None:
     if not videos:
         raise FileNotFoundError(f"No videos found in {input_dir}")
 
-    failures = []
     for video in videos:
         try:
             pipeline.process_video(video, overwrite=args.overwrite)
         except Exception:
             logger.exception("ASR failed for %s", video)
-            failures.append(video.name)
-    if failures:
-        raise RuntimeError(f"ASR failed for {len(failures)} video(s): {failures}")
+            raise
 
 
 if __name__ == "__main__":
