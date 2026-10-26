@@ -15,7 +15,7 @@ extraction:
   duplicate_max_gap: 0.25
   duplicate_similarity: 0.90
   prompt: >-
-    Describe this short video segment in {language} naturally.
+    Describe this short video segment in {language}.
     Describe the main visible subject, setting, surroundings, and what the subject does.
     Describe the visible actions and changes in chronological order, including
     meaningful interactions, camera movement, or timelapse segments when visible.
@@ -23,4 +23,3 @@ extraction:
     Only state what can be seen; do not infer speech, sounds, names, or intent.
     Do not repeat generic phrases or invent unseen events.
     If a detail of the required description is absent, omit it rather than saying it is not there.
-    Do not say the phrase 'video show' or the 'video begin', but say 'video segment' because this is the partial component.
