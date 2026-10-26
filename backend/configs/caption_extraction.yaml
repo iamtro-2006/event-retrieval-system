@@ -15,7 +15,7 @@ extraction:
   duplicate_max_gap: 0.25
   duplicate_similarity: 0.90
   prompt: >-
-    Describe this short video segment in {language}.
+    Describe this short video segment in {language} naturally.
     Describe the main visible subject, setting, surroundings, and what the subject does.
     Describe the visible actions and changes in chronological order, including
     meaningful interactions, camera movement, or timelapse segments when visible.
