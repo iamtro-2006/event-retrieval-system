@@ -4,6 +4,7 @@
 - `compress_video.ipynb`: tải từng video từ Drive nguồn, NVDEC → CUDA resize → HEVC NVENC 480p, upload vào `videos/` của Drive đích. Cell cuối in tiến độ rclone và FFmpeg.
 - `extract_embedding.ipynb`: chọn `DATASET=V3C` hoặc `DATASET=LHE`, trích xuất Qwen3-VL-Embedding-2B qua vLLM từ ZIP keyframe và upload ZIP vector.
 - `extract_ocr_paddle.ipynb`: tải ZIP keyframe theo dải video ID từ Drive, clone nhánh `vbs-dev`, cài PP-OCRv6 trong venv riêng để tránh xung đột NCCL với Torch GPU của Kaggle, dùng model chọn trong `configs/ocr_extraction.yaml`, rồi upload JSON OCR thô theo lô 10 video.
+- `extract_asr.ipynb`: tải video V3C theo dải ID từ Drive, chạy Faster-Whisper large-v3 INT8 với Python có sẵn của Kaggle, rồi upload chỉ JSON ASR theo lô 10 video; model được cache trong cùng phiên.
 - `host_server.ipynb`: chọn V3C hoặc LHE, tải ZIP embedding và map của dataset đó, build index/cache rồi chạy API và vLLM. Cần điền Drive folder ID embedding/map khi chọn LHE.
 
 ## VLM keyframes trên Kaggle T4

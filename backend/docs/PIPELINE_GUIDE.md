@@ -30,6 +30,26 @@ python -m scripts.retrieval.run --task build-vector-cache --config configs/app.y
 
 `configs/indexing.yaml` giới hạn input V3C ở source group `V3C`, LHE ở `LHE`. Nếu dataset chưa có vector, lệnh build báo lỗi thay vì tạo index trộn hoặc rỗng. `configs/app.yaml` khai báo `index_dir` chưa có hậu tố engine; API thêm `_vllm` và nạp đúng index riêng cho từng dataset. V3C vẫn là dataset mặc định.
 
+## Trích xuất ASR
+
+Từ `backend/`, chạy Faster-Whisper trên video trong `../data/videos/{V3C,LHE}/`:
+
+```bash
+python -m scripts.asr.extract.run --dataset v3c
+python -m scripts.asr.extract.run --dataset lhe --video-id LHE01
+```
+
+Lệnh dùng model đa ngôn ngữ `Systran/faster-whisper-large-v3` với `compute_type: int8` theo `configs/asr_extraction.yaml`. `language: null` để Faster-Whisper tự nhận diện ngôn ngữ của từng video. Model được tải một lần rồi xử lý lần lượt các video chưa có kết quả; cần CUDA/cuDNN tương thích với Faster-Whisper để chạy cấu hình GPU. Mỗi video tạo `../data/asr/<dataset>/<video_id>.json`, gồm các đoạn `{video_id, start, end, transcript}` mà ASR indexer đọc trực tiếp. Dùng `--overwrite` để tạo lại file đã có.
+
+Sau khi tạo JSON, lập chỉ mục theo dataset:
+
+```bash
+python -m scripts.asr.index.run --dataset v3c
+python -m scripts.asr.index.run --dataset lhe
+```
+
+Trên Kaggle, `notebooks/extract_asr.ipynb` tải video V3C từ Drive theo dải ID và ghi JSON lên Drive theo lô 10 video. Notebook gọi cùng script với `--input-dir` và `--output-dir` để dùng thư mục tạm cho từng lô; model cache được giữ lại giữa các lô. Môi trường Kaggle chỉ cài `faster-whisper` khi cần, không tạo venv hay cài toàn bộ requirements của backend.
+
 ## Chạy dịch vụ
 
 Backend dùng vLLM server riêng cho Qwen; xem `requirements-vllm.txt`. `host_server.ipynb` có lựa chọn `DATASET=V3C` hoặc `DATASET=LHE`, tải ZIP embedding/map tương ứng rồi build index và cache. Khi chọn LHE cần điền Drive folder ID embedding/map LHE ở cell cấu hình. Nếu thiếu index LHE, API vẫn có thể phục vụ V3C; request tìm kiếm LHE trả 503 cho đến khi index và vLLM sẵn sàng.

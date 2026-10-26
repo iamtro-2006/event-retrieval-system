@@ -8,6 +8,16 @@ elasticsearch:
 dataset:
   root: "data/processed/asr"
 
+# Offline extraction via scripts.asr.extract.run. Video/output paths come from
+# datasets.* in app.yaml, matching scripts.asr.index.run.
+extraction:
+  model: "Systran/faster-whisper-large-v3"
+  device: "cuda"
+  compute_type: "int8"
+  language: null  # auto-detect the spoken language
+  beam_size: 5
+  vad_filter: true
+
 mock:
   datasets:
     - L21

@@ -37,7 +37,7 @@ vLLM không nằm trong `requirements.txt`: chạy server bằng môi trường 
 | `src/retrieval/retriever/common/` | Parse query, chọn mode, phối hợp nguồn và scoring. |
 | `src/retrieval/retriever/{semantic_search,temporal_search,ocr_search,asr_search}/` | Pipeline đọc/search từng nguồn. |
 | `src/retrieval/index/`, `src/retrieval/indexer/` | Truy cập index khi search và xây index offline; có FAISS, Elasticsearch, Milvus. |
-| `src/keyframe_extraction/`, `src/embedding_extraction/`, `src/ocr_extraction/` | Pipeline tạo dữ liệu từ video/keyframe. |
+| `src/keyframe_extraction/`, `src/embedding_extraction/`, `src/ocr_extraction/`, `src/asr_extraction/` | Pipeline tạo dữ liệu từ video/keyframe. |
 | `src/color_retrieval/`, `src/query_enrichment/`, `src/translation/` | Tìm màu, enrichment tùy chọn, dịch query. |
 | `src/utils/` | Config, thiết bị, log, seed, video I/O. |
 | `scripts/` | CLI cho keyframe, embedding, OCR/ASR, index, truy vấn và chẩn đoán. |
