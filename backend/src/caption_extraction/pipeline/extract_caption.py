@@ -110,15 +110,15 @@ class ExtractCaptionPipeline:
         return self.scenes_dir / f"{video.stem}.scenes.txt"
 
     def _detect_scenes(self, video: Path, detector) -> np.ndarray:
-        from src.utils.omni_progress import inference_with_progress
-
-        ranges, labels, _ = inference_with_progress(detector, video)
+        # The public clean_shot mode returns the ranges we need directly.
+        # Default-mode intra labels vary in representation across wrappers.
+        ranges = detector.inference(str(video), mode="clean_shot")
         scenes = np.asarray([
-            [int(start), int(end) - 1] for (start, end), label in zip(ranges, labels)
-            if label == "general" and int(end) > int(start)
+            [int(start), int(end) - 1] for start, end in ranges
+            if int(end) > int(start)
         ], dtype=np.int64).reshape(-1, 2)
         if len(scenes) == 0:
-            raise RuntimeError(f"OmniShotCut found no general shots: {video}")
+            raise RuntimeError(f"OmniShotCut clean_shot returned no shots: {video}")
         fps, _ = _probe_video(video)
         timeline = np.arange(int(scenes[-1, 1]) + 1, dtype=np.float64) / fps
         # Reuse the keyframe short-shot merger only inside touching general runs.
