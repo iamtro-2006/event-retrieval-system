@@ -2,7 +2,7 @@
 extraction:
   shot_model: uva-cv-lab/OmniShotCut_v1.5
   shot_revision: 1bc678977ad48c65d57d600296d95f97c1be293f
-  caption_model: DAMO-NLP-SG/VideoLLaMA3-2B
+  caption_model: DAMO-NLP-SG/VideoLLaMA3-7B
   language: English
   max_shot_seconds: 10.0
   min_caption_seconds: 1.0

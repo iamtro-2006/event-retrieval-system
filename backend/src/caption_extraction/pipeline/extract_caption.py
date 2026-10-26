@@ -195,7 +195,7 @@ class ExtractCaptionPipeline:
             raise RuntimeError("VideoLLaMA3 requires CUDA for this pipeline")
         self.model = AutoModelForCausalLM.from_pretrained(
             self.caption_model_name, trust_remote_code=True,
-            device_map={"": "cuda:0"}, torch_dtype=torch.float16,
+            device_map={"": "cuda:0"}, torch_dtype=torch.bfloat16,
         )
         self.model.eval()
         self.processor = AutoProcessor.from_pretrained(self.caption_model_name, trust_remote_code=True)
@@ -242,7 +242,7 @@ class ExtractCaptionPipeline:
                 inputs = {key: value.to("cuda:0") if isinstance(value, torch.Tensor) else value
                           for key, value in inputs.items()}
                 if "pixel_values" in inputs:
-                    inputs["pixel_values"] = inputs["pixel_values"].to(torch.float16)
+                    inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
                 with torch.inference_mode():
                     ids = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens,
                                               do_sample=False)
