@@ -7,13 +7,16 @@ import math
 import re
 import subprocess
 import sys
+from contextlib import closing
 from difflib import SequenceMatcher
 from fractions import Fraction
 from pathlib import Path
+from time import perf_counter
 
 import numpy as np
 
 from src.utils.frame_sampling import merge_consecutive_short_scenes
+from .internvl import InternVLCaptioner, prepared_batches, validate_settings
 
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 
@@ -141,33 +144,28 @@ class ExtractCaptionPipeline:
         self.shot_model = self.cfg["shot_model"]
         self.shot_revision = self.cfg["shot_revision"]
         self.caption_model_name = self.cfg["caption_model"]
-        model_key = self.caption_model_name.lower()
-        if "internvl" in model_key and not model_key.endswith("-hf"):
-            self.caption_backend = "internvl"
-        elif "videollama3" in model_key:
-            self.caption_backend = "videollama3"
-        else:
-            raise ValueError("Use a VideoLLaMA3 model or GitHub-format InternVL (without -HF)")
-        self.internvl_config = self.cfg.get("internvl", {"max_tiles": 1})
-        if type(self.internvl_config.get("max_tiles", 1)) is not int or self.internvl_config.get("max_tiles", 1) < 1:
-            raise ValueError("internvl.max_tiles must be a positive integer")
+        if "caption_profiles" in self.cfg or "internvl" in self.cfg:
+            raise ValueError("Legacy caption config: rerun notebook cell 3; use caption_max_frames and vllm")
+        self.max_frames = self.cfg.get("caption_max_frames", 16)
+        self.batch_size = self.cfg.get("caption_batch_size", 8)
+        self.vllm_config = validate_settings(self.caption_model_name, self.max_frames,
+                                            self.batch_size, self.cfg.get("vllm", {}))
         self.max_seconds = float(self.cfg["max_shot_seconds"])
         self.min_seconds = float(self.cfg["min_caption_seconds"])
         self.sample_fps = float(self.cfg["frame_sample_fps"])
-        self.profiles = self.cfg["caption_profiles"]
         self.max_new_tokens = int(self.cfg["max_new_tokens"])
         self.duplicate_gap = float(self.cfg["duplicate_max_gap"])
         self.duplicate_similarity = float(self.cfg["duplicate_similarity"])
         self.prompt = self.cfg["prompt"].format(language=self.cfg["language"])
         self.speed_config = self.cfg["speed_predictor"]
-        if not (0 < self.min_seconds <= self.max_seconds <= 10 and self.sample_fps > 0):
+        if not (0 < self.min_seconds <= self.max_seconds <= 10
+                and math.isfinite(self.sample_fps) and self.sample_fps > 0):
             raise ValueError("Caption duration/FPS config is invalid")
-        if not self.profiles or any(p["max_frames"] < 1 or p["short_side"] < 1 for p in self.profiles):
-            raise ValueError("Caption profiles must have positive frame counts and sizes")
+        if self.max_new_tokens < 1 or not self.prompt.strip():
+            raise ValueError("Caption prompt and max_new_tokens must be nonempty/positive")
         if not (self.duplicate_gap >= 0 and 0 < self.duplicate_similarity <= 1):
             raise ValueError("Duplicate merge config is invalid")
-        self.model = None
-        self.processor = None
+        self.captioner = None
 
     def video_files(self, video_ids: list[str] | None = None) -> list[Path]:
         if not self.input_dir.is_dir():
@@ -266,127 +264,43 @@ class ExtractCaptionPipeline:
             for part in range(parts):
                 left = start + (end - start) * part / parts
                 right = start + (end - start) * (part + 1) / parts
-                windows.append({"start": round(left, 3), "end": round(right, 3)})
+                # Keep frame-boundary precision for sampling; log formatting rounds display only.
+                windows.append({"start": left, "end": right})
         if not windows:
             raise RuntimeError(f"No captionable shots: {video}")
         return windows
 
     def _load_caption_model(self) -> None:
-        if self.model is not None:
-            return
-        import torch
-        if not torch.cuda.is_available():
-            raise RuntimeError("Caption inference requires CUDA for this pipeline")
-        self.logger.info("[CAPTION] Loading %s on CUDA", self.caption_model_name)
-        self.caption_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-        if self.caption_backend == "internvl":
-            import transformers
-            from packaging.version import Version
-            if Version(transformers.__version__) < Version("4.52.1"):
-                raise RuntimeError("InternVL3.5 requires transformers>=4.52.1; rerun notebook cell 3")
-            from transformers import AutoModel, AutoTokenizer
-            self.model = AutoModel.from_pretrained(
-                self.caption_model_name, trust_remote_code=True, low_cpu_mem_usage=True,
-                device_map={"": "cuda:0"}, torch_dtype=self.caption_dtype, use_flash_attn=False,
-            ).eval()
-            self.processor = AutoTokenizer.from_pretrained(
-                self.caption_model_name, trust_remote_code=True, use_fast=False,
-            )
-            self.model.system_message = "You are a precise video captioner."
-            self.internvl_image_size = int(getattr(self.model.config, "force_image_size", None) or
-                                          self.model.config.vision_config.image_size)
-            self.logger.info("[CAPTION] InternVL ready dtype=%s tile_size=%d max_tiles=%d (+ thumbnail if tiled)",
-                             self.caption_dtype, self.internvl_image_size, self.internvl_config.get("max_tiles", 1))
-            return
-        from transformers import AutoModelForCausalLM, AutoProcessor
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.caption_model_name, trust_remote_code=True,
-            device_map={"": "cuda:0"}, torch_dtype=self.caption_dtype,
-        )
-        self.model.eval()
-        self.processor = AutoProcessor.from_pretrained(self.caption_model_name, trust_remote_code=True)
-        self.logger.info("[CAPTION] Model ready")
+        if self.captioner is None:
+            self.captioner = InternVLCaptioner(self.caption_model_name, self.max_frames,
+                                              self.max_new_tokens, self.vllm_config, self.logger)
 
-    def _sample_frames(self, reader, start: float, end: float, profile: dict):
-        import cv2
+    def _sample_frames(self, reader, start: float, end: float):
+        from PIL import Image
         fps = reader.get_avg_fps()
-        first = max(0, math.ceil(start * fps))
-        last = min(len(reader) - 1, math.ceil(end * fps) - 1)
+        first = max(0, math.ceil(start * fps - 1e-7))
+        last = min(len(reader) - 1, math.ceil(end * fps - 1e-7) - 1)
         if first > last:
             raise ValueError(f"No decoded video frame in [{start}, {end}]")
-        count = min(int(profile["max_frames"]), max(1, math.ceil((end - start) * self.sample_fps)))
+        count = min(self.max_frames, max(1, math.ceil((end - start) * self.sample_fps)))
         indices = np.linspace(first, last, min(count, last - first + 1), dtype=int).tolist()
         decoded = reader.get_batch(indices).asnumpy()
-        frames = []
-        for frame in decoded:
-            if self.caption_backend == "internvl":
-                frames.append(np.ascontiguousarray(frame.transpose(2, 0, 1)))
-                continue
-            height, width = frame.shape[:2]
-            scale = int(profile["short_side"]) / min(height, width)
-            resized = cv2.resize(frame, (max(1, round(width * scale)),
-                                         max(1, round(height * scale))), interpolation=cv2.INTER_AREA)
-            frames.append(np.ascontiguousarray(resized.transpose(2, 0, 1)))
-        if not frames:
-            raise ValueError(f"No sampled video frames in [{start}, {end}]")
+        size = self.captioner.image_size
+        # One tile/frame matches the official video default. Resize before queueing
+        # so prefetch/IPC retain 448px images rather than native 4K arrays.
+        frames = [Image.fromarray(frame).convert("RGB").resize((size, size), Image.Resampling.BICUBIC)
+                  for frame in decoded]
         return frames, [index / fps for index in indices]
 
-    def _caption(self, reader, start: float, end: float) -> str:
-        import torch
-        for attempt, profile in enumerate(self.profiles, 1):
-            inputs = ids = frames = None
-            try:
-                frames, timestamps = self._sample_frames(reader, start, end, profile)
-                if self.caption_backend == "internvl":
-                    from .internvl import prepare_video, video_question
-                    inputs, counts = prepare_video(frames, self.internvl_image_size,
-                                                   self.internvl_config.get("max_tiles", 1))
-                    inputs = inputs.to(device="cuda:0", dtype=self.caption_dtype)
-                    self.logger.info("[CAPTION] [%.3f,%.3f)s backend=internvl profile=%d/%d frames=%d tiles=%d tile_size=%d",
-                                     start, end, attempt, len(self.profiles), len(frames), sum(counts), self.internvl_image_size)
-                    with torch.inference_mode():
-                        text = self.model.chat(
-                            self.processor, inputs, video_question(timestamps, self.prompt),
-                            {"max_new_tokens": self.max_new_tokens, "do_sample": False},
-                            num_patches_list=counts, history=None, return_history=False,
-                        ).strip()
-                    if not text:
-                        raise RuntimeError(f"Empty caption at [{start}, {end}]")
-                    return text
-                self.logger.info("[CAPTION] [%.3f,%.3f)s profile=%d/%d frames=%d short_side=%d",
-                                 start, end, attempt, len(self.profiles), len(frames), profile["short_side"])
-                conversation = [
-                    {"role": "system", "content": "You are a precise video captioner."},
-                    {"role": "user", "content": [
-                        {"type": "video", "video": frames,
-                         "num_frames": len(frames), "timestamps": timestamps},
-                        {"type": "text", "text": self.prompt},
-                    ]},
-                ]
-                inputs = self.processor(
-                    conversation=conversation, images=[("video", frames)],
-                    add_system_prompt=True, add_generation_prompt=True, return_tensors="pt",
-                )
-                inputs = {key: value.to("cuda:0") if isinstance(value, torch.Tensor) else value
-                          for key, value in inputs.items()}
-                if "pixel_values" in inputs:
-                    inputs["pixel_values"] = inputs["pixel_values"].to(self.caption_dtype)
-                with torch.inference_mode():
-                    ids = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens,
-                                              do_sample=False)
-                text = self.processor.batch_decode(ids, skip_special_tokens=True)[0].strip()
-                if not text:
-                    raise RuntimeError(f"Empty caption at [{start}, {end}]")
-                return text
-            except torch.cuda.OutOfMemoryError:
-                self.logger.warning("CUDA OOM at [%.2f, %.2f], profile %s", start, end, profile)
-                if attempt == len(self.profiles):
-                    raise
-            finally:
-                del inputs, ids, frames
-                gc.collect()
-                torch.cuda.empty_cache()
-        raise RuntimeError("No caption profile succeeded")
+    def _prepare_batch(self, reader, video, total, done, offset, windows):
+        requests = []
+        for index, window in enumerate(windows, done + offset + 1):
+            frames, timestamps = self._sample_frames(reader, window["start"], window["end"])
+            requests.append(self.captioner.request(frames, timestamps, self.prompt))
+            self.logger.info("[CAPTION] %s shot=%d/%d [%.3f,%.3f)s READY frames=%d tile=%d",
+                             video.name, index, total, window["start"], window["end"],
+                             len(frames), self.captioner.image_size)
+        return requests
 
     def caption_videos(self, videos: list[Path], overwrite: bool = False) -> None:
         import torch
@@ -394,7 +308,7 @@ class ExtractCaptionPipeline:
         # Finish labeling the whole pending batch before the caption model occupies VRAM.
         pending = [v for v in videos if overwrite or not (self.output_dir / f"{v.stem}.json").is_file()]
         labels_by_video = {}
-        self.model = self.processor = None
+        self.captioner = None
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -418,11 +332,10 @@ class ExtractCaptionPipeline:
             signature = {"video_size": video.stat().st_size,
                          "scene_ranges": self.scene_path(video).read_text(encoding="utf-8"),
                          "caption_model": self.caption_model_name, "prompt": self.prompt,
-                         "profiles": self.profiles, "sample_fps": self.sample_fps,
+                         "backend": "vllm-internvl-v1", "max_frames": self.max_frames,
+                         "sample_fps": self.sample_fps,
                          "max_new_tokens": self.max_new_tokens, "windows": windows,
                          "speed_predictor": self.speed_config, "speed_prefix_version": 2}
-            if self.caption_backend == "internvl":
-                signature.update(caption_backend=self.caption_backend, internvl=self.internvl_config)
             if partial_path.is_file() and not overwrite:
                 state = json.loads(partial_path.read_text(encoding="utf-8"))
                 if state.get("signature") != signature:
@@ -441,19 +354,43 @@ class ExtractCaptionPipeline:
             self.logger.info("[CAPTION] %s START segments=%d resumed=%d remaining=%d",
                              video.name, len(windows), done, len(windows) - done)
             reader = VideoReader(str(video), ctx=cpu(0), num_threads=2)
+            started = perf_counter()
+            generated_tokens = 0
             try:
-                for index, window in enumerate(windows[done:], done + 1):
-                    self.logger.info("[CAPTION] %s shot=%d/%d [%.3f,%.3f)s START label=%s",
-                                     video.name, index, len(windows), window["start"], window["end"], speed_labels[index-1])
-                    caption = self._caption(reader, window["start"], window["end"])
-                    caption = apply_speed_prefix(caption, speed_labels[index - 1])
-                    state["records"].append({"video_id": video.stem, **window, "caption": caption})
-                    _save_json(partial_path, state)
-                    self.logger.info("[CAPTION-FINAL] %s shot %d/%d [%.2f-%.2f]: %s", video.name,
-                                     index, len(windows), window["start"], window["end"], caption)
+                prepare = lambda offset, batch: self._prepare_batch(
+                    reader, video, len(windows), done, offset, batch)
+                with closing(prepared_batches(windows[done:], self.batch_size, prepare)) as batches:
+                    for offset, batch, requests, prepare_seconds in batches:
+                        first = done + offset + 1
+                        self.logger.info("[CAPTION-BATCH] %s shots=%d-%d/%d START batch=%d concurrent=%d prepare=%.2fs",
+                                         video.name, first, first + len(batch) - 1, len(windows), len(batch),
+                                         self.vllm_config["max_num_seqs"], prepare_seconds)
+                        inference_start = perf_counter()
+                        try:
+                            captions, tokens = self.captioner.generate(requests)
+                        except RuntimeError as error:
+                            raise RuntimeError("vLLM caption batch failed; see engine logs above. On CUDA OOM, "
+                                               "reduce max_num_seqs/max_num_batched_tokens, or use enforce_eager=True "
+                                               "and restart the CLI process. Completed batches remain resumable.") from error
+                        elapsed = max(perf_counter() - inference_start, 1e-9)
+                        generated_tokens += tokens
+                        for index, window, caption in zip(range(first, first + len(batch)), batch, captions):
+                            label = speed_labels[index - 1]
+                            caption = apply_speed_prefix(caption, label)
+                            state["records"].append({"video_id": video.stem, **window, "caption": caption})
+                            self.logger.info("[CAPTION-FINAL] %s shot %d/%d [%.2f-%.2f] label=%s: %s", video.name,
+                                             index, len(windows), window["start"], window["end"], label, caption)
+                        _save_json(partial_path, state)
+                        self.logger.info("[CAPTION-BATCH] %s DONE inference=%.2fs shots/s=%.3f output_tokens/s=%.1f checkpoint=%d/%d",
+                                         video.name, elapsed, len(batch) / elapsed, tokens / elapsed,
+                                         len(state["records"]), len(windows))
+                        del requests, captions
             finally:
                 del reader
-                gc.collect()
+            elapsed = max(perf_counter() - started, 1e-9)
+            self.logger.info("[CAPTION-PERF] %s caption_wall=%.2fs shots=%d shots/s=%.3f output_tokens/s=%.1f (excludes model load/speed/OMNI)",
+                             video.name, elapsed, len(windows) - done, (len(windows) - done) / elapsed,
+                             generated_tokens / elapsed)
             records = merge_duplicate_captions(
                 state["records"], self.duplicate_gap, self.duplicate_similarity,
             )
