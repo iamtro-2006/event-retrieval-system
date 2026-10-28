@@ -1,0 +1,112 @@
+# Root ignore rules for the event-retrieval-system repo.
+#
+# Only genuinely heavy generated artifacts are ignored here. Small derived
+# data (ocr/asr/captions/map_keyframes: ~12MB total) is tracked on purpose so
+# teammates can reproduce a search index without a Drive round-trip.
+
+# ---------------------------------------------------------------------------
+# Heavy media and indexes — never commit (multi-GB)
+# ---------------------------------------------------------------------------
+/data/keyframes/
+/data/videos/
+/data/database/
+/data/embeddings/
+
+# Small derived data is tracked, which needs an explicit re-include because
+# many machines carry a global `data/` ignore rule (~/.config/git/ignore).
+!/data/
+!/data/ocr/
+!/data/asr/
+!/data/captions/
+!/data/map_keyframes/
+backend/data/CAM/keyframes/
+backend/data/CAM/videos/
+backend/data/AIC/keyframes/
+backend/data/AIC/videos/
+
+# Raw dataset drops (archives, not the extracted tree)
+/V3C1/
+/volumes/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+env/
+ENV/
+
+# Numba JIT caches (machine-specific, regenerated on first run)
+*.nbc
+*.nbi
+
+# ---------------------------------------------------------------------------
+# Model weights and vector blobs
+# ---------------------------------------------------------------------------
+*.faiss
+*.npy
+*.npz
+*.pkl
+*.pickle
+vectors_fp32.npy
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+weights/
+
+# Downloaded archives
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# ---------------------------------------------------------------------------
+# Secrets and environment
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# ---------------------------------------------------------------------------
+# Logs and runtime output
+# ---------------------------------------------------------------------------
+*.log
+logs/
+search_profile_log.txt
+/exports/
+
+# ---------------------------------------------------------------------------
+# Editors and OS
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
