@@ -3,12 +3,14 @@ from __future__ import annotations
 import argparse
 import faulthandler
 import logging
+import os
 import sys
 from pathlib import Path
 
 import yaml
 
 from src.caption_extraction.pipeline.extract_caption import ExtractCaptionPipeline
+from src.utils.pipeline_progress import verbose_logging
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -21,6 +23,8 @@ def backend_path(value: str | Path) -> Path:
 
 def main() -> None:
     faulthandler.enable(all_threads=True)
+    os.environ.setdefault("VLLM_LOGGING_LEVEL", "INFO" if verbose_logging() else "WARNING")
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "0" if verbose_logging() else "1")
     parser = argparse.ArgumentParser(description="Extract shot TXT and caption JSON from videos")
     parser.add_argument("--dataset", choices=("v3c", "lhe"), required=True)
     parser.add_argument("--video-id", action="append", dest="video_ids")
@@ -41,11 +45,12 @@ def main() -> None:
     scenes_dir = args.scenes_dir or backend_path(dataset["root"]) / "scenes" / group
     output_dir = args.output_dir or backend_path(dataset["root"]) / "captions" / group
 
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout,
+    level = logging.INFO if verbose_logging() else logging.WARNING
+    logging.basicConfig(level=level, stream=sys.stdout,
                         format="%(asctime)s %(levelname)s %(message)s", force=True)
     # A private handler remains active if a native dependency reconfigures root logging.
     logger = logging.getLogger("caption_pipeline")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
     logger.propagate = False
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))

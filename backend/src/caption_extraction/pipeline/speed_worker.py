@@ -6,16 +6,18 @@ import json
 import logging
 import sys
 from pathlib import Path
+from src.utils.pipeline_progress import StageProgress, verbose_logging
 
 RESULT_PREFIX = "__SPEED_LABELS__="
 
 
 def main():
     faulthandler.enable(all_threads=True)
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout,
+    level = logging.INFO if verbose_logging() else logging.WARNING
+    logging.basicConfig(level=level, stream=sys.stdout,
                         format="%(asctime)s %(levelname)s %(message)s", force=True)
     logger = logging.getLogger("speed_worker")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
     logger.propagate = False
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
@@ -27,7 +29,9 @@ def main():
     if forbidden:
         raise RuntimeError(f"Speed worker unexpectedly loaded video libraries: {forbidden}")
     logger.info("[SPEED-WORKER] Fresh process; no Decord/PyAV/OpenCV/OmniShotCut loaded")
-    predictor = ShotSpeedPredictor(request["config"], logger)
+    with StageProgress("SPEED model", 1, unit="model") as progress:
+        predictor = ShotSpeedPredictor(request["config"], logger)
+        progress.update()
     results = {}
     try:
         for item in request["videos"]:

@@ -14,7 +14,7 @@ import numpy as np
 
 from src.caption_extraction.pipeline.extract_caption import ExtractCaptionPipeline
 from src.caption_extraction.pipeline.internvl import (InternVLCaptioner, occupied_color_bins,
-                                                     prepared_batches, validate_settings)
+                                                     prepared_batches, resolve_gpu_settings, validate_settings)
 
 
 class InternVLTests(unittest.TestCase):
@@ -154,7 +154,7 @@ class InternVLTests(unittest.TestCase):
             list(prepared_batches([{}], 2, prepare))
         self.assertFalse(any(t.name.startswith("caption-decode") for t in threading.enumerate()))
 
-    def make_captioner(self):
+    def make_captioner(self, gpu_count=1):
         tokenizer = Mock()
         tokenizer.apply_chat_template.side_effect = lambda messages, **kw: messages[-1]["content"]
         tokenizer.encode.return_value = [1] * 50
@@ -169,10 +169,34 @@ class InternVLTests(unittest.TestCase):
         fake_transformers.AutoTokenizer = SimpleNamespace(from_pretrained=Mock(return_value=tokenizer))
         with patch.dict("sys.modules", {"vllm": fake_vllm, "transformers": fake_transformers}), \
              patch("torch.cuda.is_available", return_value=True), \
+             patch("torch.cuda.device_count", return_value=gpu_count), \
              patch("torch.cuda.is_bf16_supported", return_value=False):
             captioner = InternVLCaptioner("OpenGVLab/InternVL3_5-2B", 16, 220,
                                          validate_settings("InternVL", 16, 8, {}), logging.getLogger("test"))
         return captioner, engine, tokenizer, fake_vllm
+
+    def test_gpu_autodetect_one_and_two_gpu_engine_contract(self):
+        for count, tp, concurrency, tokens in ((1, 1, 3, 4096), (2, 2, 6, 8192)):
+            captioner, _, _, vllm = self.make_captioner(count)
+            kwargs = vllm.LLM.call_args.kwargs
+            self.assertEqual(kwargs['tensor_parallel_size'], tp)
+            self.assertEqual(kwargs['max_num_seqs'], concurrency)
+            self.assertEqual(kwargs['max_num_batched_tokens'], tokens)
+            self.assertEqual(captioner.settings['max_num_seqs'] * 2, 6 * tp)
+        settings = validate_settings('InternVL', 16, 'auto', {})
+        with self.assertRaisesRegex(RuntimeError, 'No visible CUDA GPU'):
+            resolve_gpu_settings(0, settings)
+        settings['tensor_parallel_size'] = 2
+        with self.assertRaisesRegex(ValueError, 'detected 1'):
+            resolve_gpu_settings(1, settings)
+
+    def test_pipeline_resolves_automatic_batch_after_engine_load(self):
+        for count, expected in ((1, 6), (2, 12)):
+            pipeline = self.pipeline(caption_batch_size='auto')
+            captioner = SimpleNamespace(settings=resolve_gpu_settings(count, pipeline.vllm_config))
+            with patch('src.caption_extraction.pipeline.extract_caption.InternVLCaptioner', return_value=captioner):
+                pipeline._load_caption_model()
+            self.assertEqual(pipeline.batch_size, expected)
 
     def test_vllm_load_contract_and_ordered_frame_placeholders(self):
         captioner, engine, tokenizer, vllm = self.make_captioner()

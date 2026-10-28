@@ -5,12 +5,14 @@ extraction:
   caption_model: OpenGVLab/InternVL3_5-2B
   caption_max_frames: 16
   caption_min_color_bins: 5  # Drop sampled frames with <5 occupied bins in the full RGB 8x8x8 histogram.
-  caption_batch_size: 8  # Requests per generate(); scheduler runs up to max_num_seqs concurrently.
+  caption_batch_size: auto  # 6 requests on one GPU, 12 on two GPUs.
+  print_captions: false  # Progress bars by default; enable to print each final caption.
   vllm:
     gpu_memory_utilization: 0.88
     max_model_len: 6144
-    max_num_seqs: 4
-    max_num_batched_tokens: 4096
+    tensor_parallel_size: auto  # Use 1 GPU, or shard across 2 when at least 2 are visible.
+    max_num_seqs: auto  # 3 concurrent shots on one GPU, 6 on two.
+    max_num_batched_tokens: auto  # 4096 / 8192 for 1 / 2 GPUs.
     enable_prefix_caching: true
     enforce_eager: false
   speed_predictor:

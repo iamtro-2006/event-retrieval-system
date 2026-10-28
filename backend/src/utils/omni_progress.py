@@ -1,7 +1,8 @@
 """Progress around upstream windows; no replacement of model or stitching logic."""
+from pathlib import Path
 
 
-def inference_with_progress(detector, video, overlap=10, *, mode='default', fps=None, logger=None):
+def inference_with_progress(detector, video, overlap=10, *, mode='default', fps=None, logger=None, progress=False):
     from omnishotcut import engine
 
     original = engine.split_videos
@@ -10,6 +11,14 @@ def inference_with_progress(detector, video, overlap=10, *, mode='default', fps=
 
     def progress_windows(*args, **kwargs):
         windows = original(*args, **kwargs)
+        if progress:
+            from src.utils.pipeline_progress import StageProgress
+            def stage_windows():
+                with StageProgress('OMNI windows', len(windows), video=Path(video).name, unit='window') as bar:
+                    for window in windows:
+                        yield window
+                        bar.update()
+            return stage_windows()
         if logger is not None:
             def logged_windows():
                 for index, window in enumerate(windows, 1):
@@ -29,6 +38,12 @@ def inference_with_progress(detector, video, overlap=10, *, mode='default', fps=
         return bar
 
     def progress_decode(*args, **kwargs):
+        if progress:
+            from src.utils.pipeline_progress import StageProgress
+            with StageProgress('OMNI decode', 1, video=Path(video).name, unit='video') as bar:
+                frames = original_decode(*args, **kwargs)
+                bar.update(postfix=f'{len(frames)} frames')
+                return frames
         if logger is not None:
             logger.info('[OMNI] %s FFmpeg decode/resize START (window progress follows decoding)', video)
         frames = original_decode(*args, **kwargs)
@@ -36,7 +51,8 @@ def inference_with_progress(detector, video, overlap=10, *, mode='default', fps=
             logger.info('[OMNI] %s FFmpeg decode/resize DONE frames=%d', video, len(frames))
         return frames
 
-    print('OmniShotCut: upstream FFmpeg decoding/resizing; window progress starts after decode.', flush=True)
+    if not progress:
+        print('OmniShotCut: upstream FFmpeg decoding/resizing; window progress starts after decode.', flush=True)
     engine.split_videos = progress_windows
     engine._decode_video = progress_decode
     try:

@@ -16,6 +16,7 @@ import torch
 from torch import nn
 
 from src.utils.gpu_video import CudaVideoReader
+from src.utils.pipeline_progress import StageProgress, verbose_logging
 from .speed_architecture import VisionTransformer
 
 
@@ -115,7 +116,7 @@ class ShotSpeedPredictor:
         """frames is GPU TCHW; resampling, model and preprocessing stay on CUDA."""
         length = len(frames) / fps
         if length < self.span:
-            self.logger.warning("[SPEED] %s duration=%.3fs < %.3fs: unknown (no original-size window)",
+            self.logger.info("[SPEED] %s duration=%.3fs < %.3fs: unknown (no original-size window)",
                                 context, length, self.span)
             return None
         factor = 1.0
@@ -123,7 +124,7 @@ class ShotSpeedPredictor:
             duration = self.span * factor
             slices = original_window_slices(len(frames), fps, duration)
             if not slices:
-                self.logger.warning("[SPEED] %s pass=%d: unknown (no valid window after cadence clamp)", context, iteration + 1)
+                self.logger.info("[SPEED] %s pass=%d: unknown (no valid window after cadence clamp)", context, iteration + 1)
                 return None
             self.logger.info("[SPEED] %s pass=%d/%d window=%.6fs factor=%.6f clips=%d",
                              context, iteration + 1, self.recursion, duration, factor, len(slices))
@@ -157,8 +158,8 @@ class ShotSpeedPredictor:
         labels, chunks = [], []
         current = 0
         next_decode_log = 0.0
-        with torch.inference_mode(), CudaVideoReader(
-            video, batch_size=8, diagnostics=True, backend=self.cfg.get("decoder", "simple")
+        with StageProgress("SPEED", len(windows), video=video.name, unit="shot") as progress, torch.inference_mode(), CudaVideoReader(
+            video, batch_size=8, diagnostics=verbose_logging(), backend=self.cfg.get("decoder", "simple")
         ) as reader:
             bounds = [(first, min(reader.total, last)) for first, last in bounds]
             for offset, batch in reader:
@@ -198,6 +199,9 @@ class ShotSpeedPredictor:
                                      "unknown" if score is None else f"{score:.6f}", label)
                     del frames
                     current += 1
+                    progress.update(postfix=f"last={label}")
+                if current == len(windows):
+                    break  # Remaining frames are outside requested shots; do not ask codec past EOF.
         if current != len(windows):
             raise RuntimeError(f"Incomplete GPU speed predictions: {video}")
         return labels

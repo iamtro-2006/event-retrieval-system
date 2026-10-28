@@ -16,6 +16,7 @@ from time import perf_counter
 import numpy as np
 
 from src.utils.frame_sampling import merge_consecutive_short_scenes
+from src.utils.pipeline_progress import StageProgress, verbose_logging, write_caption
 from .internvl import (CAPTION_FRAME_FILTER_VERSION, InternVLCaptioner,
                        occupied_color_bins, prepared_batches, validate_settings)
 
@@ -148,7 +149,10 @@ class ExtractCaptionPipeline:
         if "caption_profiles" in self.cfg or "internvl" in self.cfg:
             raise ValueError("Legacy caption config: rerun notebook cell 3; use caption_max_frames and vllm")
         self.max_frames = self.cfg.get("caption_max_frames", 16)
-        self.batch_size = self.cfg.get("caption_batch_size", 8)
+        self.batch_size = self.cfg.get("caption_batch_size", "auto")
+        self.print_captions = self.cfg.get("print_captions", False)
+        if type(self.print_captions) is not bool:
+            raise ValueError("print_captions must be boolean")
         self.min_color_bins = self.cfg.get("caption_min_color_bins", 5)
         if type(self.min_color_bins) is not int or not 1 <= self.min_color_bins <= 512:
             raise ValueError("caption_min_color_bins must be an integer in [1, 512]")
@@ -195,7 +199,8 @@ class ExtractCaptionPipeline:
         from src.utils.omni_progress import inference_with_progress
         fps, duration = _probe_video(video)
         self.logger.info("[OMNI] %s START source_fps=%.8f duration=%.3fs", video.name, fps, duration)
-        ranges = inference_with_progress(detector, video, mode="clean_shot", fps=fps, logger=self.logger)
+        ranges = inference_with_progress(detector, video, mode="clean_shot", fps=fps,
+                                         logger=self.logger, progress=not verbose_logging())
         scenes = np.asarray([
             [int(start), int(end) - 1] for start, end in ranges
             if int(end) > int(start)
@@ -232,11 +237,13 @@ class ExtractCaptionPipeline:
                 if detector is None:
                     import omnishotcut
                     from huggingface_hub import hf_hub_download
-                    weights = hf_hub_download(
-                        repo_id=self.shot_model, filename="OmniShotCut_ckpt.pth",
-                        revision=self.shot_revision,
-                    )
-                    detector = omnishotcut.load(weights)
+                    with StageProgress("OMNI model", 1, unit="model") as progress:
+                        weights = hf_hub_download(
+                            repo_id=self.shot_model, filename="OmniShotCut_ckpt.pth",
+                            revision=self.shot_revision,
+                        )
+                        detector = omnishotcut.load(weights)
+                        progress.update()
                 scenes = self._detect_scenes(video, detector)
                 scene_path.parent.mkdir(parents=True, exist_ok=True)
                 temporary = scene_path.with_suffix(scene_path.suffix + ".tmp")
@@ -281,8 +288,14 @@ class ExtractCaptionPipeline:
 
     def _load_caption_model(self) -> None:
         if self.captioner is None:
-            self.captioner = InternVLCaptioner(self.caption_model_name, self.max_frames,
-                                              self.max_new_tokens, self.vllm_config, self.logger)
+            with StageProgress("CAPTION model", 1, unit="model") as progress:
+                self.captioner = InternVLCaptioner(self.caption_model_name, self.max_frames,
+                                                  self.max_new_tokens, self.vllm_config, self.logger)
+                self.vllm_config = self.captioner.settings
+                if self.batch_size == "auto":
+                    self.batch_size = 2 * self.vllm_config["max_num_seqs"]
+                progress.update(postfix=f'TP={self.vllm_config["tensor_parallel_size"]} '
+                                f'concurrent={self.vllm_config["max_num_seqs"]} batch={self.batch_size}')
 
     def _sample_frames(self, reader, start: float, end: float):
         from PIL import Image
@@ -383,6 +396,7 @@ class ExtractCaptionPipeline:
             started = perf_counter()
             generated_tokens = 0
             inferred_shots = 0
+            caption_progress = StageProgress("CAPTION", len(windows), video=video.name, unit="shot", initial=done)
             try:
                 prepare = lambda offset, batch: self._prepare_batch(
                     reader, video, len(windows), done, offset, batch)
@@ -416,12 +430,18 @@ class ExtractCaptionPipeline:
                             state["records"].append({"video_id": video.stem, **window, "caption": caption})
                             self.logger.info("[CAPTION-FINAL] %s shot %d/%d [%.2f-%.2f] label=%s: %s", video.name,
                                              index, len(windows), window["start"], window["end"], label, caption)
+                            if self.print_captions:
+                                write_caption(f"[CAPTION-FINAL] {video.name} shot={index}/{len(windows)}: {caption}")
                         _save_json(partial_path, state)
                         self.logger.info("[CAPTION-BATCH] %s DONE inference=%.2fs shots/s=%.3f output_tokens/s=%.1f checkpoint=%d/%d",
                                          video.name, elapsed, len(requests) / elapsed, tokens / elapsed,
                                          len(state["records"]), len(windows))
+                        caption_progress.update(len(batch), postfix=f"inferred={inferred_shots} "
+                                                f"skipped={len(state['records'])-done-inferred_shots} "
+                                                f"{len(requests)/elapsed:.2f} shot/s")
                         del items, requests, captions
             finally:
+                caption_progress.close(failed=sys.exc_info()[0] is not None)
                 del reader
             elapsed = max(perf_counter() - started, 1e-9)
             self.logger.info("[CAPTION-PERF] %s caption_wall=%.2fs inferred=%d skipped=%d shots/s=%.3f output_tokens/s=%.1f (excludes model load/speed/OMNI)",
