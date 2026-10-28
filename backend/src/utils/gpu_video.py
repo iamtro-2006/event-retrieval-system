@@ -8,11 +8,14 @@ import torch.nn.functional as F
 
 
 class CudaVideoReader:
-    def __init__(self, path: Path, batch_size: int = 16, diagnostics: bool = False):
+    def __init__(self, path: Path, batch_size: int = 16, diagnostics: bool = False,
+                 backend: str = 'threaded'):
         if not torch.cuda.is_available():
             raise RuntimeError('NVDEC requires a CUDA GPU; select Kaggle T4.')
         if batch_size < 1:
             raise ValueError('decode batch_size must be positive')
+        if backend not in {'simple', 'threaded'}:
+            raise ValueError('NVDEC backend must be simple or threaded')
         self.diagnostics = diagnostics
         self.path = path
         if diagnostics:
@@ -21,16 +24,26 @@ class CudaVideoReader:
         self.batch_size = batch_size
         self.decoder = None
         try:
+            decoder_name = 'SimpleDecoder' if backend == 'simple' else 'ThreadedDecoder'
             if diagnostics:
-                print(f'[NVDEC] {path.name} creating ThreadedDecoder; '
+                print(f'[NVDEC] {path.name} creating {decoder_name}; '
                       f'PyNvVideoCodec={getattr(nvc, "__version__", "unknown")} '
                       f'torch={torch.__version__} CUDA={torch.version.cuda} '
                       f'gpu={torch.cuda.current_device()}', flush=True)
-            self.decoder = nvc.ThreadedDecoder(
-                enc_file_path=str(path), gpu_id=torch.cuda.current_device(),
-                buffer_size=2 * batch_size, use_device_memory=True,
-                output_color_type=nvc.OutputColorType.RGBP,
-            )
+            if backend == 'simple':
+                # Synchronous NVDEC avoids the ThreadedDecoder constructor path
+                # that segfaults on the reported Kaggle setup. No CPU fallback.
+                self.decoder = nvc.SimpleDecoder(
+                    enc_file_path=str(path), gpu_id=torch.cuda.current_device(),
+                    cuda_context=0, cuda_stream=0, decoder_cache_size=1,
+                    use_device_memory=True, output_color_type=nvc.OutputColorType.RGBP,
+                )
+            else:
+                self.decoder = nvc.ThreadedDecoder(
+                    enc_file_path=str(path), gpu_id=torch.cuda.current_device(),
+                    buffer_size=2 * batch_size, use_device_memory=True,
+                    output_color_type=nvc.OutputColorType.RGBP,
+                )
             if diagnostics:
                 print(f'[NVDEC] {path.name} decoder created; reading stream metadata', flush=True)
             self.total = int(self.decoder.get_stream_metadata().num_frames)

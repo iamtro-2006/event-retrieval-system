@@ -8,6 +8,7 @@ extraction:
     model: james020619/VideoMAEv2-SpeedPredictor
     revision: 31e6f61
     recursion: 3
+    decoder: simple
     timelapse_threshold: 1.8
     slow_motion_threshold: 0.6
   language: English

@@ -138,7 +138,9 @@ class ShotSpeedPredictor:
         labels, chunks = [], []
         current = 0
         next_decode_log = 0.0
-        with torch.inference_mode(), CudaVideoReader(video, batch_size=8, diagnostics=True) as reader:
+        with torch.inference_mode(), CudaVideoReader(
+            video, batch_size=8, diagnostics=True, backend=self.cfg.get("decoder", "simple")
+        ) as reader:
             bounds = [(math.ceil(w["start"] * fps), min(reader.total, math.ceil(w["end"] * fps))) for w in windows]
             for offset, batch in reader:
                 batch_end = offset + len(batch)

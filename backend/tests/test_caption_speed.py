@@ -12,9 +12,30 @@ import torch
 from src.caption_extraction.pipeline.speed import ShotSpeedPredictor, original_window_slices, speed_label
 from src.caption_extraction.pipeline.extract_caption import apply_speed_prefix, merge_duplicate_captions
 from src.utils.omni_progress import inference_with_progress
+from src.utils.gpu_video import CudaVideoReader
 
 
 class OriginalSpeedTests(unittest.TestCase):
+    def test_simple_decoder_is_gpu_only_and_does_not_construct_threaded(self):
+        calls = []
+        class Simple:
+            def __init__(self, **kwargs): calls.append(kwargs)
+            def get_stream_metadata(self): return types.SimpleNamespace(num_frames=150)
+        def forbidden(**kwargs): self.fail("ThreadedDecoder must not be called")
+        codec = types.ModuleType("PyNvVideoCodec")
+        codec.SimpleDecoder = Simple
+        codec.ThreadedDecoder = forbidden
+        codec.OutputColorType = types.SimpleNamespace(RGBP="RGBP")
+        with patch.dict(sys.modules, {"PyNvVideoCodec":codec}), \
+             patch("torch.cuda.is_available", return_value=True), \
+             patch("torch.cuda.current_device", return_value=0), \
+             patch("torch.cuda.synchronize"):
+            with CudaVideoReader(Path("video.mp4"), backend="simple") as reader:
+                self.assertEqual(reader.total,150)
+        self.assertTrue(calls[0]["use_device_memory"])
+        self.assertEqual(calls[0]["cuda_context"],0)
+        self.assertEqual(calls[0]["output_color_type"],"RGBP")
+
     def predictor(self):
         p = object.__new__(ShotSpeedPredictor)
         p.count, p.sample_fps, p.span, p.recursion = 16, 7.5, 16/7.5, 3

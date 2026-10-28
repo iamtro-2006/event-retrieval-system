@@ -45,3 +45,5 @@ Notebook VLM và HEVC chứa sẵn mã cần chạy trên Kaggle, gồm rclone v
 
 
 
+
+NVDEC caption predictor: cấu hình `speed_predictor.decoder: simple` dùng SimpleDecoder (NVDEC đồng bộ, GPU RGBP, primary CUDA context). Đây là đường thay cho ThreadedDecoder gặp SIGSEGV trong constructor ở môi trường Kaggle đã báo (PyNvVideoCodec 2.2.3 / Torch 2.11 cu130 / Python 3.13). Không khẳng định nguyên nhân sâu hoặc đã sửa lỗi trên GPU khi chưa chạy lại. Các pipeline khác vẫn giữ decoder mặc định của chúng. Cập nhật notebook và chạy lại cell setup/config để helper run() mới có heartbeat/exit code.
