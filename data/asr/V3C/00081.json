@@ -1,0 +1,1232 @@
+[
+  {
+    "video_id": "00081",
+    "start": 15.41,
+    "end": 20.39,
+    "transcript": "Introduction to Resolve, in this shopper you'll get a quick tour of the DaVinci Resolve interface"
+  },
+  {
+    "video_id": "00081",
+    "start": 20.39,
+    "end": 24.04,
+    "transcript": "and learn the fundamentals of where the..."
+  },
+  {
+    "video_id": "00081",
+    "start": 24.04,
+    "end": 28.28,
+    "transcript": "Allez, plus de 600 pages de manuel tout en anglais, on va éviter."
+  },
+  {
+    "video_id": "00081",
+    "start": 28.78,
+    "end": 30.58,
+    "transcript": "Et moi, je vais vous simplifier la tâche."
+  },
+  {
+    "video_id": "00081",
+    "start": 31.28,
+    "end": 35.12,
+    "transcript": "Bonjour et bienvenue sur ce tutoriel consacré au logiciel de la société Blackmagic Design,"
+  },
+  {
+    "video_id": "00081",
+    "start": 35.26,
+    "end": 37.56,
+    "transcript": "à savoir DaVinci Resolve 9 dans sa version Lite."
+  },
+  {
+    "video_id": "00081",
+    "start": 38.18,
+    "end": 42.92,
+    "transcript": "Dans ce tutoriel en plusieurs parties, nous allons voir toutes les bases"
+  },
+  {
+    "video_id": "00081",
+    "start": 42.92,
+    "end": 45.08,
+    "transcript": "concernant ce logiciel d'étalonnage professionnel."
+  },
+  {
+    "video_id": "00081",
+    "start": 45.08,
+    "end": 49.26,
+    "transcript": "Et dans cette première vidéo, nous allons aborder le fait de bien l'installer,"
+  },
+  {
+    "video_id": "00081",
+    "start": 49.52,
+    "end": 54.08,
+    "transcript": "de paramétrer son compte utilisateur et faire un tour d'horizon assez rapide"
+  },
+  {
+    "video_id": "00081",
+    "start": 54.08,
+    "end": 56.18,
+    "transcript": "de tout ce que peut nous offrir ce logiciel."
+  },
+  {
+    "video_id": "00081",
+    "start": 56.6,
+    "end": 59.32,
+    "transcript": "Donc tout de suite, c'est parti !"
+  },
+  {
+    "video_id": "00081",
+    "start": 59.32,
+    "end": 62.7,
+    "transcript": "DaVinci Resolve, c'est LE logiciel d'étalonnage professionnel."
+  },
+  {
+    "video_id": "00081",
+    "start": 63.74,
+    "end": 68.26,
+    "transcript": "Depuis 1984, ses outils de correction colorimétrique constituent un standard en post-production."
+  },
+  {
+    "video_id": "00081",
+    "start": 69.42,
+    "end": 71.94,
+    "transcript": "Et d'ailleurs, ce n'est pas pour rien que dans les coulisses d'un grand nombre de films,"
+  },
+  {
+    "video_id": "00081",
+    "start": 72.22,
+    "end": 74.4,
+    "transcript": "publicités télévisées, documentaires et séries télé,"
+  },
+  {
+    "video_id": "00081",
+    "start": 74.7,
+    "end": 74.94,
+    "transcript": "on retrouve..."
+  },
+  {
+    "video_id": "00081",
+    "start": 75.08,
+    "end": 77.14,
+    "transcript": "on retrouve le nom de DaVinci plus souvent qu'aucun autre."
+  },
+  {
+    "video_id": "00081",
+    "start": 78.0,
+    "end": 80.86,
+    "transcript": "Des milliers d'étalonneurs à travers le monde apprécient ses performances,"
+  },
+  {
+    "video_id": "00081",
+    "start": 81.24,
+    "end": 82.62,
+    "transcript": "sa qualité et son interface."
+  },
+  {
+    "video_id": "00081",
+    "start": 83.6,
+    "end": 87.26,
+    "transcript": "Pour commencer ce premier tutoriel, rendons-nous sur le site de Blackmagic Design."
+  },
+  {
+    "video_id": "00081",
+    "start": 88.18,
+    "end": 92.04,
+    "transcript": "Ce site existe en version française et si vous arrivez sur la page d'accueil en version anglaise,"
+  },
+  {
+    "video_id": "00081",
+    "start": 92.44,
+    "end": 96.02,
+    "transcript": "vous pouvez, en bas de la page web, changer la langue du site en cliquant sur le lien"
+  },
+  {
+    "video_id": "00081",
+    "start": 96.02,
+    "end": 97.32,
+    "transcript": "Change your location."
+  },
+  {
+    "video_id": "00081",
+    "start": 99.06,
+    "end": 101.96,
+    "transcript": "Sur cette page d'accueil, vous allez maintenant cliquer sur l'onglet Produits."
+  },
+  {
+    "video_id": "00081",
+    "start": 102.12,
+    "end": 105.02,
+    "transcript": "Vous arrivez sur une nouvelle page et vous découvrez tous les produits"
+  },
+  {
+    "video_id": "00081",
+    "start": 105.08,
+    "end": 108.98,
+    "transcript": "commercialisés par Blackmagic et, entre autres, la fameuse Blackmagic Cinema Camera"
+  },
+  {
+    "video_id": "00081",
+    "start": 108.98,
+    "end": 111.58,
+    "transcript": "qui est livrée avec la version complète de DaVinci Resolve 9."
+  },
+  {
+    "video_id": "00081",
+    "start": 112.52,
+    "end": 115.76,
+    "transcript": "C'est un petit plus qui donne à cette caméra un rapport qualité-prix assez incroyable."
+  },
+  {
+    "video_id": "00081",
+    "start": 117.44,
+    "end": 121.16,
+    "transcript": "Vous allez descendre dans la page pour arriver au niveau du paragraphe Correction des couleurs"
+  },
+  {
+    "video_id": "00081",
+    "start": 121.52,
+    "end": 124.84,
+    "transcript": "et du logiciel DaVinci Resolve et là, vous cliquez sur Lire la suite."
+  },
+  {
+    "video_id": "00081",
+    "start": 127.96,
+    "end": 131.82,
+    "transcript": "Nous sommes maintenant sur la partie du site dédié aux logiciels qui nous intéressent."
+  },
+  {
+    "video_id": "00081",
+    "start": 131.9,
+    "end": 137.36,
+    "transcript": "Ici, vous trouverez toute une description de Resolve 9 et pas mal de petites choses qui vont vous mettre l'eau à l'aise."
+  },
+  {
+    "video_id": "00081",
+    "start": 137.44,
+    "end": 138.88,
+    "transcript": "La bouche..."
+  },
+  {
+    "video_id": "00081",
+    "start": 138.88,
+    "end": 144.12,
+    "transcript": "Alors, il faut savoir que dans la version Lite, qui est donc cette version gratuite mais allégée de Resolve 9,"
+  },
+  {
+    "video_id": "00081",
+    "start": 144.3,
+    "end": 145.74,
+    "transcript": "vous allez être limité dans plusieurs domaines."
+  },
+  {
+    "video_id": "00081",
+    "start": 146.1,
+    "end": 152.34,
+    "transcript": "Le premier, c'est que vous ne pourrez pas travailler avec des fichiers plus grands que Full HD, c'est-à-dire 1980x1080."
+  },
+  {
+    "video_id": "00081",
+    "start": 152.96,
+    "end": 155.14,
+    "transcript": "Bien qu'il n'y ait pas d'imitation dans les nœuds de correction de couleur,"
+  },
+  {
+    "video_id": "00081",
+    "start": 155.3,
+    "end": 159.4,
+    "transcript": "vous ne pourrez travailler qu'avec une seule carte de traitement d'image et une seule carte Red Rocket."
+  },
+  {
+    "video_id": "00081",
+    "start": 160.0,
+    "end": 164.14,
+    "transcript": "Vous n'aurez pas accès non plus à la 3D stéréoscopique, ni à la réduction de bruit,"
+  },
+  {
+    "video_id": "00081",
+    "start": 164.34,
+    "end": 167.18,
+    "transcript": "ni à différentes petites choses qui sont listées dans la partie anglaise du site."
+  },
+  {
+    "video_id": "00081",
+    "start": 168.26,
+    "end": 170.82,
+    "transcript": "Le logiciel dans sa version complète coûte 835€."
+  },
+  {
+    "video_id": "00081",
+    "start": 171.6,
+    "end": 175.38,
+    "transcript": "Je vous rappelle que si vous achetez la Blackmagic Cinema Camera, il est libre avec."
+  },
+  {
+    "video_id": "00081",
+    "start": 176.1,
+    "end": 182.76,
+    "transcript": "Et si vous gagnez au loto, vous pouvez acheter cette magnifique console d'étalonnage qui va bien avec."
+  },
+  {
+    "video_id": "00081",
+    "start": 184.78,
+    "end": 190.32,
+    "transcript": "En bas de cette page, dans le tableau La Famille d'Amici Resolve, vous allez cliquer sur le bouton Download de la version Lite."
+  },
+  {
+    "video_id": "00081",
+    "start": 195.26,
+    "end": 197.64,
+    "transcript": "Pour ce tutoriel, c'est la version Mac que nous allons télécharger."
+  },
+  {
+    "video_id": "00081",
+    "start": 197.64,
+    "end": 202.46,
+    "transcript": "Si vous travaillez sur PC ou Linux, je vous invite à chercher d'autres tutoriels d'installation"
+  },
+  {
+    "video_id": "00081",
+    "start": 202.46,
+    "end": 203.42,
+    "transcript": "ou en fouillant sur le net."
+  },
+  {
+    "video_id": "00081",
+    "start": 204.86,
+    "end": 209.94,
+    "transcript": "Dans le menu déroulant, série de produits, vous choisissez DaVinci Resolve et à côté, vous sélectionnez Lite."
+  },
+  {
+    "video_id": "00081",
+    "start": 217.72,
+    "end": 222.4,
+    "transcript": "Nous arrivons enfin sur la page Centre de support et c'est là que nous allons pouvoir télécharger les éléments qui nous intéressent."
+  },
+  {
+    "video_id": "00081",
+    "start": 222.96,
+    "end": 228.68,
+    "transcript": "En premier, vous pouvez télécharger le manuel complet de DaVinci Resolve 9, 600 pages, tout en anglais."
+  },
+  {
+    "video_id": "00081",
+    "start": 229.2,
+    "end": 231.1,
+    "transcript": "Enjoy !"
+  },
+  {
+    "video_id": "00081",
+    "start": 231.1,
+    "end": 236.72,
+    "transcript": "Et en deuxième, c'est sur ce lien que vous allez télécharger le logiciel en image le.dmg sur votre Mac."
+  },
+  {
+    "video_id": "00081",
+    "start": 237.64,
+    "end": 239.26,
+    "transcript": "Ici, c'est un petit document qui liste les contenus de la version."
+  },
+  {
+    "video_id": "00081",
+    "start": 239.26,
+    "end": 241.16,
+    "transcript": "Les configurations requises pour votre Mac."
+  },
+  {
+    "video_id": "00081",
+    "start": 241.56,
+    "end": 244.72,
+    "transcript": "Ensuite, une FAQ, un document sur les notes d'assistance."
+  },
+  {
+    "video_id": "00081",
+    "start": 245.34,
+    "end": 252.32,
+    "transcript": "Et enfin, ce qui va nous intéresser également, ce sont les démos et tutoriaux vidéo que nous allons avoir besoin pour travailler pendant cette formation."
+  },
+  {
+    "video_id": "00081",
+    "start": 253.36,
+    "end": 256.0,
+    "transcript": "Il ne vous reste plus qu'à cliquer sur Télécharger."
+  },
+  {
+    "video_id": "00081",
+    "start": 256.88,
+    "end": 260.46,
+    "transcript": "Vous arrivez sur une nouvelle page où vous devez remplir quelques petites cases d'informations,"
+  },
+  {
+    "video_id": "00081",
+    "start": 260.74,
+    "end": 264.4,
+    "transcript": "comme votre prénom, votre nom, le nom de votre société si besoin, etc."
+  },
+  {
+    "video_id": "00081",
+    "start": 264.94,
+    "end": 268.62,
+    "transcript": "Et vous lancez le téléchargement en cliquant sur S'inscrire et télécharger."
+  },
+  {
+    "video_id": "00081",
+    "start": 270.7,
+    "end": 273.68,
+    "transcript": "Plutôt que de télécharger tous les éléments que nous avons vus précédemment,"
+  },
+  {
+    "video_id": "00081",
+    "start": 274.08,
+    "end": 279.96,
+    "transcript": "il faut savoir que le fichier .dmg contient le paquet d'installation, le manuel, le document de configuration,"
+  },
+  {
+    "video_id": "00081",
+    "start": 280.62,
+    "end": 284.76,
+    "transcript": "le dossier avec les vidéos d'exemple que vous pouvez copier sur votre disque dur, mais maintenant,"
+  },
+  {
+    "video_id": "00081",
+    "start": 285.34,
+    "end": 287.66,
+    "transcript": "et le programme pour désinstaller l'application si besoin."
+  },
+  {
+    "video_id": "00081",
+    "start": 288.96,
+    "end": 293.28,
+    "transcript": "Il ne vous reste plus qu'à ouvrir l'application Resolve Installer pour mettre le logiciel sur votre Mac."
+  },
+  {
+    "video_id": "00081",
+    "start": 297.57,
+    "end": 301.71,
+    "transcript": "DaVinci Resolve 9 est une application qui ne fonctionne qu'en 64 bits."
+  },
+  {
+    "video_id": "00081",
+    "start": 301.71,
+    "end": 303.71,
+    "transcript": "Il vous faut donc vérifier si votre Macintosh..."
+  },
+  {
+    "video_id": "00081",
+    "start": 304.19,
+    "end": 311.05,
+    "transcript": "...est bien configuré pour travailler en 64 bits, ce qui n'est pas le cas des machines qui ont été commercialisées avant la mise en place des processeurs Intel Core 2 Duo."
+  },
+  {
+    "video_id": "00081",
+    "start": 312.07,
+    "end": 318.21,
+    "transcript": "Choisissez donc A propos de ce Mac dans le menu Apple, situé en haut à gauche de la barre des menus, puis cliquez sur Plus d'infos."
+  },
+  {
+    "video_id": "00081",
+    "start": 318.95,
+    "end": 324.49,
+    "transcript": "Ouvrez la section Logiciel et vérifiez qu'au bout de cette ligne, Noyaux et Extensions 64 bits, un Oui est inscrit."
+  },
+  {
+    "video_id": "00081",
+    "start": 324.63,
+    "end": 329.71,
+    "transcript": "Si c'est un Non, vous devez redémarrer votre ordinateur en 64 bits pour pouvoir utiliser DaVinci Resolve."
+  },
+  {
+    "video_id": "00081",
+    "start": 330.15,
+    "end": 332.53,
+    "transcript": "Alors comment faire ? Vous avez plusieurs possibilités."
+  },
+  {
+    "video_id": "00081",
+    "start": 334.19,
+    "end": 339.53,
+    "transcript": "Une, top horaire, est de redémarrer votre Mac en maintenant appuyant simultanément les touches 6 et 4 de votre clavier."
+  },
+  {
+    "video_id": "00081",
+    "start": 340.11,
+    "end": 346.65,
+    "transcript": "Attention, au prochain redémarrage, votre machine repassera en configuration par défaut, à savoir 32 bits, si vous n'avez pas fait une manipulation définitive."
+  },
+  {
+    "video_id": "00081",
+    "start": 347.75,
+    "end": 354.23,
+    "transcript": "Les deux autres solutions pour passer en 64 bits définitivement, est soit de rentrer quelques lignes de programme dans le terminal..."
+  },
+  {
+    "video_id": "00081",
+    "start": 354.23,
+    "end": 363.91,
+    "transcript": "...ou soit d'utiliser un petit logiciel freeware que vous pouvez télécharger sur kubik.com et qui s'appelle Kernel Startup Mode Selector 1.5."
+  },
+  {
+    "video_id": "00081",
+    "start": 364.19,
+    "end": 372.02,
+    "transcript": "Lorsque vous lancez cette application, il vérifie la compatibilité de votre processeur avec le passage en 64 bits."
+  },
+  {
+    "video_id": "00081",
+    "start": 372.02,
+    "end": 376.46,
+    "transcript": "Vous pouvez donc choisir entre passer en 32 bits ou 64 bits selon vos besoins."
+  },
+  {
+    "video_id": "00081",
+    "start": 376.46,
+    "end": 379.26,
+    "transcript": "Quitter le logiciel et redémarrer votre machine."
+  },
+  {
+    "video_id": "00081",
+    "start": 379.26,
+    "end": 387.1,
+    "transcript": "En effectuant la manipulation précédente, la ligne Noyaux et Extensions 64 bits devrait maintenant afficher un magnifique Oui."
+  },
+  {
+    "video_id": "00081",
+    "start": 387.1,
+    "end": 391.5,
+    "transcript": "Vous allez donc pouvoir lancer l'application DaVinci Resolve 9 Lite."
+  },
+  {
+    "video_id": "00081",
+    "start": 391.5,
+    "end": 395.37,
+    "transcript": "Si jamais vous n'aviez pas passé votre Mac en 64 bits, l'application vous affichera un magnifique Oui."
+  },
+  {
+    "video_id": "00081",
+    "start": 395.37,
+    "end": 396.37,
+    "transcript": "Si jamais vous n'aviez pas passé votre Mac en 64 bits, l'application vous affichera un magnifique Oui."
+  },
+  {
+    "video_id": "00081",
+    "start": 396.37,
+    "end": 397.37,
+    "transcript": "Si jamais vous n'aviez pas passé votre Mac en 64 bits, l'application vous affichera un magnifique Oui."
+  },
+  {
+    "video_id": "00081",
+    "start": 397.37,
+    "end": 399.29,
+    "transcript": "Si jamais vous n'avez pas passé votre Mac en 64 bits, il sera déjà un message d'alerte et vous refuserez de démarrer."
+  },
+  {
+    "video_id": "00081",
+    "start": 399.45,
+    "end": 403.65,
+    "transcript": "Il faut donc impérativement effectuer une des manipulations, vu précédemment."
+  },
+  {
+    "video_id": "00081",
+    "start": 403.65,
+    "end": 409.29,
+    "transcript": "A l'ouverture de Resolve, la première fenêtre� apparaît est une fenêtre d'ouverture de session."
+  },
+  {
+    "video_id": "00081",
+    "start": 409.49,
+    "end": 414.09,
+    "transcript": "A l'origine, DaVinci Resolve a été designé comme une application multi-utilisateur."
+  },
+  {
+    "video_id": "00081",
+    "start": 414.09,
+    "end": 417.49,
+    "transcript": "C'est pourquoi vous avez la possibilité de vous connecter en tant qu'administrateure,"
+  },
+  {
+    "video_id": "00081",
+    "start": 417.49,
+    "end": 421.49,
+    "transcript": "invité ou avec un profil que vous aurez préalablement créé."
+  },
+  {
+    "video_id": "00081",
+    "start": 421.49,
+    "end": 426.29,
+    "transcript": "Pour créer un nouvel utilisateur, cliquez sur le petit Icode ici en bas à gauche."
+  },
+  {
+    "video_id": "00081",
+    "start": 426.29,
+    "end": 427.29,
+    "transcript": "Pourquoi générer un nouveau utilisateur ?"
+  },
+  {
+    "video_id": "00081",
+    "start": 427.29,
+    "end": 431.31,
+    "transcript": "fenêtre vous pouvez rentrer votre nom d'utilisateur y ajouter un mot de passe"
+  },
+  {
+    "video_id": "00081",
+    "start": 431.31,
+    "end": 435.03,
+    "transcript": "ceci est optionnel et télécharger depuis votre ordinateur une photo qui vous"
+  },
+  {
+    "video_id": "00081",
+    "start": 435.03,
+    "end": 440.36,
+    "transcript": "servira d'avatar comme vous pouvez le voir ici j'ai déjà créé mon propre compte"
+  },
+  {
+    "video_id": "00081",
+    "start": 440.36,
+    "end": 444.2,
+    "transcript": "d'utilisateur et si je clique ici je peux très bien changer mes paramètres"
+  },
+  {
+    "video_id": "00081",
+    "start": 444.2,
+    "end": 448.82,
+    "transcript": "mon image mon mot de passe etc la deuxième chose importante avant de"
+  },
+  {
+    "video_id": "00081",
+    "start": 448.82,
+    "end": 453.38,
+    "transcript": "commencer c'est de paramétrer le dossier de travail de DaVinci Resolve en effet"
+  },
+  {
+    "video_id": "00081",
+    "start": 453.38,
+    "end": 457.42,
+    "transcript": "cette application travaille avec une base de données de type qpsql et il est"
+  },
+  {
+    "video_id": "00081",
+    "start": 457.42,
+    "end": 460.3,
+    "transcript": "plutôt difficile de retrouver vos paramètres et vos projets quand ils sont"
+  },
+  {
+    "video_id": "00081",
+    "start": 460.3,
+    "end": 463.78,
+    "transcript": "enfermés dans votre ordinateur cela est d'autant plus vrai si comme moi"
+  },
+  {
+    "video_id": "00081",
+    "start": 463.78,
+    "end": 467.54,
+    "transcript": "vous naviguez entre votre iMac et votre MacBook Pro et que vous avez envie de"
+  },
+  {
+    "video_id": "00081",
+    "start": 467.54,
+    "end": 471.34,
+    "transcript": "retrouver facilement tous vos petits travaux donc vous allez cliquer ici sur"
+  },
+  {
+    "video_id": "00081",
+    "start": 471.34,
+    "end": 474.64,
+    "transcript": "ce petit icône de disque dur et nous allons extérioriser le dossier travail"
+  },
+  {
+    "video_id": "00081",
+    "start": 474.64,
+    "end": 478.1,
+    "transcript": "de Resolve quand vous lancez l'application pour la première fois"
+  },
+  {
+    "video_id": "00081",
+    "start": 478.1,
+    "end": 481.64,
+    "transcript": "l'emplacement de la base de données est enfouie dans votre Mac vous allez donc"
+  },
+  {
+    "video_id": "00081",
+    "start": 481.64,
+    "end": 485.82,
+    "transcript": "en créer une nouvelle en cliquant sur le petit plus ici pour ma part je l'ai"
+  },
+  {
+    "video_id": "00081",
+    "start": 485.82,
+    "end": 487.38,
+    "transcript": "mise sur mon disque dur externe portable"
+  },
+  {
+    "video_id": "00081",
+    "start": 487.38,
+    "end": 492.24,
+    "transcript": "ce qui me permet de passer facilement d'un Mac à l'autre dans le menu"
+  },
+  {
+    "video_id": "00081",
+    "start": 492.24,
+    "end": 496.38,
+    "transcript": "déroulant driver choisissez bien disque vous allez ensuite lui donner le nom que"
+  },
+  {
+    "video_id": "00081",
+    "start": 496.38,
+    "end": 500.82,
+    "transcript": "vous voulez et lui donner un chemin pour localiser votre nouvelle base de données"
+  },
+  {
+    "video_id": "00081",
+    "start": 500.82,
+    "end": 505.94,
+    "transcript": "vous pouvez maintenant fermer la fenêtre et choisir votre utilisateur pour"
+  },
+  {
+    "video_id": "00081",
+    "start": 505.94,
+    "end": 508.34,
+    "transcript": "l'ouvrir cliquez deux fois sur son avatar ou"
+  },
+  {
+    "video_id": "00081",
+    "start": 508.34,
+    "end": 513.14,
+    "transcript": "cliquez sur login après vous être connecté c'est la fenêtre de projet qui"
+  },
+  {
+    "video_id": "00081",
+    "start": 513.14,
+    "end": 515.38,
+    "transcript": "s'affiche si c'est la première fois que vous ouvrez DaVinci Resolve un projet par défaut vaut 2 heures."
+  },
+  {
+    "video_id": "00081",
+    "start": 517.38,
+    "end": 521.76,
+    "transcript": "Si vous avez déjà plusieurs projets en cours vous pouvez vous"
+  },
+  {
+    "video_id": "00081",
+    "start": 521.76,
+    "end": 524.58,
+    "transcript": "remémorer leur contenu en passant la souris sur l'icône"
+  },
+  {
+    "video_id": "00081",
+    "start": 524.58,
+    "end": 530.54,
+    "transcript": "cela vous montrera sous forme d'image clé les différentes parties de votre"
+  },
+  {
+    "video_id": "00081",
+    "start": 530.54,
+    "end": 539.36,
+    "transcript": "projet vous avez la possibilité de passer du mode de vue par icône en mode"
+  },
+  {
+    "video_id": "00081",
+    "start": 539.36,
+    "end": 544.69,
+    "transcript": "de vue par liste vous pouvez également utiliser un mode"
+  },
+  {
+    "video_id": "00081",
+    "start": 544.69,
+    "end": 549.37,
+    "transcript": "de recherche du projet soit par nom soit par format ici si je recherche un"
+  },
+  {
+    "video_id": "00081",
+    "start": 549.37,
+    "end": 552.55,
+    "transcript": "projet qui contient le mot dancing je tombe sur mon projet dancing girl"
+  },
+  {
+    "video_id": "00081",
+    "start": 552.55,
+    "end": 570.35,
+    "transcript": "facilement en cliquant en bas à gauche sur l'icône projet de groupe"
+  },
+  {
+    "video_id": "00081",
+    "start": 570.65,
+    "end": 572.89,
+    "transcript": "je peux voir dans les différents utilisateurs qui sont connectés à ma"
+  },
+  {
+    "video_id": "00081",
+    "start": 572.89,
+    "end": 576.89,
+    "transcript": "base de données ici l'administrateur l'invité qui travaille sur quel projet"
+  },
+  {
+    "video_id": "00081",
+    "start": 576.89,
+    "end": 581.03,
+    "transcript": "vous pouvez créer un nouveau projet en lui donnant directement un nom et vous"
+  },
+  {
+    "video_id": "00081",
+    "start": 581.03,
+    "end": 586.01,
+    "transcript": "pouvez aussi supprimer un projet existant vous pouvez également importer"
+  },
+  {
+    "video_id": "00081",
+    "start": 586.01,
+    "end": 589.77,
+    "transcript": "un projet soit venant d'un autre utilisateur listé ici soit en naviguant"
+  },
+  {
+    "video_id": "00081",
+    "start": 589.77,
+    "end": 593.69,
+    "transcript": "depuis votre disque vers un fichier projet importé avec une extension en"
+  },
+  {
+    "video_id": "00081",
+    "start": 593.69,
+    "end": 597.75,
+    "transcript": ".drp vous pouvez vous connecter à une base de"
+  },
+  {
+    "video_id": "00081",
+    "start": 597.75,
+    "end": 600.63,
+    "transcript": "données préalablement créée sur votre ordinateur ou sur un autre"
+  },
+  {
+    "video_id": "00081",
+    "start": 600.65,
+    "end": 610.05,
+    "transcript": "disque dur externe en cliquant droit sur vos projets existants vous avez la"
+  },
+  {
+    "video_id": "00081",
+    "start": 610.05,
+    "end": 614.07,
+    "transcript": "possibilité de les lire en lecture seul vous pouvez tout à fait effectuer des"
+  },
+  {
+    "video_id": "00081",
+    "start": 614.07,
+    "end": 617.05,
+    "transcript": "changements dans ce projet mais aucune sauvegarde ne sera effectué à sa"
+  },
+  {
+    "video_id": "00081",
+    "start": 617.05,
+    "end": 621.7,
+    "transcript": "fermeture il ne vous reste plus maintenant qu'à"
+  },
+  {
+    "video_id": "00081",
+    "start": 621.7,
+    "end": 625.08,
+    "transcript": "double cliquer sur l'icône de votre projet pour l'ouvrir ou cliquez en bas à"
+  },
+  {
+    "video_id": "00081",
+    "start": 625.08,
+    "end": 630.53,
+    "transcript": "droite sur l'icône l'aude lorsque vous ouvrez un projet vous êtes"
+  },
+  {
+    "video_id": "00081",
+    "start": 630.53,
+    "end": 634.37,
+    "transcript": "immédiatement redirigé vers la page média c'est la première des cinq pages"
+  },
+  {
+    "video_id": "00081",
+    "start": 634.37,
+    "end": 638.59,
+    "transcript": "dans l'interface utilisateur de davinci raison la page médias se compose de la"
+  },
+  {
+    "video_id": "00081",
+    "start": 638.59,
+    "end": 641.79,
+    "transcript": "bibliothèque vous trouverez les fichiers importés stockés sur votre disque"
+  },
+  {
+    "video_id": "00081",
+    "start": 641.79,
+    "end": 646.39,
+    "transcript": "vous pouvez naviguer sur votre ordinateur où vos disques du réexterne pour"
+  },
+  {
+    "video_id": "00081",
+    "start": 646.39,
+    "end": 651.47,
+    "transcript": "localiser des médias qui ne sont pas encore importés avec votre projet est là"
+  },
+  {
+    "video_id": "00081",
+    "start": 651.47,
+    "end": 658.88,
+    "transcript": "soit vous les glisser directement dans le répertoire de médias soit vous double"
+  },
+  {
+    "video_id": "00081",
+    "start": 658.88,
+    "end": 662.46,
+    "transcript": "cliquer dessus et dans ce cas là il s'importe automatiquement dans le"
+  },
+  {
+    "video_id": "00081",
+    "start": 662.46,
+    "end": 676.42,
+    "transcript": "répertoire de médias la page médias se compose donc du répertoire de médias"
+  },
+  {
+    "video_id": "00081",
+    "start": 676.42,
+    "end": 680.94,
+    "transcript": "qui liste tous les fichiers qui ont été ajoutés au projet en cours du monitor au"
+  },
+  {
+    "video_id": "00081",
+    "start": 681.1,
+    "end": 685.84,
+    "transcript": "vous pouvez voir et lire les clips individuellement, de l'éditeur de"
+  },
+  {
+    "video_id": "00081",
+    "start": 685.84,
+    "end": 694.16,
+    "transcript": "métadonnées où vous pouvez modifier les informations associées à chaque clip et"
+  },
+  {
+    "video_id": "00081",
+    "start": 694.16,
+    "end": 697.78,
+    "transcript": "du vumètre qui vous permet d'évaluer les niveaux sonores de chaque clip ou des"
+  },
+  {
+    "video_id": "00081",
+    "start": 697.78,
+    "end": 708.68,
+    "transcript": "médias audio que vous pourriez importer dans votre projet. La page conformée est"
+  },
+  {
+    "video_id": "00081",
+    "start": 708.68,
+    "end": 712.04,
+    "transcript": "la deuxième page dans l'interface utilisateur de DaVinci. Elle est"
+  },
+  {
+    "video_id": "00081",
+    "start": 712.04,
+    "end": 715.54,
+    "transcript": "accessible en cliquant sur le bouton conforme en bas de la fenêtre et c'est"
+  },
+  {
+    "video_id": "00081",
+    "start": 715.54,
+    "end": 718.34,
+    "transcript": "là que vous pouvez importer des séquences créées à partir de logiciels"
+  },
+  {
+    "video_id": "00081",
+    "start": 718.34,
+    "end": 723.16,
+    "transcript": "de montage différents de DaVinci Resolve. La page conformée se compose de la"
+  },
+  {
+    "video_id": "00081",
+    "start": 723.16,
+    "end": 726.14,
+    "transcript": "liste des séquences de montage qui affichent toutes les séquences du projet"
+  },
+  {
+    "video_id": "00081",
+    "start": 726.14,
+    "end": 730.8,
+    "transcript": "actuel. Elle se compose également du répertoire de médias que vous avez"
+  },
+  {
+    "video_id": "00081",
+    "start": 730.8,
+    "end": 734.3,
+    "transcript": "précédemment vus dans la page médias et où vous pouvez sélectionner les médias"
+  },
+  {
+    "video_id": "00081",
+    "start": 734.3,
+    "end": 743.87,
+    "transcript": "que vous souhaitez modifier dans une séquence. Vous pouvez bien entendu régler"
+  },
+  {
+    "video_id": "00081",
+    "start": 743.87,
+    "end": 749.65,
+    "transcript": "la taille des icônes, la taille de votre séquence, pour visualiser si besoin"
+  },
+  {
+    "video_id": "00081",
+    "start": 749.65,
+    "end": 757.8,
+    "transcript": "l'ensemble de votre projet. Les moniteurs sources et enregistrements"
+  },
+  {
+    "video_id": "00081",
+    "start": 757.8,
+    "end": 763.48,
+    "transcript": "vous permettent d'effectuer des opérations de montage simples et la table de montage qui vous"
+  },
+  {
+    "video_id": "00081",
+    "start": 763.48,
+    "end": 777.32,
+    "transcript": "montre ce qui est sélectionné dans la liste séquence de montage. Le répertoire d'effets"
+  },
+  {
+    "video_id": "00081",
+    "start": 777.32,
+    "end": 786.72,
+    "transcript": "montre toutes les transitions vidéos différentes qui peuvent être utilisées dans Resolve. La page"
+  },
+  {
+    "video_id": "00081",
+    "start": 786.72,
+    "end": 790.98,
+    "transcript": "couleur est le coeur même de DaVinci Resolve et c'est là que toutes les fonctions et tous"
+  },
+  {
+    "video_id": "00081",
+    "start": 790.98,
+    "end": 795.84,
+    "transcript": "les outils de réglage d'image sont situés. Elle se compose d'un moniteur sur lequel vous pourrez"
+  },
+  {
+    "video_id": "00081",
+    "start": 795.84,
+    "end": 799.86,
+    "transcript": "visualiser en temps réel tous les réglages et les modifications visuelles que vous allez apporter"
+  },
+  {
+    "video_id": "00081",
+    "start": 799.86,
+    "end": 804.84,
+    "transcript": "à vos clips. La galerie vous permet d'enregistrer vos préréglages et les paramètres d'étalonnage"
+  },
+  {
+    "video_id": "00081",
+    "start": 804.84,
+    "end": 810.58,
+    "transcript": "qui leur sont associés pour une future utilisation. L'éditeur de noeuds vous permet d'ajouter et de"
+  },
+  {
+    "video_id": "00081",
+    "start": 810.58,
+    "end": 815.02,
+    "transcript": "gérer différents réglages qui entrent dans la composition de l'étalonnage. La séquence de"
+  },
+  {
+    "video_id": "00081",
+    "start": 815.02,
+    "end": 819.22,
+    "transcript": "montage vous permet de naviguer dans votre projet et de garder une trace des clips qui ont déjà"
+  },
+  {
+    "video_id": "00081",
+    "start": 819.22,
+    "end": 824.76,
+    "transcript": "été travaillés. Enfin, différentes fenêtres vous permettent d'effectuer des réglages de couleurs,"
+  },
+  {
+    "video_id": "00081",
+    "start": 824.76,
+    "end": 830.67,
+    "transcript": "de contrastes et d'effets. La fenêtre roue chromatique à l'extrême gauche de la barre"
+  },
+  {
+    "video_id": "00081",
+    "start": 830.67,
+    "end": 835.23,
+    "transcript": "d'outils vous montre les traditionnels contrôles de niveau noir, de gamma et de gamma que vous"
+  },
+  {
+    "video_id": "00081",
+    "start": 835.23,
+    "end": 840.45,
+    "transcript": "connaissez peut-être avec d'autres applications. En cliquant sur le bouton A en bas à gauche de"
+  },
+  {
+    "video_id": "00081",
+    "start": 840.45,
+    "end": 844.35,
+    "transcript": "cette fenêtre, vous effectuez un réglage de correction colorimétrique automatique pour"
+  },
+  {
+    "video_id": "00081",
+    "start": 844.35,
+    "end": 849.87,
+    "transcript": "neutraliser les couleurs dominantes et optimiser le contraste. Ici, en utilisant le point de"
+  },
+  {
+    "video_id": "00081",
+    "start": 849.87,
+    "end": 855.57,
+    "transcript": "contrôle de la roue chromatique, je vais réchauffer un petit peu mon image. Et ici,"
+  },
+  {
+    "video_id": "00081",
+    "start": 855.57,
+    "end": 860.43,
+    "transcript": "avec la roue principale de niveau noir, je plafonne un petit peu les zones sombres du clip."
+  },
+  {
+    "video_id": "00081",
+    "start": 860.67,
+    "end": 868.33,
+    "transcript": "Dès que je commence à apporter des modifications colorimétriques à mon clip, deux choses se passent."
+  },
+  {
+    "video_id": "00081",
+    "start": 868.33,
+    "end": 875.41,
+    "transcript": "Dans l'éditeur de noeuds, on voit facilement quel type de réglage on commence à effectuer. Et en"
+  },
+  {
+    "video_id": "00081",
+    "start": 875.41,
+    "end": 881.83,
+    "transcript": "dessous du clip, dans la séquence, on voit cette petite barre arc-en-ciel qui nous précise que"
+  },
+  {
+    "video_id": "00081",
+    "start": 881.83,
+    "end": 887.05,
+    "transcript": "nous avons commencé à étalonner ce clip. Vous pouvez très bien enregistrer des préréglages"
+  },
+  {
+    "video_id": "00081",
+    "start": 887.05,
+    "end": 891.91,
+    "transcript": "pour pouvoir les utiliser plus facilement dans divers clips que vous allez étalonner par la suite."
+  },
+  {
+    "video_id": "00081",
+    "start": 893.23,
+    "end": 897.91,
+    "transcript": "Si votre projet contient énormément de préréglages enregistrés et que vous avez besoin de les"
+  },
+  {
+    "video_id": "00081",
+    "start": 897.91,
+    "end": 903.07,
+    "transcript": "organiser, vous allez pouvoir utiliser la page galerie afin de vous y aider. La page galerie"
+  },
+  {
+    "video_id": "00081",
+    "start": 903.07,
+    "end": 906.67,
+    "transcript": "est composée d'une fenêtre de préréglage qui vous permet d'importer des préréglages d'autres"
+  },
+  {
+    "video_id": "00081",
+    "start": 906.67,
+    "end": 910.57,
+    "transcript": "projets, bases de données et qui contient également la collection des styles graphiques"
+  },
+  {
+    "video_id": "00081",
+    "start": 910.57,
+    "end": 916.93,
+    "transcript": "de DaVinci Resolve. La fenêtre trace du projet vous permet d'enregistrer plusieurs versions des"
+  },
+  {
+    "video_id": "00081",
+    "start": 916.93,
+    "end": 923.52,
+    "transcript": "préréglages afin de les appliquer à d'autres clips. La fenêtre préréglage du projet vous permet"
+  },
+  {
+    "video_id": "00081",
+    "start": 924.48,
+    "end": 929.46,
+    "transcript": "des préréglages de votre projet parmi plusieurs albums. Cette fenêtre contient également l'album"
+  },
+  {
+    "video_id": "00081",
+    "start": 929.46,
+    "end": 934.08,
+    "transcript": "étalonnage important qui vous permet de partager des préréglages et des étalonnages entre plusieurs"
+  },
+  {
+    "video_id": "00081",
+    "start": 934.08,
+    "end": 939.84,
+    "transcript": "projets. Enfin, lorsque vous aurez terminé l'étalonnage d'une séquence bien particulière et"
+  },
+  {
+    "video_id": "00081",
+    "start": 939.84,
+    "end": 944.04,
+    "transcript": "vous serez prêt à la finaliser, la page livraison contient toutes les commandes nécessaires pour"
+  },
+  {
+    "video_id": "00081",
+    "start": 944.04,
+    "end": 950.27,
+    "transcript": "effectuer le rendu externe de tous les médias étalonnés avec Resolve. Elle se compose de la"
+  },
+  {
+    "video_id": "00081",
+    "start": 950.27,
+    "end": 953.93,
+    "transcript": "liste de tous les réglages de rendu où vous choisissez tous les paramètres qui permettent de"
+  },
+  {
+    "video_id": "00081",
+    "start": 956.33,
+    "end": 965.64,
+    "transcript": "faire son rendu. La file d'attente de rendu ici vous permet de visualiser tous les travaux qui"
+  },
+  {
+    "video_id": "00081",
+    "start": 965.64,
+    "end": 971.22,
+    "transcript": "sont en train d'être convertis. La fenêtre de séquence présente ici vous permet de définir"
+  },
+  {
+    "video_id": "00081",
+    "start": 971.22,
+    "end": 976.74,
+    "transcript": "quels sont les clips que vous voulez rendre. Et le moniteur vous permet de voir ce qui est rendu en"
+  },
+  {
+    "video_id": "00081",
+    "start": 976.74,
+    "end": 983.43,
+    "transcript": "temps réel. Comme vous pouvez le voir, l'interface de DaVinci Resolve est relativement simple mais"
+  },
+  {
+    "video_id": "00081",
+    "start": 983.43,
+    "end": 987.63,
+    "transcript": "elle permet une multitude de réglages que nous aborderons prochainement. En travaillant de la"
+  },
+  {
+    "video_id": "00081",
+    "start": 987.63,
+    "end": 992.19,
+    "transcript": "page média à la page livraison, en passant par les pages conformés, couleurs et galeries, votre"
+  },
+  {
+    "video_id": "00081",
+    "start": 992.73,
+    "end": 1001.25,
+    "transcript": "travail est logique et simplifié. Voilà, cette première partie est terminée. Dans la deuxième"
+  },
+  {
+    "video_id": "00081",
+    "start": 1001.25,
+    "end": 1005.93,
+    "transcript": "partie, nous verrons comment créer notre premier projet et comment utiliser la page de média pour"
+  },
+  {
+    "video_id": "00081",
+    "start": 1005.93,
+    "end": 1010.55,
+    "transcript": "pouvoir incorporer nos premiers éléments dans le logiciel Resolve 9. Je vous dis à très bientôt."
+  }
+]

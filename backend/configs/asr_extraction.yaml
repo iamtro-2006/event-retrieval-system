@@ -1,7 +1,12 @@
+# Default target is the local single-node in backend/docker-compose.yaml
+# (`docker compose up -d elastic`). Override per machine without editing this
+# tracked file: ES_HOST / ES_PORT / ES_SCHEME.
+# The index name below is only the fallback for standalone scripts; the API
+# always uses datasets.available.<dataset>.asr_index from configs/app.yaml.
 elasticsearch:
-  host: "pasted-tropical-sway.ngrok-free.dev"
-  port: 443
-  scheme: "https"
+  host: "localhost"
+  port: 9200
+  scheme: "http"
   index: "asr_db"
 
 

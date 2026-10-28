@@ -1,10 +1,16 @@
 # =========================================================
 # Elasticsearch indexing (used by scripts/ocr/index/run.py)
 # =========================================================
+# Default target is the local single-node in backend/docker-compose.yaml
+# (`docker compose up -d elastic`). Override per machine without editing this
+# tracked file:
+#   ES_HOST=elastic-search.tku.life ES_PORT=443 ES_SCHEME=https
+# The index name below is only the fallback for standalone scripts; the API
+# always uses datasets.available.<dataset>.ocr_index from configs/app.yaml.
 elasticsearch:
-  host: "pasted-tropical-sway.ngrok-free.dev"
-  port: 443
-  scheme: "https"
+  host: "localhost"
+  port: 9200
+  scheme: "http"
   index: "ocr_db"
 
 

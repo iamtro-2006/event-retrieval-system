@@ -1,0 +1,35 @@
+# Backend-specific ignores.
+#
+# The API reads data from <repo>/data (see configs/app.yaml). On vbs-dev that
+# tree is split by media kind, then by dataset:
+#   data/{ocr,asr,captions,map_keyframes,embeddings}/<V3C|LHE>/
+#   data/{keyframes,videos,database}/
+#
+# Only heavy artifacts are ignored (see root .gitignore). The small derived
+# JSON/CSV under data/{ocr,asr,captions,map_keyframes} is tracked.
+#
+# backend/data is a leftover from the AIC-era layout: 6.2GB of CAM keyframes
+# that must never reach the remote.
+
+/data/keyframes/
+/data/videos/
+/data/database/
+/data/embeddings/
+
+# AIC-era leftovers (large)
+/data/AIC/keyframes/
+/data/AIC/videos/
+/data/AIC/embeddings/
+/data/CAM/keyframes/
+/data/CAM/videos/
+/data/CAM/embeddings/
+
+/weights/
+/logs/
+search_profile_log.txt
+
+# Runtime state written by docker-compose volumes
+/esdata/
+
+# Model downloads cached by huggingface_hub / llama-cpp
+.cache/

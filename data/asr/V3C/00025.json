@@ -1,0 +1,962 @@
+[
+  {
+    "video_id": "00025",
+    "start": 0.94,
+    "end": 2.7,
+    "transcript": "Hi, it's Warren from the ICA."
+  },
+  {
+    "video_id": "00025",
+    "start": 3.1,
+    "end": 7.98,
+    "transcript": "I've just been testing out the new Resolve version 9.02."
+  },
+  {
+    "video_id": "00025",
+    "start": 10.2,
+    "end": 13.18,
+    "transcript": "And I thought I'd rather just muck around and make a little movie."
+  },
+  {
+    "video_id": "00025",
+    "start": 13.64,
+    "end": 17.88,
+    "transcript": "One of the questions that comes up a lot when I'm running training classes is,"
+  },
+  {
+    "video_id": "00025",
+    "start": 18.32,
+    "end": 20.14,
+    "transcript": "why do I need a reference movie?"
+  },
+  {
+    "video_id": "00025",
+    "start": 20.44,
+    "end": 23.62,
+    "transcript": "And then once we work out why we need it, it's getting it in there."
+  },
+  {
+    "video_id": "00025",
+    "start": 23.62,
+    "end": 24.9,
+    "transcript": "It proves to be quite difficult."
+  },
+  {
+    "video_id": "00025",
+    "start": 25.58,
+    "end": 26.82,
+    "transcript": "And there's a few reasons for that."
+  },
+  {
+    "video_id": "00025",
+    "start": 26.82,
+    "end": 32.04,
+    "transcript": "Now, if you've conformed a sequence that maybe you've edited,"
+  },
+  {
+    "video_id": "00025",
+    "start": 32.22,
+    "end": 34.58,
+    "transcript": "then you pretty much know that sequence very well."
+  },
+  {
+    "video_id": "00025",
+    "start": 34.68,
+    "end": 37.62,
+    "transcript": "You know where shots are and why shots might not be."
+  },
+  {
+    "video_id": "00025",
+    "start": 37.78,
+    "end": 39.68,
+    "transcript": "But if someone's handed you a sequence,"
+  },
+  {
+    "video_id": "00025",
+    "start": 40.54,
+    "end": 46.7,
+    "transcript": "and you may know that three layers might be correct or might not be correct,"
+  },
+  {
+    "video_id": "00025",
+    "start": 47.44,
+    "end": 50.2,
+    "transcript": "have shots been zoomed or rotated,"
+  },
+  {
+    "video_id": "00025",
+    "start": 50.2,
+    "end": 56.58,
+    "transcript": "it's very difficult to know that without actually having a reference movie to put it up against."
+  },
+  {
+    "video_id": "00025",
+    "start": 57.08,
+    "end": 60.0,
+    "transcript": "Now, in Resolve, a reference movie,"
+  },
+  {
+    "video_id": "00025",
+    "start": 60.14,
+    "end": 63.36,
+    "transcript": "which is the movie that has been exported by the editor,"
+  },
+  {
+    "video_id": "00025",
+    "start": 63.54,
+    "end": 69.52,
+    "transcript": "which is a very low-res, just one single movie file of the whole timeline,"
+  },
+  {
+    "video_id": "00025",
+    "start": 70.36,
+    "end": 71.94,
+    "transcript": "it is known as a reference movie,"
+  },
+  {
+    "video_id": "00025",
+    "start": 72.02,
+    "end": 75.42,
+    "transcript": "or in some places in Resolve, it's known as an offline movie."
+  },
+  {
+    "video_id": "00025",
+    "start": 75.56,
+    "end": 77.5,
+    "transcript": "Because that's what it used to be called."
+  },
+  {
+    "video_id": "00025",
+    "start": 77.5,
+    "end": 82.36,
+    "transcript": "When you used to do a rough offline on something like an FCP or an Avid,"
+  },
+  {
+    "video_id": "00025",
+    "start": 82.74,
+    "end": 85.78,
+    "transcript": "and then you'd go to a Smoke or a High End Box"
+  },
+  {
+    "video_id": "00025",
+    "start": 85.78,
+    "end": 86.8,
+    "transcript": "and do an online."
+  },
+  {
+    "video_id": "00025",
+    "start": 86.96,
+    "end": 89.92,
+    "transcript": "So that's where the offline, online term came from."
+  },
+  {
+    "video_id": "00025",
+    "start": 89.92,
+    "end": 93.12,
+    "transcript": "So where we're called here, it's mainly called offline video."
+  },
+  {
+    "video_id": "00025",
+    "start": 94.42,
+    "end": 99.92,
+    "transcript": "What we need to do is to find that movie first."
+  },
+  {
+    "video_id": "00025",
+    "start": 100.08,
+    "end": 102.4,
+    "transcript": "Now, I always put it into a new bin."
+  },
+  {
+    "video_id": "00025",
+    "start": 103.18,
+    "end": 107.4,
+    "transcript": "So I come here and I just backspace that and call that ref."
+  },
+  {
+    "video_id": "00025",
+    "start": 108.22,
+    "end": 110.2,
+    "transcript": "That's where we'll put our reference movie."
+  },
+  {
+    "video_id": "00025",
+    "start": 110.88,
+    "end": 112.44,
+    "transcript": "I've got all mine in here."
+  },
+  {
+    "video_id": "00025",
+    "start": 113.12,
+    "end": 115.84,
+    "transcript": "And it is in XMLs, offlines."
+  },
+  {
+    "video_id": "00025",
+    "start": 116.82,
+    "end": 117.56,
+    "transcript": "And it's this guy."
+  },
+  {
+    "video_id": "00025",
+    "start": 118.06,
+    "end": 122.68,
+    "transcript": "Click it once, just to make sure this is the right film we're looking at."
+  },
+  {
+    "video_id": "00025",
+    "start": 122.8,
+    "end": 123.56,
+    "transcript": "It has a burn-in."
+  },
+  {
+    "video_id": "00025",
+    "start": 124.04,
+    "end": 127.48,
+    "transcript": "You can easily see I've done some interesting color correction on this film."
+  },
+  {
+    "video_id": "00025",
+    "start": 127.82,
+    "end": 132.52,
+    "transcript": "That's something they probably want me to emulate in my final grade in Resolve."
+  },
+  {
+    "video_id": "00025",
+    "start": 133.94,
+    "end": 135.4,
+    "transcript": "Now, this is important here."
+  },
+  {
+    "video_id": "00025",
+    "start": 135.4,
+    "end": 138.6,
+    "transcript": "We do not want to add it, because we don't want to grade it, do we?"
+  },
+  {
+    "video_id": "00025",
+    "start": 138.64,
+    "end": 140.0,
+    "transcript": "We just want to reference it."
+  },
+  {
+    "video_id": "00025",
+    "start": 140.18,
+    "end": 144.34,
+    "transcript": "So right-click on the thumbnail, on the reference movie."
+  },
+  {
+    "video_id": "00025",
+    "start": 144.96,
+    "end": 146.8,
+    "transcript": "Add as offline clip."
+  },
+  {
+    "video_id": "00025",
+    "start": 147.8,
+    "end": 150.82,
+    "transcript": "It's very important that you see this chessboard here."
+  },
+  {
+    "video_id": "00025",
+    "start": 151.4,
+    "end": 153.88,
+    "transcript": "Top left, that tells you that you've added it correctly."
+  },
+  {
+    "video_id": "00025",
+    "start": 153.98,
+    "end": 157.14,
+    "transcript": "If you do not see that, then it will not work."
+  },
+  {
+    "video_id": "00025",
+    "start": 157.24,
+    "end": 160.34,
+    "transcript": "It will not link with the rest of your material."
+  },
+  {
+    "video_id": "00025",
+    "start": 161.58,
+    "end": 166.62,
+    "transcript": "Come to here, and orange is highlighted, our conformed 30-second commercial."
+  },
+  {
+    "video_id": "00025",
+    "start": 168.06,
+    "end": 169.74,
+    "transcript": "Right-click on that guy."
+  },
+  {
+    "video_id": "00025",
+    "start": 169.74,
+    "end": 174.8,
+    "transcript": "And about halfway down, you have something called link offline video."
+  },
+  {
+    "video_id": "00025",
+    "start": 175.84,
+    "end": 176.74,
+    "transcript": "Go across."
+  },
+  {
+    "video_id": "00025",
+    "start": 176.98,
+    "end": 180.18,
+    "transcript": "And there will be the movie that we just added in."
+  },
+  {
+    "video_id": "00025",
+    "start": 180.7,
+    "end": 181.62,
+    "transcript": "Click on that."
+  },
+  {
+    "video_id": "00025",
+    "start": 182.64,
+    "end": 186.86,
+    "transcript": "Make sure you've got offline video selected here in the drop-down."
+  },
+  {
+    "video_id": "00025",
+    "start": 188.68,
+    "end": 189.94,
+    "transcript": "Wiggle this sometimes."
+  },
+  {
+    "video_id": "00025",
+    "start": 190.02,
+    "end": 191.3,
+    "transcript": "Sometimes it needs an update."
+  },
+  {
+    "video_id": "00025",
+    "start": 191.3,
+    "end": 194.78,
+    "transcript": "If we don't see it, go back to source viewer."
+  },
+  {
+    "video_id": "00025",
+    "start": 195.54,
+    "end": 197.48,
+    "transcript": "Source viewer is any of these clips."
+  },
+  {
+    "video_id": "00025",
+    "start": 198.06,
+    "end": 201.68,
+    "transcript": "Some guys select that there and know they can see the offline,"
+  },
+  {
+    "video_id": "00025",
+    "start": 202.32,
+    "end": 205.82,
+    "transcript": "know they can see the conform, and wonder why it does not link."
+  },
+  {
+    "video_id": "00025",
+    "start": 206.82,
+    "end": 209.64,
+    "transcript": "That is because they're only viewing it in the source viewer,"
+  },
+  {
+    "video_id": "00025",
+    "start": 209.64,
+    "end": 215.64,
+    "transcript": "not in the offline viewer, so there's no way it will sync with that one."
+  },
+  {
+    "video_id": "00025",
+    "start": 215.64,
+    "end": 219.47,
+    "transcript": "Make sure you're in offline."
+  },
+  {
+    "video_id": "00025",
+    "start": 219.47,
+    "end": 221.47,
+    "transcript": "Now, there's a few reasons why this couldn't work."
+  },
+  {
+    "video_id": "00025",
+    "start": 221.47,
+    "end": 223.47,
+    "transcript": "We know the viewer works."
+  },
+  {
+    "video_id": "00025",
+    "start": 223.47,
+    "end": 225.47,
+    "transcript": "We've just tested it."
+  },
+  {
+    "video_id": "00025",
+    "start": 225.47,
+    "end": 230.81,
+    "transcript": "So it's more than likely the timecode is going to be different."
+  },
+  {
+    "video_id": "00025",
+    "start": 230.81,
+    "end": 234.81,
+    "transcript": "Look here, and we can see that my master timeline starts at 01."
+  },
+  {
+    "video_id": "00025",
+    "start": 234.81,
+    "end": 238.81,
+    "transcript": "I need to check this with my reference offline film."
+  },
+  {
+    "video_id": "00025",
+    "start": 238.81,
+    "end": 239.81,
+    "transcript": "Right-click."
+  },
+  {
+    "video_id": "00025",
+    "start": 239.99,
+    "end": 243.99,
+    "transcript": "Go up to clip attributes."
+  },
+  {
+    "video_id": "00025",
+    "start": 243.99,
+    "end": 247.99,
+    "transcript": "Left-click on that, and in the timecode box,"
+  },
+  {
+    "video_id": "00025",
+    "start": 247.99,
+    "end": 252.99,
+    "transcript": "we can see the current frame, or the first frame, is 00."
+  },
+  {
+    "video_id": "00025",
+    "start": 252.99,
+    "end": 254.99,
+    "transcript": "Not one hour."
+  },
+  {
+    "video_id": "00025",
+    "start": 254.99,
+    "end": 256.99,
+    "transcript": "So turn it to one hour."
+  },
+  {
+    "video_id": "00025",
+    "start": 256.99,
+    "end": 261.56,
+    "transcript": "Then they both should be exactly the same."
+  },
+  {
+    "video_id": "00025",
+    "start": 261.56,
+    "end": 267.56,
+    "transcript": "There, we now have the offline, and we have the conform on the right."
+  },
+  {
+    "video_id": "00025",
+    "start": 267.56,
+    "end": 269.56,
+    "transcript": "So if I come across to here,"
+  },
+  {
+    "video_id": "00025",
+    "start": 269.56,
+    "end": 271.56,
+    "transcript": "we can see instantly."
+  },
+  {
+    "video_id": "00025",
+    "start": 271.56,
+    "end": 275.56,
+    "transcript": "That on the offline, the editor wants to zoom this shot."
+  },
+  {
+    "video_id": "00025",
+    "start": 275.56,
+    "end": 278.56,
+    "transcript": "And in my conform, it's not."
+  },
+  {
+    "video_id": "00025",
+    "start": 278.56,
+    "end": 285.56,
+    "transcript": "So I can manually zoom that or use my XML to duplicate the zoom settings."
+  },
+  {
+    "video_id": "00025",
+    "start": 285.56,
+    "end": 288.56,
+    "transcript": "I can see the transitions here as well."
+  },
+  {
+    "video_id": "00025",
+    "start": 288.56,
+    "end": 297.28,
+    "transcript": "They will play side by side."
+  },
+  {
+    "video_id": "00025",
+    "start": 297.28,
+    "end": 299.28,
+    "transcript": "A little bit slow in the real time here."
+  },
+  {
+    "video_id": "00025",
+    "start": 299.28,
+    "end": 301.28,
+    "transcript": "I'm only playing on my laptop."
+  },
+  {
+    "video_id": "00025",
+    "start": 301.28,
+    "end": 306.28,
+    "transcript": "But we can see there I can keep a track on what my offline is doing"
+  },
+  {
+    "video_id": "00025",
+    "start": 306.28,
+    "end": 309.28,
+    "transcript": "and what my conform is doing."
+  },
+  {
+    "video_id": "00025",
+    "start": 309.28,
+    "end": 311.28,
+    "transcript": "I can see these in different views."
+  },
+  {
+    "video_id": "00025",
+    "start": 311.28,
+    "end": 314.28,
+    "transcript": "As a wipe, there's my wipe."
+  },
+  {
+    "video_id": "00025",
+    "start": 314.28,
+    "end": 316.28,
+    "transcript": "There's not too much change there."
+  },
+  {
+    "video_id": "00025",
+    "start": 316.28,
+    "end": 321.28,
+    "transcript": "But if I come there, I can see that is that flashback look they're going for."
+  },
+  {
+    "video_id": "00025",
+    "start": 321.28,
+    "end": 324.28,
+    "transcript": "If I do this again, I can go to the mix,"
+  },
+  {
+    "video_id": "00025",
+    "start": 324.28,
+    "end": 326.28,
+    "transcript": "and I can see a mix view of both of them."
+  },
+  {
+    "video_id": "00025",
+    "start": 326.28,
+    "end": 328.28,
+    "transcript": "Really good for doing resizes."
+  },
+  {
+    "video_id": "00025",
+    "start": 328.28,
+    "end": 335.78,
+    "transcript": "What about audio?"
+  },
+  {
+    "video_id": "00025",
+    "start": 335.78,
+    "end": 340.78,
+    "transcript": "Another thing that people ask me for is getting the audio in."
+  },
+  {
+    "video_id": "00025",
+    "start": 340.78,
+    "end": 345.78,
+    "transcript": "Now, to do that, I go to this reference,"
+  },
+  {
+    "video_id": "00025",
+    "start": 345.78,
+    "end": 351.9,
+    "transcript": "and I'll find some audio to pop in there."
+  },
+  {
+    "video_id": "00025",
+    "start": 351.9,
+    "end": 355.9,
+    "transcript": "I haven't got audio for this commercial, so we'll just use anything."
+  },
+  {
+    "video_id": "00025",
+    "start": 355.9,
+    "end": 358.9,
+    "transcript": "Add into media pool, right click."
+  },
+  {
+    "video_id": "00025",
+    "start": 358.9,
+    "end": 361.9,
+    "transcript": "Pops it into this bin, not my master there."
+  },
+  {
+    "video_id": "00025",
+    "start": 361.9,
+    "end": 364.9,
+    "transcript": "This bin just makes it easier for me to find things."
+  },
+  {
+    "video_id": "00025",
+    "start": 364.9,
+    "end": 369.9,
+    "transcript": "Remember, in this example, I've only got six or seven clips."
+  },
+  {
+    "video_id": "00025",
+    "start": 369.9,
+    "end": 372.9,
+    "transcript": "In a 30-minute docker, you could have 300 clips popped."
+  },
+  {
+    "video_id": "00025",
+    "start": 372.9,
+    "end": 374.9,
+    "transcript": "I'm not populating this master bin,"
+  },
+  {
+    "video_id": "00025",
+    "start": 374.9,
+    "end": 377.9,
+    "transcript": "so this makes it a lot easier to navigate to it."
+  },
+  {
+    "video_id": "00025",
+    "start": 377.9,
+    "end": 383.9,
+    "transcript": "Select it, right click, link as chase audio file."
+  },
+  {
+    "video_id": "00025",
+    "start": 383.9,
+    "end": 387.9,
+    "transcript": "Then, when I go up to our friend here again, the conform,"
+  },
+  {
+    "video_id": "00025",
+    "start": 387.9,
+    "end": 393.9,
+    "transcript": "right click, chase audio settings."
+  },
+  {
+    "video_id": "00025",
+    "start": 393.9,
+    "end": 399.9,
+    "transcript": "Enable the box, and it already knows what is the audio file,"
+  },
+  {
+    "video_id": "00025",
+    "start": 399.9,
+    "end": 401.9,
+    "transcript": "because you've selected it here."
+  },
+  {
+    "video_id": "00025",
+    "start": 401.9,
+    "end": 402.9,
+    "transcript": "Apply."
+  },
+  {
+    "video_id": "00025",
+    "start": 402.9,
+    "end": 404.9,
+    "transcript": "Come here."
+  },
+  {
+    "video_id": "00025",
+    "start": 404.9,
+    "end": 416.94,
+    "transcript": "Obviously, it's going to be running slow."
+  },
+  {
+    "video_id": "00025",
+    "start": 416.94,
+    "end": 418.94,
+    "transcript": "I'm just using my laptop to do this,"
+  },
+  {
+    "video_id": "00025",
+    "start": 418.94,
+    "end": 421.94,
+    "transcript": "but it is a big advantage using audio."
+  },
+  {
+    "video_id": "00025",
+    "start": 421.94,
+    "end": 424.94,
+    "transcript": "I always like to, just so when a narrator says,"
+  },
+  {
+    "video_id": "00025",
+    "start": 424.94,
+    "end": 429.94,
+    "transcript": "oh, yeah, and we woke to a beautiful magenta-looking sky."
+  },
+  {
+    "video_id": "00025",
+    "start": 429.94,
+    "end": 433.94,
+    "transcript": "Also, for your clients, they just like to be able to reference"
+  },
+  {
+    "video_id": "00025",
+    "start": 433.94,
+    "end": 437.94,
+    "transcript": "what grades you've done with the audio, rough guide audio,"
+  },
+  {
+    "video_id": "00025",
+    "start": 437.94,
+    "end": 441.94,
+    "transcript": "especially at the end when you're doing your review sessions."
+  },
+  {
+    "video_id": "00025",
+    "start": 441.94,
+    "end": 444.94,
+    "transcript": "One other thing while I'm here, you're probably wondering,"
+  },
+  {
+    "video_id": "00025",
+    "start": 444.94,
+    "end": 451.94,
+    "transcript": "well, it's great to view a reference movie here,"
+  },
+  {
+    "video_id": "00025",
+    "start": 451.94,
+    "end": 454.94,
+    "transcript": "but when we've got, and you can slide down this one,"
+  },
+  {
+    "video_id": "00025",
+    "start": 454.94,
+    "end": 457.94,
+    "transcript": "when you've got big looks like this,"
+  },
+  {
+    "video_id": "00025",
+    "start": 457.94,
+    "end": 460.94,
+    "transcript": "now, this is okay for me to know this is what they're going to try"
+  },
+  {
+    "video_id": "00025",
+    "start": 460.94,
+    "end": 462.94,
+    "transcript": "and get in the final grade,"
+  },
+  {
+    "video_id": "00025",
+    "start": 462.94,
+    "end": 465.94,
+    "transcript": "but it would be really nice if we could see this out here"
+  },
+  {
+    "video_id": "00025",
+    "start": 465.94,
+    "end": 467.94,
+    "transcript": "in the color page."
+  },
+  {
+    "video_id": "00025",
+    "start": 467.94,
+    "end": 470.94,
+    "transcript": "Well, you can, but I always want to,"
+  },
+  {
+    "video_id": "00025",
+    "start": 470.94,
+    "end": 473.94,
+    "transcript": "first of all, make sure you have a gallery still first,"
+  },
+  {
+    "video_id": "00025",
+    "start": 473.94,
+    "end": 476.94,
+    "transcript": "so make sure your still is halfway across the screen"
+  },
+  {
+    "video_id": "00025",
+    "start": 476.94,
+    "end": 478.94,
+    "transcript": "by using this gallery."
+  },
+  {
+    "video_id": "00025",
+    "start": 478.94,
+    "end": 481.94,
+    "transcript": "Then go to your View dropdown,"
+  },
+  {
+    "video_id": "00025",
+    "start": 481.94,
+    "end": 483.94,
+    "transcript": "and there you can go Reference White Mode"
+  },
+  {
+    "video_id": "00025",
+    "start": 483.94,
+    "end": 485.94,
+    "transcript": "and select Offline."
+  },
+  {
+    "video_id": "00025",
+    "start": 485.94,
+    "end": 487.94,
+    "transcript": "So there you can see the offline mode,"
+  },
+  {
+    "video_id": "00025",
+    "start": 487.94,
+    "end": 490.94,
+    "transcript": "and if you go to Command-F as well,"
+  },
+  {
+    "video_id": "00025",
+    "start": 490.94,
+    "end": 493.94,
+    "transcript": "you can see that in full frame,"
+  },
+  {
+    "video_id": "00025",
+    "start": 493.94,
+    "end": 498.94,
+    "transcript": "which is meaning you can see a full frame reference,"
+  },
+  {
+    "video_id": "00025",
+    "start": 498.94,
+    "end": 505.63,
+    "transcript": "which definitely aids your matching."
+  },
+  {
+    "video_id": "00025",
+    "start": 505.63,
+    "end": 507.63,
+    "transcript": "Just click on it like that to move it."
+  },
+  {
+    "video_id": "00025",
+    "start": 507.63,
+    "end": 509.63,
+    "transcript": "If you want to lose the white completely,"
+  },
+  {
+    "video_id": "00025",
+    "start": 509.63,
+    "end": 513.63,
+    "transcript": "then you just go Command-W like that,"
+  },
+  {
+    "video_id": "00025",
+    "start": 513.63,
+    "end": 515.63,
+    "transcript": "and then wipe as well."
+  },
+  {
+    "video_id": "00025",
+    "start": 515.63,
+    "end": 517.63,
+    "transcript": "So there's a few tips in using reference movies,"
+  },
+  {
+    "video_id": "00025",
+    "start": 517.63,
+    "end": 519.63,
+    "transcript": "very important."
+  },
+  {
+    "video_id": "00025",
+    "start": 519.63,
+    "end": 521.63,
+    "transcript": "Bring in the audio, don't use it there all the time,"
+  },
+  {
+    "video_id": "00025",
+    "start": 521.63,
+    "end": 523.63,
+    "transcript": "but definitely use it for reviewing."
+  },
+  {
+    "video_id": "00025",
+    "start": 523.63,
+    "end": 526.63,
+    "transcript": "When you first review the offline at the start of the session,"
+  },
+  {
+    "video_id": "00025",
+    "start": 526.63,
+    "end": 530.63,
+    "transcript": "and then at the end when you want to sync up sound to your grades,"
+  },
+  {
+    "video_id": "00025",
+    "start": 530.63,
+    "end": 532.63,
+    "transcript": "it will genuinely make people feel a bit better,"
+  },
+  {
+    "video_id": "00025",
+    "start": 532.63,
+    "end": 534.63,
+    "transcript": "I think, about the whole project."
+  },
+  {
+    "video_id": "00025",
+    "start": 534.63,
+    "end": 537.63,
+    "transcript": "Now if you want any more information about the ICA"
+  },
+  {
+    "video_id": "00025",
+    "start": 537.63,
+    "end": 540.63,
+    "transcript": "and what we do, we run classes all around the world,"
+  },
+  {
+    "video_id": "00025",
+    "start": 540.63,
+    "end": 542.63,
+    "transcript": "classroom classes,"
+  },
+  {
+    "video_id": "00025",
+    "start": 542.63,
+    "end": 544.63,
+    "transcript": "go to the iColorist website"
+  },
+  {
+    "video_id": "00025",
+    "start": 544.63,
+    "end": 547.63,
+    "transcript": "or catch us on Twitter or Facebook."
+  },
+  {
+    "video_id": "00025",
+    "start": 547.63,
+    "end": 549.63,
+    "transcript": "Hope you enjoyed this movie."
+  },
+  {
+    "video_id": "00025",
+    "start": 549.63,
+    "end": 551.63,
+    "transcript": "I'll see you soon. Bye-bye."
+  }
+]

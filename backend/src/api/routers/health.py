@@ -55,10 +55,12 @@ def health(
         "ocr": {
             "config_path": str(cfg.get("ocr", {}).get("config_path", "")) if isinstance(cfg.get("ocr"), dict) else "",
             "available": orchestrator.ocr_search_pipeline is not None,
+            **(system.text_search_health().get("ocr") or {}),
         },
         "asr": {
             "config_path": str(cfg.get("asr", {}).get("config_path", "")) if isinstance(cfg.get("asr"), dict) else "",
             "available": orchestrator.asr_search_pipeline is not None,
+            **(system.text_search_health().get("asr") or {}),
         },
     }
 
@@ -121,8 +123,10 @@ def get_public_config(
         },
         "ocr": {
             "available": orchestrator.ocr_search_pipeline is not None,
+            **(system.text_search_health().get("ocr") or {}),
         },
         "asr": {
             "available": orchestrator.asr_search_pipeline is not None,
+            **(system.text_search_health().get("asr") or {}),
         },
     }

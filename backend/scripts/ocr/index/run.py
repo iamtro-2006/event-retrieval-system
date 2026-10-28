@@ -35,6 +35,11 @@ def load_config(dataset: str) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build an isolated OCR index for V3C or LHE")
     parser.add_argument("--dataset", choices=["v3c", "lhe"], required=True)
+    parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="Delete the index first. Without this, re-running appends a second copy of every document.",
+    )
     args = parser.parse_args()
     cfg = load_config(args.dataset)
     es_cfg = cfg["elasticsearch"]
@@ -46,6 +51,9 @@ def main() -> None:
     )
 
     print(f"Connected: {es.ping()}")
+    if args.recreate:
+        es.delete_index()
+        print(f"Dropped index {es.index_name}")
     repository = OCRRepository(es)
     pipeline = IndexPipeline(repository)
     pipeline.create_index()

@@ -54,8 +54,10 @@ semantic:
       vector_cache_dtype: float32
       allow_npy_fallback: false
 
-ocr: null
-asr: null
+ocr:
+  config_path: configs/ocr_extraction.yaml
+asr:
+  config_path: configs/asr_extraction.yaml
 
 color:
   index_path: ../data/database/color_5x5.npz

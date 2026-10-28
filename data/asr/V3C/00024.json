@@ -1,0 +1,2966 @@
+[
+  {
+    "video_id": "00024",
+    "start": 0.0,
+    "end": 6.08,
+    "transcript": "us celebrate this five-year retrospective of Fat Lab. Since the beginning of I-Beam,"
+  },
+  {
+    "video_id": "00024",
+    "start": 6.2,
+    "end": 11.64,
+    "transcript": "this whole organization has had a focus on breaking technology open, cracking things,"
+  },
+  {
+    "video_id": "00024",
+    "start": 11.92,
+    "end": 16.08,
+    "transcript": "looking at the innards, sharing those with the public, and letting people and the culture at"
+  },
+  {
+    "video_id": "00024",
+    "start": 16.08,
+    "end": 21.36,
+    "transcript": "large actually make decisions about how they want to use the technology, whether they want to embrace"
+  },
+  {
+    "video_id": "00024",
+    "start": 21.36,
+    "end": 29.98,
+    "transcript": "it, deflect it, or hack it. And so Fat Lab really embodies that spirit and embodies that ethos,"
+  },
+  {
+    "video_id": "00024",
+    "start": 30.1,
+    "end": 36.26,
+    "transcript": "which has been part of I-Beam since the beginning. And it's an amazing thrill to have them back in"
+  },
+  {
+    "video_id": "00024",
+    "start": 36.26,
+    "end": 42.16,
+    "transcript": "the house and to have them showing this work. I want to say a big thank you to Lindsay Howard"
+  },
+  {
+    "video_id": "00024",
+    "start": 42.16,
+    "end": 54.02,
+    "transcript": "for somehow, yes, for somehow herding the proverbial cats and getting these people to"
+  },
+  {
+    "video_id": "00024",
+    "start": 54.02,
+    "end": 58.66,
+    "transcript": "talk together. And then even more amazingly than talking to each other, but to have them show up in"
+  },
+  {
+    "video_id": "00024",
+    "start": 58.66,
+    "end": 63.62,
+    "transcript": "the same place at the same time. It's a really, really, really special moment. And it's our"
+  },
+  {
+    "video_id": "00024",
+    "start": 63.62,
+    "end": 68.28,
+    "transcript": "pleasure to have them here. It's also our great pleasure to have Christiana Paul join us this"
+  },
+  {
+    "video_id": "00024",
+    "start": 68.28,
+    "end": 73.6,
+    "transcript": "evening as the moderator of the panel, as a curator at Whitney, and as a theorist and writer."
+  },
+  {
+    "video_id": "00024",
+    "start": 73.6,
+    "end": 80.64,
+    "transcript": "She brings a very unique and strong perspective to the work of Fat Lab and the media art field"
+  },
+  {
+    "video_id": "00024",
+    "start": 80.64,
+    "end": 84.0,
+    "transcript": "as a whole. And I think I'm just..."
+  },
+  {
+    "video_id": "00024",
+    "start": 84.02,
+    "end": 89.96,
+    "transcript": "I'm just going to leave it at that and go ahead and turn it over to her as moderator of tonight's"
+  },
+  {
+    "video_id": "00024",
+    "start": 89.96,
+    "end": 95.76,
+    "transcript": "panel. And then I think everyone will come on stage. And I invite you all to join in the Q&A"
+  },
+  {
+    "video_id": "00024",
+    "start": 95.76,
+    "end": 102.38,
+    "transcript": "at the end as well. This organization is about nothing if not open sharing and critical feedback."
+  },
+  {
+    "video_id": "00024",
+    "start": 102.6,
+    "end": 106.62,
+    "transcript": "So please feel free to participate throughout the panel. So thank you again for coming."
+  },
+  {
+    "video_id": "00024",
+    "start": 106.86,
+    "end": 118.07,
+    "transcript": "Okay. Thanks again for coming. And thanks for inviting me to moderate this panel."
+  },
+  {
+    "video_id": "00024",
+    "start": 118.69,
+    "end": 127.01,
+    "transcript": "So as you all know, I assume all of the artists who are here tonight, presenting tonight, are part of Fat Lab."
+  },
+  {
+    "video_id": "00024",
+    "start": 127.01,
+    "end": 133.49,
+    "transcript": "So I'm not going to point that out in each and every one of their bios. And we're going to start"
+  },
+  {
+    "video_id": "00024",
+    "start": 133.49,
+    "end": 141.17,
+    "transcript": "with everyone presenting for about 10 minutes. And then we'll have a discussion amongst ourselves"
+  },
+  {
+    "video_id": "00024",
+    "start": 141.17,
+    "end": 148.67,
+    "transcript": "and with you. And the order in which people are going to present will be Evan Roth,"
+  },
+  {
+    "video_id": "00024",
+    "start": 148.69,
+    "end": 158.05,
+    "transcript": "then Aram Bartol, Eddie Wagenknecht, Tobias Leingruber, and James Powderly."
+  },
+  {
+    "video_id": "00024",
+    "start": 158.05,
+    "end": 163.17,
+    "transcript": "And I will introduce each and every one of them very briefly before their talk."
+  },
+  {
+    "video_id": "00024",
+    "start": 163.17,
+    "end": 168.05,
+    "transcript": "In general, I want to say a few things about the issues we're going to discuss here."
+  },
+  {
+    "video_id": "00024",
+    "start": 168.05,
+    "end": 173.81,
+    "transcript": "The panel is about hackers as artists or artists as hackers."
+  },
+  {
+    "video_id": "00024",
+    "start": 173.81,
+    "end": 178.69,
+    "transcript": "And I think we need to discuss a little bit more where the boundaries lie."
+  },
+  {
+    "video_id": "00024",
+    "start": 178.69,
+    "end": 182.87,
+    "transcript": "Between them if we think about the popular definition"
+  },
+  {
+    "video_id": "00024",
+    "start": 182.87,
+    "end": 188.07,
+    "transcript": "about hacking, it usually means to most people, I guess,"
+  },
+  {
+    "video_id": "00024",
+    "start": 188.07,
+    "end": 192.53,
+    "transcript": "is still using computing skills, programming skills,"
+  },
+  {
+    "video_id": "00024",
+    "start": 192.53,
+    "end": 197.55,
+    "transcript": "to maliciously intervene into systems, hack into systems."
+  },
+  {
+    "video_id": "00024",
+    "start": 197.55,
+    "end": 201.23,
+    "transcript": "Well, I think all of the participants in the panel tonight"
+  },
+  {
+    "video_id": "00024",
+    "start": 201.37,
+    "end": 205.13,
+    "transcript": "understand hacking as something more of a cultural act."
+  },
+  {
+    "video_id": "00024",
+    "start": 205.13,
+    "end": 207.95,
+    "transcript": "And as a form of misuse,"
+  },
+  {
+    "video_id": "00024",
+    "start": 207.95,
+    "end": 208.65,
+    "transcript": "as a form"
+  },
+  {
+    "video_id": "00024",
+    "start": 208.65,
+    "end": 216.25,
+    "transcript": "of breaking or intervening into systems and they will also all talk about their specific"
+  },
+  {
+    "video_id": "00024",
+    "start": 216.25,
+    "end": 222.25,
+    "transcript": "understandings of hacking. So what we're getting at tonight is a more cultural understanding of"
+  },
+  {
+    "video_id": "00024",
+    "start": 222.25,
+    "end": 229.93,
+    "transcript": "hacking and we will also discuss how the act of hacking intersects with artistic practice and what"
+  },
+  {
+    "video_id": "00024",
+    "start": 229.93,
+    "end": 237.37,
+    "transcript": "it means to the art world or understanding systems of the art world. So thanks again and I'll invite"
+  },
+  {
+    "video_id": "00024",
+    "start": 237.37,
+    "end": 249.61,
+    "transcript": "Evan up on stage. Evan Roth is one of the co-founders of the FADLab. He is an American artist"
+  },
+  {
+    "video_id": "00024",
+    "start": 249.61,
+    "end": 258.09,
+    "transcript": "but based in Paris and Evan's work is in the permanent collection of the Museum of Modern"
+  },
+  {
+    "video_id": "00024",
+    "start": 258.09,
+    "end": 264.81,
+    "transcript": "Art and has exhibited widely at institutions including the Centre Pompidou, the Kunsthalle"
+  },
+  {
+    "video_id": "00024",
+    "start": 264.81,
+    "end": 267.37,
+    "transcript": "Vienna, the Tate, the Fondation amo."
+  },
+  {
+    "video_id": "00024",
+    "start": 267.37,
+    "end": 269.07,
+    "transcript": "Cartier and"
+  },
+  {
+    "video_id": "00024",
+    "start": 269.07,
+    "end": 271.59,
+    "transcript": "YouTube. In 2012"
+  },
+  {
+    "video_id": "00024",
+    "start": 271.59,
+    "end": 273.35,
+    "transcript": "Evan was"
+  },
+  {
+    "video_id": "00024",
+    "start": 273.35,
+    "end": 274.79,
+    "transcript": "awarded the very"
+  },
+  {
+    "video_id": "00024",
+    "start": 274.79,
+    "end": 277.55,
+    "transcript": "prestigious Smithsonian"
+  },
+  {
+    "video_id": "00024",
+    "start": 277.55,
+    "end": 279.11,
+    "transcript": "Cooper Hewitt National"
+  },
+  {
+    "video_id": "00024",
+    "start": 279.11,
+    "end": 281.39,
+    "transcript": "Design Award and again he's"
+  },
+  {
+    "video_id": "00024",
+    "start": 281.39,
+    "end": 283.37,
+    "transcript": "one of the co-founders of Fat Lab and also"
+  },
+  {
+    "video_id": "00024",
+    "start": 283.37,
+    "end": 284.97,
+    "transcript": "together with James Powderly"
+  },
+  {
+    "video_id": "00024",
+    "start": 284.97,
+    "end": 286.53,
+    "transcript": "of the Graffiti."
+  },
+  {
+    "video_id": "00024",
+    "start": 287.43,
+    "end": 289.57,
+    "transcript": "Thank you. Thanks everybody for coming."
+  },
+  {
+    "video_id": "00024",
+    "start": 290.21,
+    "end": 291.49,
+    "transcript": "It's been a really fun week"
+  },
+  {
+    "video_id": "00024",
+    "start": 291.49,
+    "end": 293.31,
+    "transcript": "to be back with everybody from Fat Lab"
+  },
+  {
+    "video_id": "00024",
+    "start": 293.31,
+    "end": 295.37,
+    "transcript": "back here at I-Beam kind of where all"
+  },
+  {
+    "video_id": "00024",
+    "start": 295.37,
+    "end": 297.33,
+    "transcript": "this generated. I'm sure we'll talk about it a bit"
+  },
+  {
+    "video_id": "00024",
+    "start": 297.33,
+    "end": 299.41,
+    "transcript": "about that tonight. I thought"
+  },
+  {
+    "video_id": "00024",
+    "start": 299.41,
+    "end": 301.13,
+    "transcript": "I'd start by just talking a little about"
+  },
+  {
+    "video_id": "00024",
+    "start": 301.13,
+    "end": 303.57,
+    "transcript": "my own practice which is an art practice"
+  },
+  {
+    "video_id": "00024",
+    "start": 303.57,
+    "end": 305.43,
+    "transcript": "that's very much connected to this idea of"
+  },
+  {
+    "video_id": "00024",
+    "start": 305.43,
+    "end": 306.77,
+    "transcript": "hacking, this idea of misuse."
+  },
+  {
+    "video_id": "00024",
+    "start": 308.39,
+    "end": 309.49,
+    "transcript": "I have kind of"
+  },
+  {
+    "video_id": "00024",
+    "start": 309.49,
+    "end": 311.09,
+    "transcript": "three places that my work"
+  },
+  {
+    "video_id": "00024",
+    "start": 311.09,
+    "end": 313.39,
+    "transcript": "shows up primarily. Some is in more"
+  },
+  {
+    "video_id": "00024",
+    "start": 313.39,
+    "end": 314.89,
+    "transcript": "kind of traditional art"
+  },
+  {
+    "video_id": "00024",
+    "start": 314.89,
+    "end": 317.27,
+    "transcript": "modes of galleries with white walls and"
+  },
+  {
+    "video_id": "00024",
+    "start": 317.27,
+    "end": 319.21,
+    "transcript": "exists in more traditional mediums like"
+  },
+  {
+    "video_id": "00024",
+    "start": 319.21,
+    "end": 320.05,
+    "transcript": "prints and sculptures."
+  },
+  {
+    "video_id": "00024",
+    "start": 321.01,
+    "end": 323.35,
+    "transcript": "I have another strain of work that"
+  },
+  {
+    "video_id": "00024",
+    "start": 323.35,
+    "end": 324.47,
+    "transcript": "shows up on the internet."
+  },
+  {
+    "video_id": "00024",
+    "start": 325.09,
+    "end": 327.11,
+    "transcript": "Work that's meant to be natively"
+  },
+  {
+    "video_id": "00024",
+    "start": 327.11,
+    "end": 329.03,
+    "transcript": "viewed within the browser."
+  },
+  {
+    "video_id": "00024",
+    "start": 329.03,
+    "end": 330.83,
+    "transcript": "This is from a series that's up at the Museum"
+  },
+  {
+    "video_id": "00024",
+    "start": 330.83,
+    "end": 332.13,
+    "transcript": "of Moving Image at the moment called"
+  },
+  {
+    "video_id": "00024",
+    "start": 332.13,
+    "end": 334.83,
+    "transcript": "Tribute to Heather and then I have a third"
+  },
+  {
+    "video_id": "00024",
+    "start": 334.83,
+    "end": 338.67,
+    "transcript": "part of my work that has to do with making"
+  },
+  {
+    "video_id": "00024",
+    "start": 338.67,
+    "end": 340.19,
+    "transcript": "art in public space, has to do with making"
+  },
+  {
+    "video_id": "00024",
+    "start": 340.19,
+    "end": 342.11,
+    "transcript": "hacks in public space."
+  },
+  {
+    "video_id": "00024",
+    "start": 342.11,
+    "end": 343.89,
+    "transcript": "Sometimes that means tool making."
+  },
+  {
+    "video_id": "00024",
+    "start": 343.89,
+    "end": 346.11,
+    "transcript": "A lot of that work I did with Mr. Powderly here"
+  },
+  {
+    "video_id": "00024",
+    "start": 346.11,
+    "end": 347.81,
+    "transcript": "in the form of the Graffiti Research Lab but"
+  },
+  {
+    "video_id": "00024",
+    "start": 347.81,
+    "end": 350.35,
+    "transcript": "it's hacking at an urban scale, thinking about"
+  },
+  {
+    "video_id": "00024",
+    "start": 350.35,
+    "end": 351.87,
+    "transcript": "how to make tools for people that are making"
+  },
+  {
+    "video_id": "00024",
+    "start": 351.87,
+    "end": 353.97,
+    "transcript": "work outside. This is from a series called"
+  },
+  {
+    "video_id": "00024",
+    "start": 353.97,
+    "end": 355.17,
+    "transcript": "Propulsion Paintings."
+  },
+  {
+    "video_id": "00024",
+    "start": 355.17,
+    "end": 356.25,
+    "transcript": "So they look like this."
+  },
+  {
+    "video_id": "00024",
+    "start": 356.25,
+    "end": 356.97,
+    "transcript": "This is from a series called Propulsion Paintings."
+  },
+  {
+    "video_id": "00024",
+    "start": 356.97,
+    "end": 358.01,
+    "transcript": "So they look very different, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 358.01,
+    "end": 359.31,
+    "transcript": "They're in different formats."
+  },
+  {
+    "video_id": "00024",
+    "start": 359.31,
+    "end": 360.11,
+    "transcript": "They're in different venues."
+  },
+  {
+    "video_id": "00024",
+    "start": 360.11,
+    "end": 361.97,
+    "transcript": "They oftentimes have different audiences."
+  },
+  {
+    "video_id": "00024",
+    "start": 361.97,
+    "end": 364.61,
+    "transcript": "And it looks like a very kind of overly diverse"
+  },
+  {
+    "video_id": "00024",
+    "start": 364.61,
+    "end": 366.47,
+    "transcript": "body of work perhaps but I see it as all being"
+  },
+  {
+    "video_id": "00024",
+    "start": 366.47,
+    "end": 369.41,
+    "transcript": "connected through this idea of hack, the hack"
+  },
+  {
+    "video_id": "00024",
+    "start": 369.41,
+    "end": 370.81,
+    "transcript": "which we're going to be talking about today."
+  },
+  {
+    "video_id": "00024",
+    "start": 372.63,
+    "end": 374.69,
+    "transcript": "And so in thinking about kind of hacker culture"
+  },
+  {
+    "video_id": "00024",
+    "start": 374.69,
+    "end": 376.83,
+    "transcript": "and what all this means and where it comes from,"
+  },
+  {
+    "video_id": "00024",
+    "start": 377.65,
+    "end": 380.43,
+    "transcript": "a lot of it for me is connected with open source"
+  },
+  {
+    "video_id": "00024",
+    "start": 380.43,
+    "end": 383.69,
+    "transcript": "and with people that came from the free software"
+  },
+  {
+    "video_id": "00024",
+    "start": 383.69,
+    "end": 386.03,
+    "transcript": "movement and it was that community of people"
+  },
+  {
+    "video_id": "00024",
+    "start": 386.03,
+    "end": 388.05,
+    "transcript": "that really formed the definition of the hack"
+  },
+  {
+    "video_id": "00024",
+    "start": 388.05,
+    "end": 389.17,
+    "transcript": "as I like to think about it."
+  },
+  {
+    "video_id": "00024",
+    "start": 389.17,
+    "end": 392.23,
+    "transcript": "This is Linus Torvald, the creator of Linux."
+  },
+  {
+    "video_id": "00024",
+    "start": 392.23,
+    "end": 395.17,
+    "transcript": "His autobiography is called Doing It for Fun"
+  },
+  {
+    "video_id": "00024",
+    "start": 395.17,
+    "end": 397.51,
+    "transcript": "which I really like because I think this idea of fun,"
+  },
+  {
+    "video_id": "00024",
+    "start": 397.51,
+    "end": 400.67,
+    "transcript": "right, this idea that this community of open source hackers,"
+  },
+  {
+    "video_id": "00024",
+    "start": 400.67,
+    "end": 403.53,
+    "transcript": "they have a sort of a different reason for the reason,"
+  },
+  {
+    "video_id": "00024",
+    "start": 403.53,
+    "end": 405.47,
+    "transcript": "they have a different mode for making the work"
+  },
+  {
+    "video_id": "00024",
+    "start": 405.47,
+    "end": 406.31,
+    "transcript": "that they're doing, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 406.31,
+    "end": 407.35,
+    "transcript": "It's not driven by profit."
+  },
+  {
+    "video_id": "00024",
+    "start": 407.35,
+    "end": 409.51,
+    "transcript": "They're kind of gift giving culture, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 409.51,
+    "end": 411.79,
+    "transcript": "So this idea of fun, this idea of play,"
+  },
+  {
+    "video_id": "00024",
+    "start": 411.79,
+    "end": 414.01,
+    "transcript": "I think is a big part of a lot of the work"
+  },
+  {
+    "video_id": "00024",
+    "start": 414.01,
+    "end": 416.03,
+    "transcript": "that's in this exhibition, a lot of the work that, I think,"
+  },
+  {
+    "video_id": "00024",
+    "start": 416.03,
+    "end": 421.03,
+    "transcript": "the FATLAB members are making and in kind of researching"
+  },
+  {
+    "video_id": "00024",
+    "start": 421.03,
+    "end": 423.71,
+    "transcript": "different people's definitions of the word hacker,"
+  },
+  {
+    "video_id": "00024",
+    "start": 423.71,
+    "end": 426.29,
+    "transcript": "this phrase kept coming up a lot of playful cleverness"
+  },
+  {
+    "video_id": "00024",
+    "start": 426.29,
+    "end": 428.75,
+    "transcript": "which is one that I really like and it's one that I see"
+  },
+  {
+    "video_id": "00024",
+    "start": 428.75,
+    "end": 432.09,
+    "transcript": "in a lot of the work of my peers in the room."
+  },
+  {
+    "video_id": "00024",
+    "start": 432.09,
+    "end": 435.01,
+    "transcript": "This is a piece by a Dutch artist named Helmut Smits."
+  },
+  {
+    "video_id": "00024",
+    "start": 436.91,
+    "end": 439.01,
+    "transcript": "And so this idea of play shows up in my work also."
+  },
+  {
+    "video_id": "00024",
+    "start": 439.01,
+    "end": 441.89,
+    "transcript": "This is a series called Multi-Touch Paintings."
+  },
+  {
+    "video_id": "00024",
+    "start": 442.85,
+    "end": 445.27,
+    "transcript": "This one is called Angry Birds Level 1-1."
+  },
+  {
+    "video_id": "00024",
+    "start": 446.03,
+    "end": 448.49,
+    "transcript": "So I guess that laughter means you get it."
+  },
+  {
+    "video_id": "00024",
+    "start": 448.49,
+    "end": 451.71,
+    "transcript": "So this is, they're made very simply."
+  },
+  {
+    "video_id": "00024",
+    "start": 451.71,
+    "end": 454.01,
+    "transcript": "I think a lot of the best hacks are very simple."
+  },
+  {
+    "video_id": "00024",
+    "start": 454.01,
+    "end": 456.81,
+    "transcript": "And so this is just putting pieces of tracing paper"
+  },
+  {
+    "video_id": "00024",
+    "start": 456.81,
+    "end": 459.03,
+    "transcript": "over these smartphones that we all have in our pockets"
+  },
+  {
+    "video_id": "00024",
+    "start": 459.03,
+    "end": 462.57,
+    "transcript": "and it's about kind of archiving these first sort of"
+  },
+  {
+    "video_id": "00024",
+    "start": 462.57,
+    "end": 464.63,
+    "transcript": "awkward moments where we're all touching computers"
+  },
+  {
+    "video_id": "00024",
+    "start": 464.63,
+    "end": 466.61,
+    "transcript": "for the first time and so it has to do with identity"
+  },
+  {
+    "video_id": "00024",
+    "start": 466.61,
+    "end": 470.07,
+    "transcript": "but it also has to do with how interface designers"
+  },
+  {
+    "video_id": "00024",
+    "start": 470.07,
+    "end": 472.47,
+    "transcript": "are sort of teaching us as human beings"
+  },
+  {
+    "video_id": "00024",
+    "start": 472.47,
+    "end": 474.73,
+    "transcript": "to make these gestures that we've sort of never made"
+  },
+  {
+    "video_id": "00024",
+    "start": 474.73,
+    "end": 475.99,
+    "transcript": "ever before and now we're doing this"
+  },
+  {
+    "video_id": "00024",
+    "start": 475.99,
+    "end": 477.63,
+    "transcript": "a hundred times a day."
+  },
+  {
+    "video_id": "00024",
+    "start": 477.63,
+    "end": 479.47,
+    "transcript": "So this one's called User Name and Password."
+  },
+  {
+    "video_id": "00024",
+    "start": 479.47,
+    "end": 481.97,
+    "transcript": "This is an active account if anybody wants to try."
+  },
+  {
+    "video_id": "00024",
+    "start": 483.23,
+    "end": 484.85,
+    "transcript": "So I was doing that as an individual piece"
+  },
+  {
+    "video_id": "00024",
+    "start": 484.85,
+    "end": 487.51,
+    "transcript": "where you can kind of see how these gestures are working"
+  },
+  {
+    "video_id": "00024",
+    "start": 487.51,
+    "end": 490.27,
+    "transcript": "and for me it was a lot about archiving."
+  },
+  {
+    "video_id": "00024",
+    "start": 490.27,
+    "end": 494.11,
+    "transcript": "This is kind of a series where I was playing Angry Birds"
+  },
+  {
+    "video_id": "00024",
+    "start": 494.11,
+    "end": 495.25,
+    "transcript": "from start to finish, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 495.25,
+    "end": 497.27,
+    "transcript": "So this is looking at this as a bigger data set."
+  },
+  {
+    "video_id": "00024",
+    "start": 497.27,
+    "end": 499.23,
+    "transcript": "So these are all the winning levels."
+  },
+  {
+    "video_id": "00024",
+    "start": 499.23,
+    "end": 501.73,
+    "transcript": "But more recently I did a version that was"
+  },
+  {
+    "video_id": "00024",
+    "start": 501.73,
+    "end": 503.01,
+    "transcript": "every single attempted level."
+  },
+  {
+    "video_id": "00024",
+    "start": 503.01,
+    "end": 505.49,
+    "transcript": "So this is an installation that's up at the University"
+  },
+  {
+    "video_id": "00024",
+    "start": 505.49,
+    "end": 507.83,
+    "transcript": "of Maryland right now."
+  },
+  {
+    "video_id": "00024",
+    "start": 507.83,
+    "end": 511.13,
+    "transcript": "And this is every level of Angry Birds."
+  },
+  {
+    "video_id": "00024",
+    "start": 511.13,
+    "end": 513.99,
+    "transcript": "And so for me this is a solo exhibition"
+  },
+  {
+    "video_id": "00024",
+    "start": 513.99,
+    "end": 515.05,
+    "transcript": "called Casual Computing."
+  },
+  {
+    "video_id": "00024",
+    "start": 515.05,
+    "end": 517.83,
+    "transcript": "And so for me this idea is like as we're entering"
+  },
+  {
+    "video_id": "00024",
+    "start": 517.83,
+    "end": 519.45,
+    "transcript": "into this new relationship with computers"
+  },
+  {
+    "video_id": "00024",
+    "start": 519.45,
+    "end": 521.85,
+    "transcript": "where we're sort of stealing away seconds on the metro"
+  },
+  {
+    "video_id": "00024",
+    "start": 521.85,
+    "end": 523.89,
+    "transcript": "and it's not necessarily about sitting in front"
+  },
+  {
+    "video_id": "00024",
+    "start": 523.89,
+    "end": 525.49,
+    "transcript": "of the desk and working for 10 hours"
+  },
+  {
+    "video_id": "00024",
+    "start": 525.49,
+    "end": 527.79,
+    "transcript": "but all these little moments they add up."
+  },
+  {
+    "video_id": "00024",
+    "start": 527.79,
+    "end": 530.09,
+    "transcript": "And so this is kind of a visualization of that."
+  },
+  {
+    "video_id": "00024",
+    "start": 531.23,
+    "end": 534.79,
+    "transcript": "I'm very influenced by graffiti but I think I love graffiti"
+  },
+  {
+    "video_id": "00024",
+    "start": 534.79,
+    "end": 535.49,
+    "transcript": "because they're hackers."
+  },
+  {
+    "video_id": "00024",
+    "start": 535.49,
+    "end": 535.99,
+    "transcript": "Right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 535.99,
+    "end": 537.93,
+    "transcript": "Like Mike and Ski were talking up here earlier."
+  },
+  {
+    "video_id": "00024",
+    "start": 537.93,
+    "end": 540.09,
+    "transcript": "When I hear them talking about the work that they're making"
+  },
+  {
+    "video_id": "00024",
+    "start": 540.09,
+    "end": 542.45,
+    "transcript": "like I hear hackers talking about the work"
+  },
+  {
+    "video_id": "00024",
+    "start": 542.45,
+    "end": 543.03,
+    "transcript": "that they're making."
+  },
+  {
+    "video_id": "00024",
+    "start": 543.03,
+    "end": 544.67,
+    "transcript": "It's the same design approach."
+  },
+  {
+    "video_id": "00024",
+    "start": 544.67,
+    "end": 546.65,
+    "transcript": "And I think my love affair with graffiti"
+  },
+  {
+    "video_id": "00024",
+    "start": 546.65,
+    "end": 548.71,
+    "transcript": "is really because they're hackers, not painters."
+  },
+  {
+    "video_id": "00024",
+    "start": 548.71,
+    "end": 549.21,
+    "transcript": "Right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 549.21,
+    "end": 552.13,
+    "transcript": "And so my favorite tags is about where they show up"
+  },
+  {
+    "video_id": "00024",
+    "start": 552.13,
+    "end": 553.89,
+    "transcript": "and not necessarily what color they are in"
+  },
+  {
+    "video_id": "00024",
+    "start": 553.89,
+    "end": 555.57,
+    "transcript": "or how beautifully they're rendered."
+  },
+  {
+    "video_id": "00024",
+    "start": 555.57,
+    "end": 557.31,
+    "transcript": "So even when I'm looking at something like this,"
+  },
+  {
+    "video_id": "00024",
+    "start": 557.31,
+    "end": 558.47,
+    "transcript": "it's not about the letters."
+  },
+  {
+    "video_id": "00024",
+    "start": 558.47,
+    "end": 560.11,
+    "transcript": "It's about the system it's hacking."
+  },
+  {
+    "video_id": "00024",
+    "start": 560.11,
+    "end": 560.31,
+    "transcript": "Right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 560.31,
+    "end": 561.73,
+    "transcript": "It's like graffiti writers, they're"
+  },
+  {
+    "video_id": "00024",
+    "start": 561.73,
+    "end": 563.37,
+    "transcript": "hacking the subway system."
+  },
+  {
+    "video_id": "00024",
+    "start": 563.37,
+    "end": 565.41,
+    "transcript": "And so graffiti is a community of hackers."
+  },
+  {
+    "video_id": "00024",
+    "start": 565.41,
+    "end": 568.41,
+    "transcript": "And I think when James and I were collaborating"
+  },
+  {
+    "video_id": "00024",
+    "start": 568.41,
+    "end": 571.47,
+    "transcript": "on the work for Graffiti Research Lab with Theo"
+  },
+  {
+    "video_id": "00024",
+    "start": 571.47,
+    "end": 574.71,
+    "transcript": "and a lot of other people, projects like Lasertag,"
+  },
+  {
+    "video_id": "00024",
+    "start": 574.71,
+    "end": 576.75,
+    "transcript": "these were hacks at kind of an urban scale"
+  },
+  {
+    "video_id": "00024",
+    "start": 576.75,
+    "end": 578.41,
+    "transcript": "and thinking about making tools that"
+  },
+  {
+    "video_id": "00024",
+    "start": 578.41,
+    "end": 580.71,
+    "transcript": "would sort of allow other people to experience this kind"
+  },
+  {
+    "video_id": "00024",
+    "start": 580.71,
+    "end": 583.91,
+    "transcript": "of hack, this moment of empowerment."
+  },
+  {
+    "video_id": "00024",
+    "start": 583.91,
+    "end": 585.93,
+    "transcript": "And so this idea of unintended use,"
+  },
+  {
+    "video_id": "00024",
+    "start": 585.93,
+    "end": 589.53,
+    "transcript": "using lasers to write graffiti, duct taping knives"
+  },
+  {
+    "video_id": "00024",
+    "start": 589.53,
+    "end": 593.35,
+    "transcript": "onto vacuum cleaners, this idea of unintended use"
+  },
+  {
+    "video_id": "00024",
+    "start": 593.35,
+    "end": 595.19,
+    "transcript": "I think is a lens which hackers tend"
+  },
+  {
+    "video_id": "00024",
+    "start": 595.19,
+    "end": 598.43,
+    "transcript": "to look at the world around them and turn boring technologies"
+  },
+  {
+    "video_id": "00024",
+    "start": 598.43,
+    "end": 599.55,
+    "transcript": "into really exciting ones."
+  },
+  {
+    "video_id": "00024",
+    "start": 599.55,
+    "end": 601.55,
+    "transcript": "This is from an internet meme called the Doomba."
+  },
+  {
+    "video_id": "00024",
+    "start": 604.67,
+    "end": 606.29,
+    "transcript": "And so there's a lot of thinking that"
+  },
+  {
+    "video_id": "00024",
+    "start": 606.29,
+    "end": 610.25,
+    "transcript": "comes from the early hacker scenes that grew up with Linux."
+  },
+  {
+    "video_id": "00024",
+    "start": 610.25,
+    "end": 611.67,
+    "transcript": "This is a phrase from Eric Raymond,"
+  },
+  {
+    "video_id": "00024",
+    "start": 611.67,
+    "end": 613.55,
+    "transcript": "but he's talking about Linus Torvalds again."
+  },
+  {
+    "video_id": "00024",
+    "start": 613.55,
+    "end": 615.95,
+    "transcript": "He says, his genius was being lazy like the fox."
+  },
+  {
+    "video_id": "00024",
+    "start": 615.95,
+    "end": 616.45,
+    "transcript": "Right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 616.45,
+    "end": 618.71,
+    "transcript": "And it's kind of about trying to find the quickest"
+  },
+  {
+    "video_id": "00024",
+    "start": 618.71,
+    "end": 620.93,
+    "transcript": "way between points A and point B."
+  },
+  {
+    "video_id": "00024",
+    "start": 620.93,
+    "end": 623.37,
+    "transcript": "And so whenever I'm spending too long on a project,"
+  },
+  {
+    "video_id": "00024",
+    "start": 623.37,
+    "end": 625.01,
+    "transcript": "I always kind of come back to this."
+  },
+  {
+    "video_id": "00024",
+    "start": 625.01,
+    "end": 626.55,
+    "transcript": "Lazy like a fox mentality and try"
+  },
+  {
+    "video_id": "00024",
+    "start": 626.55,
+    "end": 629.25,
+    "transcript": "to treat things the way hackers would treat them."
+  },
+  {
+    "video_id": "00024",
+    "start": 629.25,
+    "end": 630.87,
+    "transcript": "This is a particularly lazy piece"
+  },
+  {
+    "video_id": "00024",
+    "start": 630.87,
+    "end": 632.79,
+    "transcript": "that I did called How to Keep Motherfuckers"
+  },
+  {
+    "video_id": "00024",
+    "start": 632.79,
+    "end": 634.41,
+    "transcript": "from Putting Their Seats Back."
+  },
+  {
+    "video_id": "00024",
+    "start": 634.41,
+    "end": 636.37,
+    "transcript": "It's a very short performance piece"
+  },
+  {
+    "video_id": "00024",
+    "start": 636.37,
+    "end": 638.69,
+    "transcript": "that happens on an airplane."
+  },
+  {
+    "video_id": "00024",
+    "start": 638.69,
+    "end": 643.2,
+    "transcript": "It's a single zip tie."
+  },
+  {
+    "video_id": "00024",
+    "start": 643.2,
+    "end": 648.24,
+    "transcript": "And so I'm much more fascinated in the philosophies that"
+  },
+  {
+    "video_id": "00024",
+    "start": 648.24,
+    "end": 650.74,
+    "transcript": "come from hacker communities rather than the technologies."
+  },
+  {
+    "video_id": "00024",
+    "start": 650.74,
+    "end": 653.82,
+    "transcript": "Because to me, a zip tie can be a really empowering,"
+  },
+  {
+    "video_id": "00024",
+    "start": 653.82,
+    "end": 656.3,
+    "transcript": "interesting technology."
+  },
+  {
+    "video_id": "00024",
+    "start": 656.3,
+    "end": 656.96,
+    "transcript": "I don't know."
+  },
+  {
+    "video_id": "00024",
+    "start": 656.96,
+    "end": 658.08,
+    "transcript": "Do I have volume up here?"
+  },
+  {
+    "video_id": "00024",
+    "start": 658.08,
+    "end": 658.88,
+    "transcript": "Oh, I do."
+  },
+  {
+    "video_id": "00024",
+    "start": 658.88,
+    "end": 659.12,
+    "transcript": "OK."
+  },
+  {
+    "video_id": "00024",
+    "start": 659.12,
+    "end": 661.72,
+    "transcript": "I'll just show a couple quick ones, and then I'll pass the mic."
+  },
+  {
+    "video_id": "00024",
+    "start": 661.72,
+    "end": 664.68,
+    "transcript": "This is a more recent piece called Free Speech."
+  },
+  {
+    "video_id": "00024",
+    "start": 664.68,
+    "end": 666.8,
+    "transcript": "This was in Vienna about six months ago."
+  },
+  {
+    "video_id": "00024",
+    "start": 666.8,
+    "end": 668.08,
+    "transcript": "Also a very simple construct."
+  },
+  {
+    "video_id": "00024",
+    "start": 668.08,
+    "end": 671.04,
+    "transcript": "It's just a van with a large mobile telephone number,"
+  },
+  {
+    "video_id": "00024",
+    "start": 671.04,
+    "end": 673.84,
+    "transcript": "the word free, and then an arrow pointing to this loudspeaker"
+  },
+  {
+    "video_id": "00024",
+    "start": 673.84,
+    "end": 674.64,
+    "transcript": "on the roof."
+  },
+  {
+    "video_id": "00024",
+    "start": 674.64,
+    "end": 675.84,
+    "transcript": "And there's no instructions."
+  },
+  {
+    "video_id": "00024",
+    "start": 675.84,
+    "end": 676.48,
+    "transcript": "There's no input."
+  },
+  {
+    "video_id": "00024",
+    "start": 676.48,
+    "end": 678.28,
+    "transcript": "There's no voice on the other line."
+  },
+  {
+    "video_id": "00024",
+    "start": 678.28,
+    "end": 681.0,
+    "transcript": "But when you would call in and you'd kind of sheepishly say"
+  },
+  {
+    "video_id": "00024",
+    "start": 681.0,
+    "end": 683.18,
+    "transcript": "hello, you'd hear your own name kind of ringing out"
+  },
+  {
+    "video_id": "00024",
+    "start": 683.18,
+    "end": 685.22,
+    "transcript": "throughout the immediate proximity."
+  },
+  {
+    "video_id": "00024",
+    "start": 685.22,
+    "end": 686.2,
+    "transcript": "So I'll show just a third of it."
+  },
+  {
+    "video_id": "00024",
+    "start": 686.96,
+    "end": 705.05,
+    "transcript": "I'll give you 30 seconds of what this looks like."
+  },
+  {
+    "video_id": "00024",
+    "start": 714.52,
+    "end": 715.02,
+    "transcript": "Victim."
+  },
+  {
+    "video_id": "00024",
+    "start": 719.02,
+    "end": 748.23,
+    "transcript": "So this piece was kind of about introducing"
+  },
+  {
+    "video_id": "00024",
+    "start": 748.23,
+    "end": 751.75,
+    "transcript": "this moment of empowerment into kind of unexpected situations."
+  },
+  {
+    "video_id": "00024",
+    "start": 751.75,
+    "end": 754.61,
+    "transcript": "I think like when James and I were doing a lot of laser tag"
+  },
+  {
+    "video_id": "00024",
+    "start": 754.61,
+    "end": 756.07,
+    "transcript": "events, we had that feeling, too."
+  },
+  {
+    "video_id": "00024",
+    "start": 756.07,
+    "end": 757.49,
+    "transcript": "It was like you're allowing people"
+  },
+  {
+    "video_id": "00024",
+    "start": 757.49,
+    "end": 759.79,
+    "transcript": "to say something on a scale they kind of weren't ever"
+  },
+  {
+    "video_id": "00024",
+    "start": 759.79,
+    "end": 761.85,
+    "transcript": "meant to have control over."
+  },
+  {
+    "video_id": "00024",
+    "start": 761.85,
+    "end": 764.51,
+    "transcript": "And so that idea of sort of hacks as empowerment,"
+  },
+  {
+    "video_id": "00024",
+    "start": 764.51,
+    "end": 766.39,
+    "transcript": "is what I really am interested in."
+  },
+  {
+    "video_id": "00024",
+    "start": 766.39,
+    "end": 768.51,
+    "transcript": "That's kind of the piece I did over here with the TED sign"
+  },
+  {
+    "video_id": "00024",
+    "start": 768.51,
+    "end": 769.45,
+    "transcript": "is kind of about that."
+  },
+  {
+    "video_id": "00024",
+    "start": 769.45,
+    "end": 772.31,
+    "transcript": "It's like a sculpture you can stand in front of and receive"
+  },
+  {
+    "video_id": "00024",
+    "start": 772.31,
+    "end": 774.27,
+    "transcript": "power."
+  },
+  {
+    "video_id": "00024",
+    "start": 774.27,
+    "end": 777.13,
+    "transcript": "And there's been a crew of Phat Lab members"
+  },
+  {
+    "video_id": "00024",
+    "start": 777.13,
+    "end": 778.75,
+    "transcript": "driving around the Google car over there."
+  },
+  {
+    "video_id": "00024",
+    "start": 778.75,
+    "end": 783.13,
+    "transcript": "And if you've ever been behind the wheel of the Google car,"
+  },
+  {
+    "video_id": "00024",
+    "start": 783.13,
+    "end": 784.37,
+    "transcript": "you know what power feels like."
+  },
+  {
+    "video_id": "00024",
+    "start": 784.37,
+    "end": 788.19,
+    "transcript": "It's like these hacks, they sort of lead to empowerment."
+  },
+  {
+    "video_id": "00024",
+    "start": 788.19,
+    "end": 790.27,
+    "transcript": "So you can feel free to give your own TED presentations"
+  },
+  {
+    "video_id": "00024",
+    "start": 790.27,
+    "end": 791.51,
+    "transcript": "over here."
+  },
+  {
+    "video_id": "00024",
+    "start": 791.51,
+    "end": 793.51,
+    "transcript": "And that's really the core of my interest in hacking."
+  },
+  {
+    "video_id": "00024",
+    "start": 793.51,
+    "end": 794.51,
+    "transcript": "It's not about the technology."
+  },
+  {
+    "video_id": "00024",
+    "start": 794.51,
+    "end": 797.93,
+    "transcript": "It's more about how something as simple as a zip"
+  },
+  {
+    "video_id": "00024",
+    "start": 797.93,
+    "end": 800.93,
+    "transcript": "tie or like some painted red wood letters"
+  },
+  {
+    "video_id": "00024",
+    "start": 800.93,
+    "end": 804.45,
+    "transcript": "can sort of give people this moment of empowerment."
+  },
+  {
+    "video_id": "00024",
+    "start": 804.45,
+    "end": 805.75,
+    "transcript": "And so I'll leave with this image."
+  },
+  {
+    "video_id": "00024",
+    "start": 805.75,
+    "end": 807.13,
+    "transcript": "This is one I keep coming back to."
+  },
+  {
+    "video_id": "00024",
+    "start": 807.13,
+    "end": 810.03,
+    "transcript": "It's like one of my favorite just art hacks of all time."
+  },
+  {
+    "video_id": "00024",
+    "start": 810.03,
+    "end": 811.93,
+    "transcript": "This is a piece by William Lampson."
+  },
+  {
+    "video_id": "00024",
+    "start": 811.93,
+    "end": 813.85,
+    "transcript": "And it kind of has everything for me, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 813.85,
+    "end": 816.71,
+    "transcript": "It's playful, it's clever, anti-authoritarian."
+  },
+  {
+    "video_id": "00024",
+    "start": 816.71,
+    "end": 818.99,
+    "transcript": "It's misuse, it's lazy, it's empowering."
+  },
+  {
+    "video_id": "00024",
+    "start": 818.99,
+    "end": 821.83,
+    "transcript": "And it's just a balloon and a string and a piece of rock."
+  },
+  {
+    "video_id": "00024",
+    "start": 821.83,
+    "end": 824.27,
+    "transcript": "So to me, this is like the perfect, perfect hack."
+  },
+  {
+    "video_id": "00024",
+    "start": 824.27,
+    "end": 826.81,
+    "transcript": "You know, it's the minimum amount of effort"
+  },
+  {
+    "video_id": "00024",
+    "start": 826.81,
+    "end": 829.49,
+    "transcript": "for the maximum amount of impact."
+  },
+  {
+    "video_id": "00024",
+    "start": 829.49,
+    "end": 831.93,
+    "transcript": "OK, so with there, I want to pass the mic."
+  },
+  {
+    "video_id": "00024",
+    "start": 831.93,
+    "end": 834.27,
+    "transcript": "Who do we have coming up next?"
+  },
+  {
+    "video_id": "00024",
+    "start": 834.27,
+    "end": 836.93,
+    "transcript": "Mr. Barthol, ladies and gentlemen, Mr. Aaron Barthol."
+  },
+  {
+    "video_id": "00024",
+    "start": 843.49,
+    "end": 845.25,
+    "transcript": "So thanks a lot, Evan."
+  },
+  {
+    "video_id": "00024",
+    "start": 845.25,
+    "end": 848.89,
+    "transcript": "And yeah, please welcome Aram Barthol."
+  },
+  {
+    "video_id": "00024",
+    "start": 848.89,
+    "end": 851.27,
+    "transcript": "Aram lives and works in Berlin."
+  },
+  {
+    "video_id": "00024",
+    "start": 851.27,
+    "end": 856.99,
+    "transcript": "His work deals with net politics, DIY movements,"
+  },
+  {
+    "video_id": "00024",
+    "start": 856.99,
+    "end": 858.43,
+    "transcript": "and internet development."
+  },
+  {
+    "video_id": "00024",
+    "start": 858.43,
+    "end": 862.69,
+    "transcript": "In general, his work has been exhibited at MoMA"
+  },
+  {
+    "video_id": "00024",
+    "start": 862.69,
+    "end": 865.49,
+    "transcript": "here in New York, at Pace Gallery,"
+  },
+  {
+    "video_id": "00024",
+    "start": 865.49,
+    "end": 868.95,
+    "transcript": "and at DUM, the Digital Art Museum in Berlin."
+  },
+  {
+    "video_id": "00024",
+    "start": 868.95,
+    "end": 871.79,
+    "transcript": "So please welcome Aram."
+  },
+  {
+    "video_id": "00024",
+    "start": 871.79,
+    "end": 875.52,
+    "transcript": "Yeah, thank you."
+  },
+  {
+    "video_id": "00024",
+    "start": 875.52,
+    "end": 879.3,
+    "transcript": "I'm going to talk about Speed Projects, which"
+  },
+  {
+    "video_id": "00024",
+    "start": 879.3,
+    "end": 884.04,
+    "transcript": "is a label and sort of a certificate I came up with"
+  },
+  {
+    "video_id": "00024",
+    "start": 884.04,
+    "end": 887.52,
+    "transcript": "in 2009."
+  },
+  {
+    "video_id": "00024",
+    "start": 887.52,
+    "end": 889.24,
+    "transcript": "Beginning of 2009, it became part"
+  },
+  {
+    "video_id": "00024",
+    "start": 889.24,
+    "end": 896.0,
+    "transcript": "of FedLab, and it was a really good experience to, yeah."
+  },
+  {
+    "video_id": "00024",
+    "start": 896.0,
+    "end": 897.8,
+    "transcript": "The way of working how FedLab works"
+  },
+  {
+    "video_id": "00024",
+    "start": 897.8,
+    "end": 902.62,
+    "transcript": "and how people work in there was really a rich, new whole field"
+  },
+  {
+    "video_id": "00024",
+    "start": 902.62,
+    "end": 905.42,
+    "transcript": "and also changed me a lot how I work myself."
+  },
+  {
+    "video_id": "00024",
+    "start": 905.42,
+    "end": 909.04,
+    "transcript": "And Evan already pointed out a lot of, yeah,"
+  },
+  {
+    "video_id": "00024",
+    "start": 909.04,
+    "end": 911.14,
+    "transcript": "very important qualities of a hack."
+  },
+  {
+    "video_id": "00024",
+    "start": 911.14,
+    "end": 914.76,
+    "transcript": "And one of those is like to doing things"
+  },
+  {
+    "video_id": "00024",
+    "start": 914.76,
+    "end": 917.86,
+    "transcript": "which are very effective in a very short time period."
+  },
+  {
+    "video_id": "00024",
+    "start": 917.86,
+    "end": 919.24,
+    "transcript": "And yeah."
+  },
+  {
+    "video_id": "00024",
+    "start": 919.24,
+    "end": 921.3,
+    "transcript": "The Speed Project was sort of, yeah."
+  },
+  {
+    "video_id": "00024",
+    "start": 921.3,
+    "end": 924.02,
+    "transcript": "It's just the stamp, but it's about, it's,"
+  },
+  {
+    "video_id": "00024",
+    "start": 924.02,
+    "end": 928.56,
+    "transcript": "the idea is make a project in a very short time frame."
+  },
+  {
+    "video_id": "00024",
+    "start": 928.56,
+    "end": 929.84,
+    "transcript": "Maximum is one day."
+  },
+  {
+    "video_id": "00024",
+    "start": 929.84,
+    "end": 931.76,
+    "transcript": "So everything which is longer than one day"
+  },
+  {
+    "video_id": "00024",
+    "start": 931.76,
+    "end": 933.6,
+    "transcript": "is not a Speed Project anymore."
+  },
+  {
+    "video_id": "00024",
+    "start": 933.6,
+    "end": 936.56,
+    "transcript": "And yeah, you can see it here, five minutes, 10 minutes."
+  },
+  {
+    "video_id": "00024",
+    "start": 936.56,
+    "end": 940.06,
+    "transcript": "It's often been used for, yeah, internet projects,"
+  },
+  {
+    "video_id": "00024",
+    "start": 940.06,
+    "end": 942.38,
+    "transcript": "but could be applied to any other project."
+  },
+  {
+    "video_id": "00024",
+    "start": 942.38,
+    "end": 944.1,
+    "transcript": "And of course, I mean, it's a certificate,"
+  },
+  {
+    "video_id": "00024",
+    "start": 944.1,
+    "end": 948.36,
+    "transcript": "but it's not really, well, you give the certificate yourself."
+  },
+  {
+    "video_id": "00024",
+    "start": 949.24,
+    "end": 950.08,
+    "transcript": "Self-approved."
+  },
+  {
+    "video_id": "00024",
+    "start": 950.08,
+    "end": 950.9,
+    "transcript": "And it's about time,"
+  },
+  {
+    "video_id": "00024",
+    "start": 950.9,
+    "end": 955.26,
+    "transcript": "and it's about how much time do I need to make an art work?"
+  },
+  {
+    "video_id": "00024",
+    "start": 955.26,
+    "end": 959.38,
+    "transcript": "And there's an art that's, I mean, I just chose this now"
+  },
+  {
+    "video_id": "00024",
+    "start": 959.38,
+    "end": 963.1,
+    "transcript": "because it's very obvious."
+  },
+  {
+    "video_id": "00024",
+    "start": 963.1,
+    "end": 965.28,
+    "transcript": "But I mean, there's art pieces out there."
+  },
+  {
+    "video_id": "00024",
+    "start": 965.28,
+    "end": 968.0,
+    "transcript": "And yeah, a lot of art is a lot of time consuming"
+  },
+  {
+    "video_id": "00024",
+    "start": 968.0,
+    "end": 972.28,
+    "transcript": "and it gains value by, oh my God, can you see this?"
+  },
+  {
+    "video_id": "00024",
+    "start": 972.28,
+    "end": 974.44,
+    "transcript": "How much time it has taken to make this?"
+  },
+  {
+    "video_id": "00024",
+    "start": 974.44,
+    "end": 977.48,
+    "transcript": "And of course, this is legit, like, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 977.48,
+    "end": 979.16,
+    "transcript": "I mean, in painting"
+  },
+  {
+    "video_id": "00024",
+    "start": 979.24,
+    "end": 983.58,
+    "transcript": "or like in many art forms, but at the same time,"
+  },
+  {
+    "video_id": "00024",
+    "start": 983.58,
+    "end": 985.54,
+    "transcript": "and this is something I learned a lot with that"
+  },
+  {
+    "video_id": "00024",
+    "start": 985.54,
+    "end": 988.76,
+    "transcript": "and looking at GL and also at the hacker community"
+  },
+  {
+    "video_id": "00024",
+    "start": 988.76,
+    "end": 993.76,
+    "transcript": "to do something very fast and yeah, conceptual."
+  },
+  {
+    "video_id": "00024",
+    "start": 994.58,
+    "end": 996.84,
+    "transcript": "Yeah, this is also like one of the great hacks"
+  },
+  {
+    "video_id": "00024",
+    "start": 996.84,
+    "end": 998.52,
+    "transcript": "in art history."
+  },
+  {
+    "video_id": "00024",
+    "start": 998.52,
+    "end": 1003.12,
+    "transcript": "So there's many examples, and so I just chose two here"
+  },
+  {
+    "video_id": "00024",
+    "start": 1003.12,
+    "end": 1006.9,
+    "transcript": "to kind of, yeah, put out the idea."
+  },
+  {
+    "video_id": "00024",
+    "start": 1006.9,
+    "end": 1009.0,
+    "transcript": "And there's also like a,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1009.0,
+    "end": 1012.44,
+    "transcript": "this is like a real stamp, but I, this is all, I guess,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1012.44,
+    "end": 1017.5,
+    "transcript": "series of projects which have been done by FEDLAB members."
+  },
+  {
+    "video_id": "00024",
+    "start": 1017.5,
+    "end": 1019.76,
+    "transcript": "So here's even like 10 seconds, something,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1019.76,
+    "end": 1022.6,
+    "transcript": "I think Evan did this, where was it?"
+  },
+  {
+    "video_id": "00024",
+    "start": 1022.6,
+    "end": 1023.88,
+    "transcript": "Barcelona, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 1023.88,
+    "end": 1028.44,
+    "transcript": "So there's a spray can, go nuts, and then people go nuts."
+  },
+  {
+    "video_id": "00024",
+    "start": 1028.44,
+    "end": 1031.24,
+    "transcript": "URL Performance Art, this is also by Evan."
+  },
+  {
+    "video_id": "00024",
+    "start": 1031.24,
+    "end": 1035.12,
+    "transcript": "And it's really like the way to work with the web"
+  },
+  {
+    "video_id": "00024",
+    "start": 1035.12,
+    "end": 1038.38,
+    "transcript": "or for the internet, you make a project, maybe it's also"
+  },
+  {
+    "video_id": "00024",
+    "start": 1038.38,
+    "end": 1041.68,
+    "transcript": "very reacting to something, what just happened,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1041.68,
+    "end": 1044.38,
+    "transcript": "like the meteor comes down and then there's like memes"
+  },
+  {
+    "video_id": "00024",
+    "start": 1044.38,
+    "end": 1045.22,
+    "transcript": "going on, et cetera."
+  },
+  {
+    "video_id": "00024",
+    "start": 1045.22,
+    "end": 1048.92,
+    "transcript": "So it's very much like how the web's, yeah,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1048.92,
+    "end": 1050.56,
+    "transcript": "kind of the drive of the web."
+  },
+  {
+    "video_id": "00024",
+    "start": 1050.56,
+    "end": 1055.16,
+    "transcript": "And to see projects compared to how much time"
+  },
+  {
+    "video_id": "00024",
+    "start": 1055.16,
+    "end": 1058.68,
+    "transcript": "that it took to make them is, yeah, very important, right?"
+  },
+  {
+    "video_id": "00024",
+    "start": 1058.68,
+    "end": 1061.5,
+    "transcript": "So, or at least it's like, gives you an idea,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1061.5,
+    "end": 1063.14,
+    "transcript": "oh, this was made in one hour."
+  },
+  {
+    "video_id": "00024",
+    "start": 1063.14,
+    "end": 1068.14,
+    "transcript": "And yeah, this is like a video interface Jamie made"
+  },
+  {
+    "video_id": "00024",
+    "start": 1068.38,
+    "end": 1072.72,
+    "transcript": "so you type in a sentence and then you get all the videos"
+  },
+  {
+    "video_id": "00024",
+    "start": 1072.72,
+    "end": 1075.72,
+    "transcript": "with these topics."
+  },
+  {
+    "video_id": "00024",
+    "start": 1075.72,
+    "end": 1080.38,
+    "transcript": "The auto smiley by Theo was made in one hour,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1080.38,
+    "end": 1084.1,
+    "transcript": "which is like a chat interface."
+  },
+  {
+    "video_id": "00024",
+    "start": 1084.1,
+    "end": 1087.0,
+    "transcript": "So you, like the, no, it's a face recognition,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1087.0,
+    "end": 1091.82,
+    "transcript": "and when you smile, your chat adds a, yeah, smiley."
+  },
+  {
+    "video_id": "00024",
+    "start": 1091.82,
+    "end": 1094.1,
+    "transcript": "So yeah, there's all these projects."
+  },
+  {
+    "video_id": "00024",
+    "start": 1094.1,
+    "end": 1098.22,
+    "transcript": "And I think Speed Project and being fast and making"
+  },
+  {
+    "video_id": "00024",
+    "start": 1098.22,
+    "end": 1100.5,
+    "transcript": "these things is, yeah, it's a very important part"
+  },
+  {
+    "video_id": "00024",
+    "start": 1100.5,
+    "end": 1102.54,
+    "transcript": "of the hacking culture."
+  },
+  {
+    "video_id": "00024",
+    "start": 1102.54,
+    "end": 1113.96,
+    "transcript": "And this talk was made in five minutes."
+  },
+  {
+    "video_id": "00024",
+    "start": 1113.96,
+    "end": 1115.36,
+    "transcript": "Okay, thank you very much."
+  },
+  {
+    "video_id": "00024",
+    "start": 1115.36,
+    "end": 1119.06,
+    "transcript": "Our next presenter is Eddie Wagenknecht."
+  },
+  {
+    "video_id": "00024",
+    "start": 1119.06,
+    "end": 1124.3,
+    "transcript": "Eddie is an anti-disciplinary experimental researcher"
+  },
+  {
+    "video_id": "00024",
+    "start": 1124.3,
+    "end": 1128.4,
+    "transcript": "who works in the fields of emerging media and open source,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1128.4,
+    "end": 1132.68,
+    "transcript": "pop culture, and hacktivist arts."
+  },
+  {
+    "video_id": "00024",
+    "start": 1132.68,
+    "end": 1135.68,
+    "transcript": "Each of her pieces is always a kind"
+  },
+  {
+    "video_id": "00024",
+    "start": 1135.68,
+    "end": 1138.38,
+    "transcript": "of clever conceit with a narrative"
+  },
+  {
+    "video_id": "00024",
+    "start": 1138.38,
+    "end": 1142.52,
+    "transcript": "that becomes a commentary on aspiration and failure."
+  },
+  {
+    "video_id": "00024",
+    "start": 1142.52,
+    "end": 1146.6,
+    "transcript": "She currently is the MIT Open Hardware Summit Chair."
+  },
+  {
+    "video_id": "00024",
+    "start": 1146.6,
+    "end": 1151.88,
+    "transcript": "She's a fellow at IBEAM and Mozilla and a contributor"
+  },
+  {
+    "video_id": "00024",
+    "start": 1151.88,
+    "end": 1153.92,
+    "transcript": "to Artifact of Code."
+  },
+  {
+    "video_id": "00024",
+    "start": 1153.92,
+    "end": 1160.84,
+    "transcript": "So please welcome Eddie Wagenknecht."
+  },
+  {
+    "video_id": "00024",
+    "start": 1160.84,
+    "end": 1161.74,
+    "transcript": "So hey, everyone."
+  },
+  {
+    "video_id": "00024",
+    "start": 1161.74,
+    "end": 1164.7,
+    "transcript": "I just want to give you a quick overview of my work"
+  },
+  {
+    "video_id": "00024",
+    "start": 1164.7,
+    "end": 1166.5,
+    "transcript": "and a little history beforehand."
+  },
+  {
+    "video_id": "00024",
+    "start": 1166.5,
+    "end": 1169.72,
+    "transcript": "So my fascination with computers"
+  },
+  {
+    "video_id": "00024",
+    "start": 1169.72,
+    "end": 1173.32,
+    "transcript": "really started when I was a kid with the Oregon Trail game."
+  },
+  {
+    "video_id": "00024",
+    "start": 1173.32,
+    "end": 1177.48,
+    "transcript": "This was 1985, for those of you who remember."
+  },
+  {
+    "video_id": "00024",
+    "start": 1177.48,
+    "end": 1180.24,
+    "transcript": "From there, I really dove into something called Kid Pix."
+  },
+  {
+    "video_id": "00024",
+    "start": 1180.24,
+    "end": 1182.86,
+    "transcript": "And this is really the point in my work"
+  },
+  {
+    "video_id": "00024",
+    "start": 1182.86,
+    "end": 1185.66,
+    "transcript": "where I first remember the idea that you could experiment"
+  },
+  {
+    "video_id": "00024",
+    "start": 1185.66,
+    "end": 1186.38,
+    "transcript": "with computers."
+  },
+  {
+    "video_id": "00024",
+    "start": 1186.38,
+    "end": 1188.52,
+    "transcript": "And it wasn't just this read-only environment,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1188.52,
+    "end": 1192.1,
+    "transcript": "but you could do something beyond just what was on the screen."
+  },
+  {
+    "video_id": "00024",
+    "start": 1192.1,
+    "end": 1194.84,
+    "transcript": "So as a kid, I started experimenting with Kid Pix."
+  },
+  {
+    "video_id": "00024",
+    "start": 1194.84,
+    "end": 1196.84,
+    "transcript": "And I became very interested in this idea"
+  },
+  {
+    "video_id": "00024",
+    "start": 1196.84,
+    "end": 1198.76,
+    "transcript": "of creating art with computers."
+  },
+  {
+    "video_id": "00024",
+    "start": 1199.72,
+    "end": 1204.68,
+    "transcript": "In high school was the time of my life"
+  },
+  {
+    "video_id": "00024",
+    "start": 1204.68,
+    "end": 1206.84,
+    "transcript": "when the internet became a reality."
+  },
+  {
+    "video_id": "00024",
+    "start": 1206.84,
+    "end": 1210.76,
+    "transcript": "So I got my dial-up modem and my computer."
+  },
+  {
+    "video_id": "00024",
+    "start": 1210.76,
+    "end": 1212.9,
+    "transcript": "And at some point in high school,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1212.9,
+    "end": 1216.88,
+    "transcript": "I have a memory of my dad disconnecting my modem"
+  },
+  {
+    "video_id": "00024",
+    "start": 1216.88,
+    "end": 1221.75,
+    "transcript": "so that I would go out on a date."
+  },
+  {
+    "video_id": "00024",
+    "start": 1221.75,
+    "end": 1224.63,
+    "transcript": "So I want to talk a little bit about my creative process"
+  },
+  {
+    "video_id": "00024",
+    "start": 1224.63,
+    "end": 1231.07,
+    "transcript": "and kind of what I consider a hack versus art."
+  },
+  {
+    "video_id": "00024",
+    "start": 1231.07,
+    "end": 1231.63,
+    "transcript": "When you Google hack, you'll find a lot of things."
+  },
+  {
+    "video_id": "00024",
+    "start": 1231.63,
+    "end": 1233.75,
+    "transcript": "When you Google hack, you get a lot of skulls,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1233.75,
+    "end": 1236.23,
+    "transcript": "matrixy code, and kind of this idea"
+  },
+  {
+    "video_id": "00024",
+    "start": 1236.23,
+    "end": 1240.89,
+    "transcript": "of a guy in a black hoodie with a skull shirt on, which is cool."
+  },
+  {
+    "video_id": "00024",
+    "start": 1240.89,
+    "end": 1244.15,
+    "transcript": "But it's not really how I identify with myself."
+  },
+  {
+    "video_id": "00024",
+    "start": 1244.15,
+    "end": 1247.87,
+    "transcript": "And when I look into art, it's kind of this Bob Ross thing."
+  },
+  {
+    "video_id": "00024",
+    "start": 1247.87,
+    "end": 1250.11,
+    "transcript": "My reference for art was Bob Ross."
+  },
+  {
+    "video_id": "00024",
+    "start": 1250.11,
+    "end": 1252.91,
+    "transcript": "Growing up, I'd watch PBS with my grandma."
+  },
+  {
+    "video_id": "00024",
+    "start": 1252.91,
+    "end": 1256.71,
+    "transcript": "Shout out to grandma if you're here."
+  },
+  {
+    "video_id": "00024",
+    "start": 1256.71,
+    "end": 1260.27,
+    "transcript": "So I didn't have a lot to go from."
+  },
+  {
+    "video_id": "00024",
+    "start": 1260.27,
+    "end": 1261.49,
+    "transcript": "And I've always been into it."
+  },
+  {
+    "video_id": "00024",
+    "start": 1261.49,
+    "end": 1264.19,
+    "transcript": "I've always been into kind of this idea of doing things all at once."
+  },
+  {
+    "video_id": "00024",
+    "start": 1264.19,
+    "end": 1268.47,
+    "transcript": "But I think the interesting thing about hacking is, like art,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1268.47,
+    "end": 1272.27,
+    "transcript": "there's not really a wrong hack."
+  },
+  {
+    "video_id": "00024",
+    "start": 1272.27,
+    "end": 1276.39,
+    "transcript": "So right now I'm thinking a lot about what is hacking."
+  },
+  {
+    "video_id": "00024",
+    "start": 1276.39,
+    "end": 1281.23,
+    "transcript": "I define hacking as it's something that's not necessarily about dismantling,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1281.23,
+    "end": 1286.29,
+    "transcript": "but the realization that whatever it is you're wanting to dismantle"
+  },
+  {
+    "video_id": "00024",
+    "start": 1286.29,
+    "end": 1287.69,
+    "transcript": "has already been dismantled."
+  },
+  {
+    "video_id": "00024",
+    "start": 1287.69,
+    "end": 1290.69,
+    "transcript": "So right now I'm thinking about hacking as,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1290.69,
+    "end": 1297.11,
+    "transcript": "as political hacks, as life hacks, art hacks, social hacks."
+  },
+  {
+    "video_id": "00024",
+    "start": 1297.11,
+    "end": 1302.91,
+    "transcript": "We're in a time in society where with Occupy and Anonymous"
+  },
+  {
+    "video_id": "00024",
+    "start": 1302.91,
+    "end": 1304.69,
+    "transcript": "that hacking isn't just this niche thing."
+  },
+  {
+    "video_id": "00024",
+    "start": 1304.69,
+    "end": 1309.27,
+    "transcript": "So we've gone from 10% or 5% to the 99%."
+  },
+  {
+    "video_id": "00024",
+    "start": 1309.27,
+    "end": 1312.29,
+    "transcript": "And we're at a point where our grandparents and our parents"
+  },
+  {
+    "video_id": "00024",
+    "start": 1312.29,
+    "end": 1315.71,
+    "transcript": "and mainstream media is starting to recognize hacking"
+  },
+  {
+    "video_id": "00024",
+    "start": 1315.71,
+    "end": 1318.89,
+    "transcript": "as really a mainstream accepted movement."
+  },
+  {
+    "video_id": "00024",
+    "start": 1318.89,
+    "end": 1320.43,
+    "transcript": "I don't feel like it's a niche anymore."
+  },
+  {
+    "video_id": "00024",
+    "start": 1320.43,
+    "end": 1326.43,
+    "transcript": "So it's a very interesting time to be considered a hacker."
+  },
+  {
+    "video_id": "00024",
+    "start": 1326.43,
+    "end": 1327.63,
+    "transcript": "Sorry, I'll go back really quick."
+  },
+  {
+    "video_id": "00024",
+    "start": 1327.63,
+    "end": 1332.09,
+    "transcript": "So this is really, this work specifically is in the show right now."
+  },
+  {
+    "video_id": "00024",
+    "start": 1332.09,
+    "end": 1333.19,
+    "transcript": "It's Webcam Venus."
+  },
+  {
+    "video_id": "00024",
+    "start": 1333.19,
+    "end": 1336.19,
+    "transcript": "This is really what I consider kind of a social hack"
+  },
+  {
+    "video_id": "00024",
+    "start": 1336.19,
+    "end": 1340.05,
+    "transcript": "in this idea of morphing and playing with community."
+  },
+  {
+    "video_id": "00024",
+    "start": 1340.05,
+    "end": 1342.77,
+    "transcript": "So with this project, unfortunately I don't have a video,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1342.77,
+    "end": 1345.35,
+    "transcript": "but it's right there if you want to see it."
+  },
+  {
+    "video_id": "00024",
+    "start": 1345.35,
+    "end": 1348.19,
+    "transcript": "The idea with this project is that we went on to cam sites"
+  },
+  {
+    "video_id": "00024",
+    "start": 1348.19,
+    "end": 1350.35,
+    "transcript": "and we played with getting people"
+  },
+  {
+    "video_id": "00024",
+    "start": 1350.35,
+    "end": 1354.63,
+    "transcript": "to pose like iconic works of art."
+  },
+  {
+    "video_id": "00024",
+    "start": 1354.63,
+    "end": 1359.51,
+    "transcript": "I'm also really interested in kind of the female aspect of hacking"
+  },
+  {
+    "video_id": "00024",
+    "start": 1359.51,
+    "end": 1362.03,
+    "transcript": "or what would you do as a female?"
+  },
+  {
+    "video_id": "00024",
+    "start": 1362.03,
+    "end": 1367.33,
+    "transcript": "So I've been playing with like nipple blocking algorithms."
+  },
+  {
+    "video_id": "00024",
+    "start": 1367.33,
+    "end": 1372.98,
+    "transcript": "And also on the fat list we had a discussion about"
+  },
+  {
+    "video_id": "00024",
+    "start": 1372.98,
+    "end": 1375.28,
+    "transcript": "why is there a lack of women in open source?"
+  },
+  {
+    "video_id": "00024",
+    "start": 1375.28,
+    "end": 1377.22,
+    "transcript": "And what is this lack of women in hardware?"
+  },
+  {
+    "video_id": "00024",
+    "start": 1377.22,
+    "end": 1379.12,
+    "transcript": "And I don't, and even hacking for that matter."
+  },
+  {
+    "video_id": "00024",
+    "start": 1379.12,
+    "end": 1382.8,
+    "transcript": "So I don't think it's necessarily again the green matrix code"
+  },
+  {
+    "video_id": "00024",
+    "start": 1382.88,
+    "end": 1386.68,
+    "transcript": "in the skulls, but I started thinking about that process"
+  },
+  {
+    "video_id": "00024",
+    "start": 1386.68,
+    "end": 1388.5,
+    "transcript": "and I was interested in kind of playing with that."
+  },
+  {
+    "video_id": "00024",
+    "start": 1388.5,
+    "end": 1392.28,
+    "transcript": "So I took Pirate Bay and I thought what would Pirate Bay look like"
+  },
+  {
+    "video_id": "00024",
+    "start": 1392.28,
+    "end": 1394.88,
+    "transcript": "if it had been developed by high school girls?"
+  },
+  {
+    "video_id": "00024",
+    "start": 1394.88,
+    "end": 1396.28,
+    "transcript": "I turned it pink."
+  },
+  {
+    "video_id": "00024",
+    "start": 1396.28,
+    "end": 1398.38,
+    "transcript": "I got some like sparkly text."
+  },
+  {
+    "video_id": "00024",
+    "start": 1398.38,
+    "end": 1400.26,
+    "transcript": "I renamed it Princess Bay."
+  },
+  {
+    "video_id": "00024",
+    "start": 1400.26,
+    "end": 1405.04,
+    "transcript": "I switched out all the ads with David Beckham instead of porn"
+  },
+  {
+    "video_id": "00024",
+    "start": 1405.04,
+    "end": 1411.02,
+    "transcript": "and the spring wardrobe sale from Refinery29."
+  },
+  {
+    "video_id": "00024",
+    "start": 1411.02,
+    "end": 1414.48,
+    "transcript": "I'm also playing a lot with hardware hacking so one"
+  },
+  {
+    "video_id": "00024",
+    "start": 1414.48,
+    "end": 1416.14,
+    "transcript": "of the projects here is Wi-Fi Tagger."
+  },
+  {
+    "video_id": "00024",
+    "start": 1416.14,
+    "end": 1420.78,
+    "transcript": "It's basically a router that allows you to put four lines"
+  },
+  {
+    "video_id": "00024",
+    "start": 1420.78,
+    "end": 1422.08,
+    "transcript": "of 32 characters each."
+  },
+  {
+    "video_id": "00024",
+    "start": 1422.08,
+    "end": 1424.92,
+    "transcript": "So the idea is really tagging space."
+  },
+  {
+    "video_id": "00024",
+    "start": 1424.92,
+    "end": 1430.26,
+    "transcript": "It's taking this idea of hacking and art out of the gallery"
+  },
+  {
+    "video_id": "00024",
+    "start": 1430.26,
+    "end": 1432.98,
+    "transcript": "and even one step further off the internet and the idea"
+  },
+  {
+    "video_id": "00024",
+    "start": 1432.98,
+    "end": 1439.68,
+    "transcript": "that you can create and enable yourselves to change something."
+  },
+  {
+    "video_id": "00024",
+    "start": 1439.68,
+    "end": 1443.38,
+    "transcript": "It's really about this idea of empowerment"
+  },
+  {
+    "video_id": "00024",
+    "start": 1443.38,
+    "end": 1444.48,
+    "transcript": "of not only yourself"
+  },
+  {
+    "video_id": "00024",
+    "start": 1444.48,
+    "end": 1446.88,
+    "transcript": "but of the hardware so that you're not scared to break it."
+  },
+  {
+    "video_id": "00024",
+    "start": 1446.88,
+    "end": 1451.88,
+    "transcript": "You can open it up and play it and kind of make it your own."
+  },
+  {
+    "video_id": "00024",
+    "start": 1451.88,
+    "end": 1453.88,
+    "transcript": "This is another tech hack."
+  },
+  {
+    "video_id": "00024",
+    "start": 1453.88,
+    "end": 1455.78,
+    "transcript": "It's called optimization of parenthood."
+  },
+  {
+    "video_id": "00024",
+    "start": 1455.78,
+    "end": 1458.98,
+    "transcript": "So the idea is that it's a robot arm that actually reacts"
+  },
+  {
+    "video_id": "00024",
+    "start": 1458.98,
+    "end": 1460.58,
+    "transcript": "to a baby crying."
+  },
+  {
+    "video_id": "00024",
+    "start": 1460.58,
+    "end": 1464.54,
+    "transcript": "I think there's quite a monotony around parenthood and I think a lot"
+  },
+  {
+    "video_id": "00024",
+    "start": 1464.54,
+    "end": 1467.92,
+    "transcript": "of the repetitive tasks are very robotic in nature so I wanted to play"
+  },
+  {
+    "video_id": "00024",
+    "start": 1467.92,
+    "end": 1471.84,
+    "transcript": "with that idea and create kind of a robotic babysitter."
+  },
+  {
+    "video_id": "00024",
+    "start": 1471.84,
+    "end": 1473.14,
+    "transcript": "Shout out to the parent over there."
+  },
+  {
+    "video_id": "00024",
+    "start": 1474.48,
+    "end": 1478.32,
+    "transcript": "And finally, my last kind of tech hack that I'm working"
+  },
+  {
+    "video_id": "00024",
+    "start": 1478.32,
+    "end": 1479.22,
+    "transcript": "on is Lasersore."
+  },
+  {
+    "video_id": "00024",
+    "start": 1479.22,
+    "end": 1482.62,
+    "transcript": "It's an open source laser cutter that I've been developing the last few years"
+  },
+  {
+    "video_id": "00024",
+    "start": 1482.62,
+    "end": 1485.22,
+    "transcript": "with Stefan Heschenberger."
+  },
+  {
+    "video_id": "00024",
+    "start": 1485.22,
+    "end": 1488.72,
+    "transcript": "We have about a thousand of them in the wild right now,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1488.72,
+    "end": 1493.52,
+    "transcript": "everywhere from Carnegie Mellon to New York University to hackerspaces."
+  },
+  {
+    "video_id": "00024",
+    "start": 1493.52,
+    "end": 1499.92,
+    "transcript": "And it's really this idea of empowering people and allowing people to have access"
+  },
+  {
+    "video_id": "00024",
+    "start": 1499.92,
+    "end": 1504.38,
+    "transcript": "to equipment and materials that they wouldn't necessarily have access to or be able"
+  },
+  {
+    "video_id": "00024",
+    "start": 1504.38,
+    "end": 1507.54,
+    "transcript": "to afford without doing it themselves."
+  },
+  {
+    "video_id": "00024",
+    "start": 1507.54,
+    "end": 1512.34,
+    "transcript": "It's not a commercial or anti-commercial movement."
+  },
+  {
+    "video_id": "00024",
+    "start": 1512.34,
+    "end": 1519.14,
+    "transcript": "It's really, I think, what embodies open source is this idea of increasing accessibility"
+  },
+  {
+    "video_id": "00024",
+    "start": 1519.14,
+    "end": 1528.22,
+    "transcript": "and proliferation of a machine or something that you're passionate about."
+  },
+  {
+    "video_id": "00024",
+    "start": 1528.22,
+    "end": 1530.64,
+    "transcript": "This project I find kind of interesting because it overlaps a lot"
+  },
+  {
+    "video_id": "00024",
+    "start": 1530.64,
+    "end": 1534.12,
+    "transcript": "with what JRL was doing when I first was introduced to it."
+  },
+  {
+    "video_id": "00024",
+    "start": 1534.38,
+    "end": 1539.54,
+    "transcript": "It's kind of this urban poetry project I started doing when I was at ITP for my master's"
+  },
+  {
+    "video_id": "00024",
+    "start": 1539.54,
+    "end": 1543.02,
+    "transcript": "in 2006, 2007."
+  },
+  {
+    "video_id": "00024",
+    "start": 1543.02,
+    "end": 1548.64,
+    "transcript": "So I went around New York and I took pictures of a lot of advertising, loaded them to Flickr,"
+  },
+  {
+    "video_id": "00024",
+    "start": 1548.64,
+    "end": 1553.36,
+    "transcript": "used the Flickr API and actually used like a laser pointer to let you tag and create"
+  },
+  {
+    "video_id": "00024",
+    "start": 1553.36,
+    "end": 1558.42,
+    "transcript": "haikus using the words pulled out of ads and kind of playing with this idea of ubiquity"
+  },
+  {
+    "video_id": "00024",
+    "start": 1558.42,
+    "end": 1563.54,
+    "transcript": "of advertising and again allowing you to embrace it and like change it yourself."
+  },
+  {
+    "video_id": "00024",
+    "start": 1564.38,
+    "end": 1571.62,
+    "transcript": "So that kind of concludes my quick artist overview."
+  },
+  {
+    "video_id": "00024",
+    "start": 1571.62,
+    "end": 1572.38,
+    "transcript": "I'll pass the mic off."
+  }
+]
