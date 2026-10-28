@@ -4,6 +4,7 @@ extraction:
   shot_revision: 1bc678977ad48c65d57d600296d95f97c1be293f
   caption_model: OpenGVLab/InternVL3_5-2B
   caption_max_frames: 16
+  caption_min_color_bins: 5  # Drop sampled frames with <5 occupied bins in the full RGB 8x8x8 histogram.
   caption_batch_size: 8  # Requests per generate(); scheduler runs up to max_num_seqs concurrently.
   vllm:
     gpu_memory_utilization: 0.88

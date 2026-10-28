@@ -41,6 +41,30 @@ def speed_label(score: float | None, cfg: dict) -> str:
     return "normal"
 
 
+def speed_segment_bounds(windows: list[dict], fps: float) -> list[tuple[int, int]]:
+    """Validate times before NVDEC, tolerating only sub-nanosecond arithmetic noise."""
+    if not math.isfinite(fps) or fps <= 0:
+        raise ValueError("Source FPS must be finite and positive")
+    bounds = []
+    previous_end = 0.0
+    for index, window in enumerate(windows, 1):
+        start, end = float(window["start"]), float(window["end"])
+        if not (math.isfinite(start) and math.isfinite(end) and 0 <= start < end):
+            raise ValueError(f"Invalid speed segment {index}: start={start!r} end={end!r}")
+        if index > 1 and start < previous_end:
+            overlap = previous_end - start
+            if overlap > 1e-9:
+                raise ValueError(f"Speed segments overlap or are unsorted: segment={index} "
+                                 f"start={start:.17g} previous_end={previous_end:.17g} overlap={overlap:.9g}s")
+            start = previous_end
+        first, last = math.ceil(start * fps - 1e-7), math.ceil(end * fps - 1e-7)
+        if first >= last:
+            raise ValueError(f"Speed segment {index} contains no source frames: [{start}, {end})")
+        bounds.append((first, last))
+        previous_end = end
+    return bounds
+
+
 class SpeedModel(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -126,13 +150,9 @@ class ShotSpeedPredictor:
 
     def predict(self, video: Path, windows: list[dict], fps: float) -> list[str]:
         """Decode once, buffering at most one resized caption segment on GPU."""
-        if not math.isfinite(fps) or fps <= 0:
-            raise ValueError("Source FPS must be finite and positive")
+        bounds = speed_segment_bounds(windows, fps)
         if not windows:
             return []
-        for i, w in enumerate(windows):
-            if not 0 <= w["start"] < w["end"] or (i and w["start"] < windows[i-1]["end"]):
-                raise ValueError("Speed segments must be nonoverlapping and sorted")
         self.logger.info("[SPEED] %s source_fps=%.8f segments=%d NVDEC start", video.name, fps, len(windows))
         labels, chunks = [], []
         current = 0
@@ -140,7 +160,7 @@ class ShotSpeedPredictor:
         with torch.inference_mode(), CudaVideoReader(
             video, batch_size=8, diagnostics=True, backend=self.cfg.get("decoder", "simple")
         ) as reader:
-            bounds = [(math.ceil(w["start"] * fps), min(reader.total, math.ceil(w["end"] * fps))) for w in windows]
+            bounds = [(first, min(reader.total, last)) for first, last in bounds]
             for offset, batch in reader:
                 batch_end = offset + len(batch)
                 decoded_seconds = batch_end / fps

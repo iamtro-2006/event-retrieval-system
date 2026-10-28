@@ -16,7 +16,8 @@ from time import perf_counter
 import numpy as np
 
 from src.utils.frame_sampling import merge_consecutive_short_scenes
-from .internvl import InternVLCaptioner, prepared_batches, validate_settings
+from .internvl import (CAPTION_FRAME_FILTER_VERSION, InternVLCaptioner,
+                       occupied_color_bins, prepared_batches, validate_settings)
 
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
 
@@ -99,9 +100,9 @@ def predict_speed_in_worker(config: dict, videos: list[dict], logger) -> dict:
             raise
         logger.info("[SPEED-WORKER] pid=%d END exit_code=%d", process.pid, code)
     if code:
+        hint = " Native SIGSEGV in the codec/CUDA stack." if code == -11 else ""
         raise RuntimeError(
-            f"Isolated GPU speed worker exited with code {code}. "
-            "-11 indicates a native SIGSEGV in the codec/CUDA stack. "
+            f"Isolated GPU speed worker exited with code {code}.{hint} "
             "See live worker output above; no CPU fallback was used."
         )
     if not isinstance(result, dict) or set(result) != {v["path"] for v in videos}:
@@ -148,6 +149,9 @@ class ExtractCaptionPipeline:
             raise ValueError("Legacy caption config: rerun notebook cell 3; use caption_max_frames and vllm")
         self.max_frames = self.cfg.get("caption_max_frames", 16)
         self.batch_size = self.cfg.get("caption_batch_size", 8)
+        self.min_color_bins = self.cfg.get("caption_min_color_bins", 5)
+        if type(self.min_color_bins) is not int or not 1 <= self.min_color_bins <= 512:
+            raise ValueError("caption_min_color_bins must be an integer in [1, 512]")
         self.vllm_config = validate_settings(self.caption_model_name, self.max_frames,
                                             self.batch_size, self.cfg.get("vllm", {}))
         self.max_seconds = float(self.cfg["max_shot_seconds"])
@@ -253,17 +257,22 @@ class ExtractCaptionPipeline:
         scenes = np.loadtxt(self.scene_path(video), dtype=np.int64).reshape(-1, 2)
         fps, duration = _probe_video(video)
         windows = []
-        for first, last in scenes:
+        previous_last = -1
+        for scene_index, (first, last) in enumerate(scenes, 1):
             if first < 0 or last < first:
                 raise ValueError(f"Invalid scene range in {self.scene_path(video)}")
+            if first <= previous_last:
+                raise ValueError(f"Scenes overlap or are unsorted in {self.scene_path(video)}: "
+                                 f"shot={scene_index} first_frame={first} previous_last_frame={previous_last}")
+            previous_last = last
             start = min(duration, first / fps)
             end = min(duration, (last + 1) / fps)
             if end - start < self.min_seconds:
                 continue
             parts = math.ceil((end - start) / self.max_seconds)
+            edges = np.linspace(start, end, parts + 1).tolist()
             for part in range(parts):
-                left = start + (end - start) * part / parts
-                right = start + (end - start) * (part + 1) / parts
+                left, right = edges[part], edges[part + 1]
                 # Keep frame-boundary precision for sampling; log formatting rounds display only.
                 windows.append({"start": left, "end": right})
         if not windows:
@@ -288,14 +297,28 @@ class ExtractCaptionPipeline:
         size = self.captioner.image_size
         # One tile/frame matches the official video default. Resize before queueing
         # so prefetch/IPC retain 448px images rather than native 4K arrays.
-        frames = [Image.fromarray(frame).convert("RGB").resize((size, size), Image.Resampling.BICUBIC)
-                  for frame in decoded]
-        return frames, [index / fps for index in indices]
+        frames, timestamps = [], []
+        for index, frame in zip(indices, decoded):
+            occupied = occupied_color_bins(frame)
+            if occupied < self.min_color_bins:
+                self.logger.info("[CAPTION-FILTER] [%.3f,%.3f)s frame=%d time=%.3fs bins=%d < %d DROP",
+                                 start, end, index, index / fps, occupied, self.min_color_bins)
+                continue
+            frames.append(Image.fromarray(frame).convert("RGB").resize((size, size), Image.Resampling.BICUBIC))
+            timestamps.append(index / fps)
+        self.logger.info("[CAPTION-FILTER] [%.3f,%.3f)s sampled=%d kept=%d dropped=%d min_bins=%d",
+                         start, end, len(indices), len(frames), len(indices) - len(frames), self.min_color_bins)
+        return frames, timestamps
 
     def _prepare_batch(self, reader, video, total, done, offset, windows):
         requests = []
         for index, window in enumerate(windows, done + offset + 1):
             frames, timestamps = self._sample_frames(reader, window["start"], window["end"])
+            if not frames:
+                requests.append(None)
+                self.logger.info("[CAPTION] %s shot=%d/%d [%.3f,%.3f)s SKIP no informative sampled frames",
+                                 video.name, index, total, window["start"], window["end"])
+                continue
             requests.append(self.captioner.request(frames, timestamps, self.prompt))
             self.logger.info("[CAPTION] %s shot=%d/%d [%.3f,%.3f)s READY frames=%d tile=%d",
                              video.name, index, total, window["start"], window["end"],
@@ -334,6 +357,8 @@ class ExtractCaptionPipeline:
                          "caption_model": self.caption_model_name, "prompt": self.prompt,
                          "backend": "vllm-internvl-v1", "max_frames": self.max_frames,
                          "sample_fps": self.sample_fps,
+                         "frame_filter": {"version": CAPTION_FRAME_FILTER_VERSION,
+                                          "min_color_bins": self.min_color_bins},
                          "max_new_tokens": self.max_new_tokens, "windows": windows,
                          "speed_predictor": self.speed_config, "speed_prefix_version": 2}
             if partial_path.is_file() and not overwrite:
@@ -346,7 +371,8 @@ class ExtractCaptionPipeline:
             if done > len(windows) or any(
                 not isinstance(item, dict) or item.get("video_id") != video.stem
                 or item.get("start") != window["start"] or item.get("end") != window["end"]
-                or not isinstance(item.get("caption"), str) or not item["caption"].strip()
+                or not ((isinstance(item.get("caption"), str) and item["caption"].strip())
+                        or (item.get("caption") is None and item.get("skip_reason") == "uniform_frames"))
                 for item, window in zip(state["records"], windows)
             ):
                 raise RuntimeError(f"Invalid caption checkpoint: {partial_path}")
@@ -356,43 +382,54 @@ class ExtractCaptionPipeline:
             reader = VideoReader(str(video), ctx=cpu(0), num_threads=2)
             started = perf_counter()
             generated_tokens = 0
+            inferred_shots = 0
             try:
                 prepare = lambda offset, batch: self._prepare_batch(
                     reader, video, len(windows), done, offset, batch)
                 with closing(prepared_batches(windows[done:], self.batch_size, prepare)) as batches:
-                    for offset, batch, requests, prepare_seconds in batches:
+                    for offset, batch, items, prepare_seconds in batches:
                         first = done + offset + 1
-                        self.logger.info("[CAPTION-BATCH] %s shots=%d-%d/%d START batch=%d concurrent=%d prepare=%.2fs",
-                                         video.name, first, first + len(batch) - 1, len(windows), len(batch),
+                        requests = [item for item in items if item is not None]
+                        self.logger.info("[CAPTION-BATCH] %s shots=%d-%d/%d START submitted=%d skipped=%d concurrent=%d prepare=%.2fs",
+                                         video.name, first, first + len(batch) - 1, len(windows), len(requests), len(items) - len(requests),
                                          self.vllm_config["max_num_seqs"], prepare_seconds)
                         inference_start = perf_counter()
                         try:
-                            captions, tokens = self.captioner.generate(requests)
+                            captions, tokens = self.captioner.generate(requests) if requests else ([], 0)
                         except RuntimeError as error:
                             raise RuntimeError("vLLM caption batch failed; see engine logs above. On CUDA OOM, "
                                                "reduce max_num_seqs/max_num_batched_tokens, or use enforce_eager=True "
                                                "and restart the CLI process. Completed batches remain resumable.") from error
                         elapsed = max(perf_counter() - inference_start, 1e-9)
                         generated_tokens += tokens
-                        for index, window, caption in zip(range(first, first + len(batch)), batch, captions):
+                        inferred_shots += len(requests)
+                        caption_iter = iter(captions)
+                        for index, window, item in zip(range(first, first + len(batch)), batch, items):
+                            if item is None:
+                                state["records"].append({"video_id": video.stem, **window, "caption": None,
+                                                         "skip_reason": "uniform_frames"})
+                                self.logger.info("[CAPTION-FINAL] %s shot %d/%d [%.2f-%.2f]: SKIP uniform sampled frames; no JSON segment",
+                                                 video.name, index, len(windows), window["start"], window["end"])
+                                continue
                             label = speed_labels[index - 1]
-                            caption = apply_speed_prefix(caption, label)
+                            caption = apply_speed_prefix(next(caption_iter), label)
                             state["records"].append({"video_id": video.stem, **window, "caption": caption})
                             self.logger.info("[CAPTION-FINAL] %s shot %d/%d [%.2f-%.2f] label=%s: %s", video.name,
                                              index, len(windows), window["start"], window["end"], label, caption)
                         _save_json(partial_path, state)
                         self.logger.info("[CAPTION-BATCH] %s DONE inference=%.2fs shots/s=%.3f output_tokens/s=%.1f checkpoint=%d/%d",
-                                         video.name, elapsed, len(batch) / elapsed, tokens / elapsed,
+                                         video.name, elapsed, len(requests) / elapsed, tokens / elapsed,
                                          len(state["records"]), len(windows))
-                        del requests, captions
+                        del items, requests, captions
             finally:
                 del reader
             elapsed = max(perf_counter() - started, 1e-9)
-            self.logger.info("[CAPTION-PERF] %s caption_wall=%.2fs shots=%d shots/s=%.3f output_tokens/s=%.1f (excludes model load/speed/OMNI)",
-                             video.name, elapsed, len(windows) - done, (len(windows) - done) / elapsed,
+            self.logger.info("[CAPTION-PERF] %s caption_wall=%.2fs inferred=%d skipped=%d shots/s=%.3f output_tokens/s=%.1f (excludes model load/speed/OMNI)",
+                             video.name, elapsed, inferred_shots, len(windows) - done - inferred_shots, inferred_shots / elapsed,
                              generated_tokens / elapsed)
             records = merge_duplicate_captions(
-                state["records"], self.duplicate_gap, self.duplicate_similarity,
+                [record for record in state["records"] if record["caption"] is not None],
+                self.duplicate_gap, self.duplicate_similarity,
             )
             for index, record in enumerate(records, 1):
                 self.logger.info("[JSON-CAPTION] %s segment=%d/%d [%.3f,%.3f)s %s", video.name,

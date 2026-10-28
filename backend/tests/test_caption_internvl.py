@@ -13,7 +13,8 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 from src.caption_extraction.pipeline.extract_caption import ExtractCaptionPipeline
-from src.caption_extraction.pipeline.internvl import InternVLCaptioner, prepared_batches, validate_settings
+from src.caption_extraction.pipeline.internvl import (InternVLCaptioner, occupied_color_bins,
+                                                     prepared_batches, validate_settings)
 
 
 class InternVLTests(unittest.TestCase):
@@ -32,7 +33,8 @@ class InternVLTests(unittest.TestCase):
         for overrides in ({"caption_model": "legacy-model"}, {"caption_model": "OpenGVLab/InternVL3_5-2B-HF"},
                           {"caption_batch_size": 0}, {"caption_max_frames": True},
                           {"vllm": {"typo": 1}}, {"vllm": {"gpu_memory_utilization": 1}},
-                          {"caption_profiles": []}, {"max_new_tokens": 0}):
+                          {"caption_profiles": []}, {"max_new_tokens": 0},
+                          {"caption_min_color_bins": 0}, {"caption_min_color_bins": True}):
             with self.subTest(overrides=overrides), self.assertRaises(ValueError):
                 self.pipeline(**overrides)
 
@@ -46,7 +48,9 @@ class InternVLTests(unittest.TestCase):
             def get_batch(self, selected):
                 indices.extend(selected)
                 rgb = np.zeros((len(selected), 36, 64, 3), dtype=np.uint8)
-                rgb[..., 0] = 255
+                # Eight occupied bins, with red in the first band.
+                for band, value in enumerate((255, 0, 32, 64, 96, 128, 160, 192)):
+                    rgb[:, :, band * 8:(band + 1) * 8, 0] = value
                 return SimpleNamespace(asnumpy=lambda: rgb)
         frames, timestamps = pipeline._sample_frames(Reader(), 1, 6)
         self.assertEqual(len(frames), 8)
@@ -56,6 +60,33 @@ class InternVLTests(unittest.TestCase):
         self.assertEqual(timestamps[-1], 359 / 60)
         pipeline.max_frames = 4
         self.assertEqual(len(pipeline._sample_frames(Reader(), 0, 10)[0]), 4)
+
+    def test_flat_filter_strict_boundary_and_no_interpolation_colors(self):
+        for color in (0, 255):
+            self.assertEqual(occupied_color_bins(np.full((8, 8, 3), color, dtype=np.uint8)), 1)
+        pipeline = self.pipeline(frame_sample_fps=4)
+        pipeline.captioner = SimpleNamespace(image_size=448)
+        raw = np.zeros((4, 8, 8, 3), dtype=np.uint8)
+        for i, bins in enumerate((1, 4, 5, 6)):
+            raw[i, :, :, 0] = ((np.arange(8) % bins) * 32)[None, :]
+            self.assertEqual(occupied_color_bins(raw[i]), bins)
+        class Reader:
+            def get_avg_fps(self): return 4
+            def __len__(self): return 4
+            def get_batch(self, ids): return SimpleNamespace(asnumpy=lambda: raw[ids])
+        frames, timestamps = pipeline._sample_frames(Reader(), 0, 1)
+        self.assertEqual(len(frames), 2)  # <5 rejected, exactly 5 retained
+        self.assertEqual(timestamps, [.5, .75])
+        self.assertTrue(all(frame.size == (448, 448) for frame in frames))
+
+    def test_prepare_batch_does_not_make_request_for_empty_shot(self):
+        pipeline = self.pipeline()
+        pipeline.captioner = Mock(image_size=448)
+        pipeline._sample_frames = Mock(side_effect=[([], []), ([object()], [1.5])])
+        windows = [dict(start=0, end=1), dict(start=1, end=2)]
+        items = pipeline._prepare_batch(None, Path("video.mp4"), 2, 0, 0, windows)
+        self.assertIsNone(items[0])
+        pipeline.captioner.request.assert_called_once()
 
     def test_exact_shot_boundary_does_not_include_next_shot(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -77,6 +108,27 @@ class InternVLTests(unittest.TestCase):
                 def get_batch(self, ids): return reader.get_batch(ids)
             pipeline._sample_frames(Reader(), **windows[0])
             self.assertEqual(selected[-1], 31)
+
+    def test_long_shot_split_has_exact_shared_edges(self):
+        from src.caption_extraction.pipeline.speed import speed_segment_bounds
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            pipeline = self.pipeline(root)
+            video = root / "video.mp4"
+            pipeline.scene_path(video).write_text("0 656\n657 899\n", encoding="utf-8")
+            fps = 30000 / 1001
+            with patch("src.caption_extraction.pipeline.extract_caption._probe_video", return_value=(fps, 40)):
+                windows = pipeline._windows(video)
+            self.assertEqual(len(windows), 4)
+            for left, right in zip(windows, windows[1:]):
+                self.assertEqual(left["end"], right["start"])
+            bounds = speed_segment_bounds(windows, fps)
+            for left, right in zip(bounds, bounds[1:]):
+                self.assertEqual(left[1], right[0])
+            pipeline.scene_path(video).write_text("0 656\n650 899\n", encoding="utf-8")
+            with patch("src.caption_extraction.pipeline.extract_caption._probe_video", return_value=(fps, 40)):
+                with self.assertRaisesRegex(ValueError, "Scenes overlap or are unsorted"):
+                    pipeline._windows(video)
 
     def test_bounded_prefetch_overlaps_consumer_and_preserves_order(self):
         prepared = []
@@ -199,6 +251,68 @@ class InternVLTests(unittest.TestCase):
             self.assertTrue(records[1]["caption"].startswith("The slow-motion video segment"))
             self.assertTrue(records[2]["caption"].startswith("The video segment"))
             self.assertEqual(sorted(p.name for p in (root / "out").iterdir()), ["001.json"])
+
+    def test_skipped_windows_keep_label_alignment_and_resume_position(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            video = root / "001.mp4"
+            video.write_bytes(b"fake video")
+            pipeline = self.pipeline(root)
+            pipeline.scene_path(video).write_text("0 449\n", encoding="utf-8")
+            windows = [dict(start=i * 5., end=(i + 1) * 5.) for i in range(3)]
+            pipeline._windows = Mock(return_value=windows)
+            pipeline._sample_frames = Mock(side_effect=[([], []), ([object()], [5.]), ([object()], [10.])])
+            captioner = Mock(image_size=448)
+            captioner.request.side_effect = lambda *args: {}
+            captioner.generate.side_effect = [(["The video segment shows B."], 2), RuntimeError("stop")]
+            pipeline._load_caption_model = lambda: setattr(pipeline, "captioner", captioner)
+            decord = types.ModuleType("decord")
+            decord.VideoReader = Mock(return_value=object())
+            decord.cpu = Mock(return_value=0)
+            with patch.dict("sys.modules", {"decord": decord}), \
+                 patch("src.caption_extraction.pipeline.extract_caption._probe_video", return_value=(30, 15)), \
+                 patch("src.caption_extraction.pipeline.extract_caption.predict_speed_in_worker",
+                       return_value={str(video): ["timelapse", "slow-motion", "normal"]}):
+                with self.assertRaises(RuntimeError):
+                    pipeline.caption_videos([video])
+                partial = json.loads((root / "out/001.partial.json").read_text(encoding="utf-8"))
+                self.assertEqual(len(partial["records"]), 2)
+                self.assertEqual(partial["records"][0]["skip_reason"], "uniform_frames")
+                captioner.generate.side_effect = None
+                captioner.generate.return_value = (["The video segment shows C."], 2)
+                pipeline._sample_frames.side_effect = None
+                pipeline._sample_frames.return_value = ([object()], [10.])
+                pipeline.caption_videos([video])
+                pipeline._sample_frames.assert_called_with(decord.VideoReader.return_value, 10., 15.)
+            records = json.loads((root / "out/001.json").read_text(encoding="utf-8"))
+            self.assertEqual([r["start"] for r in records], [5., 10.])
+            self.assertTrue(records[0]["caption"].startswith("The slow-motion video segment"))
+            self.assertTrue(records[1]["caption"].startswith("The video segment"))
+            self.assertTrue(all(set(r) == {"video_id", "start", "end", "caption"} for r in records))
+
+    def test_all_flat_video_never_calls_generation_and_writes_empty_list(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            video = root / "001.mp4"
+            video.write_bytes(b"fake video")
+            pipeline = self.pipeline(root)
+            pipeline.scene_path(video).write_text("0 149\n", encoding="utf-8")
+            pipeline._windows = Mock(return_value=[dict(start=0., end=5.)])
+            pipeline._sample_frames = Mock(return_value=([], []))
+            captioner = Mock(image_size=448)
+            pipeline._load_caption_model = lambda: setattr(pipeline, "captioner", captioner)
+            decord = types.ModuleType("decord")
+            decord.VideoReader = Mock(return_value=object())
+            decord.cpu = Mock(return_value=0)
+            with patch.dict("sys.modules", {"decord": decord}), \
+                 patch("src.caption_extraction.pipeline.extract_caption._probe_video", return_value=(30, 5)), \
+                 patch("src.caption_extraction.pipeline.extract_caption.predict_speed_in_worker",
+                       return_value={str(video): ["normal"]}):
+                pipeline.caption_videos([video])
+            captioner.generate.assert_not_called()
+            captioner.request.assert_not_called()
+            self.assertEqual(json.loads((root / "out/001.json").read_text(encoding="utf-8")), [])
+            self.assertFalse((root / "out/001.partial.json").exists())
 
 
 if __name__ == "__main__":

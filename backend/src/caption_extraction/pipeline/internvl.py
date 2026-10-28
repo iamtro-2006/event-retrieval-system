@@ -5,6 +5,19 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from time import perf_counter
 
+CAPTION_FRAME_FILTER_VERSION = "rgb8-full-before-resize-lt-v1"
+
+
+def occupied_color_bins(rgb) -> int:
+    """Full-frame 8x8x8 RGB histogram, [0,256), as in the keyframe quality gate.
+
+    Include channel value 255. Count before resizing so interpolation cannot
+    turn a flat/few-color frame into an apparently informative frame.
+    """
+    import cv2
+    histogram = cv2.calcHist([rgb], [0, 1, 2], None, [8, 8, 8], [0, 256] * 3)
+    return int((histogram > 0).sum())
+
 
 VLLM_DEFAULTS = {
     "gpu_memory_utilization": 0.88,

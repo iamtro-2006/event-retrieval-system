@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import torch
 
-from src.caption_extraction.pipeline.speed import ShotSpeedPredictor, original_window_slices, speed_label
+from src.caption_extraction.pipeline.speed import ShotSpeedPredictor, original_window_slices, speed_label, speed_segment_bounds
 from src.caption_extraction.pipeline.extract_caption import apply_speed_prefix, merge_duplicate_captions, predict_speed_in_worker
 from src.utils.omni_progress import inference_with_progress
 from src.utils.gpu_video import CudaVideoReader
@@ -40,6 +40,13 @@ class OriginalSpeedTests(unittest.TestCase):
         with patch('src.caption_extraction.pipeline.extract_caption.subprocess.Popen',side_effect=lambda *a,**kw: Crash(**kw)):
             with self.assertRaisesRegex(RuntimeError,'-11'):
                 predict_speed_in_worker({},videos,logging.getLogger("test"))
+        class InvalidSegments(Process):
+            def wait(self, **kw): return 1
+        with patch('src.caption_extraction.pipeline.extract_caption.subprocess.Popen',side_effect=lambda *a,**kw: InvalidSegments(**kw)):
+            with self.assertRaises(RuntimeError) as error:
+                predict_speed_in_worker({},videos,logging.getLogger("test"))
+            self.assertIn("code 1", str(error.exception))
+            self.assertNotIn("SIGSEGV", str(error.exception))
 
     def test_simple_decoder_is_gpu_only_and_does_not_construct_threaded(self):
         calls = []
@@ -81,6 +88,18 @@ class OriginalSpeedTests(unittest.TestCase):
                     expected.append((start, start+clip_length))
                 self.assertEqual(original_window_slices(n, fps, span), expected)
         self.assertEqual(original_window_slices(150, 30, 16/7.5), [(0,64),(86,150)])
+
+    def test_touching_segments_tolerate_only_floating_point_noise(self):
+        fps = 30000 / 1001
+        end = 657 / fps
+        windows = [dict(start=0, end=end + 3.55e-15), dict(start=end, end=30)]
+        bounds = speed_segment_bounds(windows, fps)
+        self.assertEqual(bounds[0], (0, 657))
+        self.assertEqual(bounds[1][0], 657)
+        with self.assertRaisesRegex(ValueError, "segment=2.*overlap="):
+            speed_segment_bounds([dict(start=0, end=5), dict(start=4.99, end=7)], 30)
+        with self.assertRaisesRegex(ValueError, "Invalid speed segment 1"):
+            speed_segment_bounds([dict(start=0, end=float("inf"))], 30)
 
     def test_three_pass_correction_returns_last_score_and_16_frames(self):
         p = self.predictor()

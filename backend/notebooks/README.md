@@ -71,9 +71,14 @@ Các biến tại cell 3:
 | `MAX_NUM_BATCHED_TOKENS` | 4096 | Ngân sách token mỗi bước scheduler |
 | `ENFORCE_EAGER` | False | True tắt graph/compile khi thiếu VRAM |
 | `MAX_FRAMES` | 16 | Giảm 12/8 nếu muốn thử đánh đổi chất lượng/VRAM |
+| `MIN_COLOR_BINS` | 5 | Loại frame khi số bin màu có pixel **<5**; đúng 5 bin vẫn giữ |
 
 OOM trong engine: đọc traceback, giảm concurrency/token budget hoặc bật eager và chạy lại CLI (cell 3 + 5). OOM khi khởi động: có thể cần giảm GPU memory utilization để chừa chỗ graph/vision encoder; tăng tỷ lệ chỉ khi log báo thiếu KV-cache và GPU còn đủ chỗ. Không có cam kết nhanh gấp bao nhiêu khi chưa benchmark. Lần đầu compile/load lâu hơn các batch sau.
 
 `CAPTION READY` có thể chạy trước `CAPTION-FINAL` của batch hiện tại do prefetch. Caption cuối vẫn được in từng shot đúng index/label. Checkpoint sau mỗi batch thành công; lỗi giữa batch thì chỉ batch đó phải chạy lại. Sau hoàn tất chỉ còn JSON caption cùng file shot local. `CAPTION-BATCH` in thời gian chuẩn bị và tốc độ generate (shot/s, output token/s); `CAPTION-PERF` bao gồm decode/prefetch/generate/checkpoint nhưng không bao gồm load model, OMNI hay SpeedPredictor.
 
 SpeedPredictor, prefix timelapse/slow-motion và JSON bốn trường giữ nguyên. Thời gian nội bộ giữ độ chính xác của biên frame, không làm tròn 3 chữ số trước khi sample để tránh lấy nhầm frame shot kế. Run ID gồm model/prompt/frame/nhãn tốc độ và backend để tách kết quả local. Chỉnh batch/VRAM không đổi run ID hoặc checkpoint signature, nên có thể giảm concurrency và resume sau OOM; đổi frame/prompt sẽ tạo run mới. **Dùng folder Drive đích riêng để so sánh cùng video**; mặc định JSON cùng ID đã tồn tại vẫn bị bỏ qua. Không tự ghi đè kết quả trên Drive.
+
+Frame caption được lọc trước resize bằng histogram **RGB 8×8×8, [0,256)** trên toàn frame, cùng cách chia bin của quality gate keyframe; gồm cả giá trị kênh 255. Chỉ áp dụng tiêu chí màu này, không thêm lọc độ nét/sáng/tương phản. Ngưỡng caption theo yêu cầu là **<5 thì loại, ≥5 giữ**, khác điều kiện `>5` ở gate keyframe. Không resize trước khi đếm vì nội suy có thể tạo thêm màu. Giữ nguyên tập mẫu 1.5 FPS, không lấy bù hoặc lặp frame; timestamp các frame còn lại vẫn là thời gian gốc.
+
+`CAPTION-FILTER` in frame index/timestamp/bin count cho frame bị loại và tổng sampled/kept/dropped. Shot bị loại hết frame mẫu không gọi generate và không xuất segment; toàn video bị loại thì JSON là `[]` hợp lệ. Checkpoint nội bộ vẫn đánh dấu cửa sổ skipped để resume đúng vị trí và không lệch nhãn speed ở shot sau; JSON cuối chỉ có bốn trường cũ. Run ID và checkpoint signature chứa version/ngưỡng filter để tách khỏi kết quả trước khi lọc.
