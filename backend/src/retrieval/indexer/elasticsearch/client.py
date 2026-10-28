@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
+
+BACKEND_DIR = Path(__file__).resolve().parents[4]
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(BACKEND_DIR / ".env")
+except ImportError:
+    pass
+
+
+def _env_override(name: str) -> str | None:
+    value = os.environ.get(name)
+    return value.strip() if value and value.strip() else None
 
 
 class ElasticsearchService:
@@ -11,6 +26,15 @@ class ElasticsearchService:
 
     Dùng chung cho cả ASR và OCR (trước đây là 2 bản copy-paste gần như
     giống hệt nhau, chỉ khác field dùng để full-text search).
+
+    Connection settings resolve in this order, so the same YAML works for
+    every teammate without editing tracked config:
+
+        1. env var (ES_HOST / ES_PORT / ES_SCHEME) — per-machine override
+        2. value from configs/*_extraction.yaml — the checked-in default
+
+    Local docker (`backend/docker-compose.yaml`) is the default target, so a
+    fresh clone with `docker compose up -d` needs no config edit at all.
     """
 
     def __init__(
@@ -23,11 +47,27 @@ class ElasticsearchService:
     ) -> None:
         self.index_name = index_name
         self.search_field = search_field
+
+        resolved_host = _env_override("ES_HOST") or str(host)
+        resolved_scheme = _env_override("ES_SCHEME") or str(scheme or "http")
+        resolved_port = int(_env_override("ES_PORT") or port)
+
+        # A reverse proxy / ngrok tunnel usually terminates TLS on 443 and the
+        # port is implicit, so only append it when it carries information.
+        default_port = 443 if resolved_scheme == "https" else 80
+        url = (
+            f"{resolved_scheme}://{resolved_host}"
+            if resolved_port == default_port
+            else f"{resolved_scheme}://{resolved_host}:{resolved_port}"
+        )
+
+        self.url = url
         self.client = Elasticsearch(
-            f"{scheme}://{host}:{port}",
+            url,
+            # Harmless against a plain local node; required when the same
+            # config points at an ngrok tunnel.
             headers={"ngrok-skip-browser-warning": "true"},
-        ) # offline cân port
-        # self.client = Elasticsearch(f"{scheme}://{host}") # online kh cần port vd elastic-search.tku.life
+        )
 
     # ------------------------------------------------------------------
     # Connection
@@ -35,6 +75,45 @@ class ElasticsearchService:
 
     def ping(self) -> bool:
         return self.client.ping()
+
+    def health(self) -> dict[str, Any]:
+        """Return a JSON-safe reachability report for this index.
+
+        `ping()` alone is not enough for the API health endpoint: a node can
+        answer `/` while the specific index was never created, which is the
+        normal state before the first seed run.
+        """
+        try:
+            reachable = bool(self.client.ping())
+        except Exception as exc:  # noqa: BLE001 - report, never raise from health
+            return {
+                "url": self.url,
+                "index": self.index_name,
+                "reachable": False,
+                "index_exists": False,
+                "documents": 0,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+
+        report: dict[str, Any] = {
+            "url": self.url,
+            "index": self.index_name,
+            "reachable": reachable,
+            "index_exists": False,
+            "documents": 0,
+            "error": None,
+        }
+        if not reachable:
+            report["error"] = "node did not answer ping"
+            return report
+
+        try:
+            report["index_exists"] = bool(self.index_exists())
+            if report["index_exists"]:
+                report["documents"] = int(self.count())
+        except Exception as exc:  # noqa: BLE001
+            report["error"] = f"{type(exc).__name__}: {exc}"
+        return report
 
     # ------------------------------------------------------------------
     # Index
@@ -54,7 +133,23 @@ class ElasticsearchService:
         self.client.indices.create(
             index=self.index_name,
             mappings=mapping,
+            # A single-node local node (docker-compose.yaml) cannot allocate
+            # replicas, which leaves every index yellow and makes bulk
+            # indexing wait on unassigned shards. One replica only makes sense
+            # on a real multi-node cluster.
+            settings={"number_of_replicas": 0},
         )
+
+    def refresh(self) -> None:
+        """Make just-written documents visible to search/count.
+
+        Elasticsearch only exposes new documents after the next refresh
+        (1s by default). Seeding scripts and the health endpoint read counts
+        immediately after writing, so without an explicit refresh they report
+        zero documents for data that is already stored.
+        """
+        if self.index_exists():
+            self.client.indices.refresh(index=self.index_name)
 
     # ------------------------------------------------------------------
     # Insert
@@ -72,6 +167,9 @@ class ElasticsearchService:
             for doc in documents
         ]
         bulk(self.client, actions)
+        # Refresh once per batch (not per document) so callers that count or
+        # search right after seeding see the documents they just wrote.
+        self.refresh()
 
     # ------------------------------------------------------------------
     # Search

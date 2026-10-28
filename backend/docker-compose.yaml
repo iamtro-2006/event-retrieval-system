@@ -1,15 +1,34 @@
 services:
   elastic:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.18.0
+    container_name: ers-elastic
     ports:
-    - 9200:9200
+      - 9200:9200
     environment:
-    - discovery.type=single-node
-    - xpack.security.enabled=false
-    - xpack.security.http.ssl.enabled=false
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      # Keep the node small enough to coexist with the API + models on a
+      # teammate laptop (the default heuristic would take half of system RAM).
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   kibana:
     image: docker.elastic.co/kibana/kibana:8.18.0
+    container_name: ers-kibana
     ports:
-    - 5601:5601
+      - 5601:5601
     environment:
-    - ELASTICSEARCH_HOSTS=http://elastic:9200
+      - ELASTICSEARCH_HOSTS=http://elastic:9200
+    depends_on:
+      elastic:
+        condition: service_healthy
+
+volumes:
+  esdata:

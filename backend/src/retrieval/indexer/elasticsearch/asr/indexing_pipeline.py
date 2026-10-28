@@ -7,6 +7,39 @@ from src.retrieval.indexer.elasticsearch.asr.repository import ASRRepository
 from src.retrieval.indexer.elasticsearch.asr.schemas import ASRDocument
 
 
+def _resolve_labels(json_path: Path, collection: str | None) -> tuple[str, str]:
+    """Derive (collection, dataset) from a per-video ASR json path.
+
+    Both layouts the repo documents must land on the same values, because the
+    retriever joins these fields against FAISS metadata:
+
+        <root>/asr/<video_id>.json           -> dataset=<root name>, collection=AIC
+        <root>/asr/<DATASET>/<video_id>.json -> dataset=<DATASET>,    collection=AIC
+
+    Deriving them positionally (`parents[2].name` / `parent.name`) gets them
+    swapped in the flat layout, which silently breaks ASR hits: the metadata
+    join looks up `dataset` and finds the string "asr".
+    """
+    parts = [part for part in json_path.parts if part]
+    video_id_index = len(parts) - 1
+    parent = parts[video_id_index - 1] if video_id_index >= 1 else ""
+
+    dataset = ""
+    if parent and parent.lower() in {"ocr", "asr"}:
+        for part in reversed(parts[: video_id_index - 1]):
+            if part.lower() in {"ocr", "asr"}:
+                continue
+            dataset = part
+            break
+    else:
+        dataset = parent
+
+    resolved_collection = str(collection or "").strip().lower()
+    if not resolved_collection or resolved_collection in {"ocr", "asr"}:
+        resolved_collection = dataset.lower()
+    return resolved_collection, dataset
+
+
 class IndexPipeline:
 
     def __init__(
@@ -42,9 +75,9 @@ class IndexPipeline:
 
         json_path = Path(json_path)
 
-        dataset = json_path.parent.name
-
         video_id = json_path.stem
+
+        collection, dataset = _resolve_labels(json_path, collection)
 
         with open(
             json_path,
@@ -62,7 +95,7 @@ class IndexPipeline:
 
                 ASRDocument(
 
-                    collection=str(collection or json_path.parents[2].name).lower(),
+                    collection=collection,
 
                     dataset=dataset,
 

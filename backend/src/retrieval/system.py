@@ -254,6 +254,34 @@ class RetrievalSystem:
         (semantic/temporal sections)."""
         return self._orchestrator.available_semantic_models()
 
+    def text_search_health(self) -> dict[str, Any]:
+        """Reachability report for the Elasticsearch-backed subsystems.
+
+        `ocr`/`asr` being non-None only proves the pipeline object was built;
+        it says nothing about whether the node answers or whether the index
+        has documents. The API health endpoints expose this so a teammate can
+        tell "not configured" from "configured but empty" from "ES down".
+        """
+        report: dict[str, Any] = {}
+        for name in ("ocr", "asr"):
+            pipeline = getattr(self._orchestrator, f"{name}_search_pipeline", None)
+            if pipeline is None:
+                report[name] = {
+                    "configured": False,
+                    "available": False,
+                    "url": None,
+                    "index": None,
+                    "reachable": False,
+                    "index_exists": False,
+                    "documents": 0,
+                    "error": None,
+                }
+                continue
+            service = getattr(pipeline.repository, "es", None)
+            detail = service.health() if service is not None else {}
+            report[name] = {"configured": True, "available": True, **detail}
+        return report
+
     def search_advanced(
         self,
         query: str,
