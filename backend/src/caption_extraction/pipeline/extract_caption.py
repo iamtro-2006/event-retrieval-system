@@ -141,6 +141,16 @@ class ExtractCaptionPipeline:
         self.shot_model = self.cfg["shot_model"]
         self.shot_revision = self.cfg["shot_revision"]
         self.caption_model_name = self.cfg["caption_model"]
+        model_key = self.caption_model_name.lower()
+        if "internvl" in model_key and not model_key.endswith("-hf"):
+            self.caption_backend = "internvl"
+        elif "videollama3" in model_key:
+            self.caption_backend = "videollama3"
+        else:
+            raise ValueError("Use a VideoLLaMA3 model or GitHub-format InternVL (without -HF)")
+        self.internvl_config = self.cfg.get("internvl", {"max_tiles": 1})
+        if type(self.internvl_config.get("max_tiles", 1)) is not int or self.internvl_config.get("max_tiles", 1) < 1:
+            raise ValueError("internvl.max_tiles must be a positive integer")
         self.max_seconds = float(self.cfg["max_shot_seconds"])
         self.min_seconds = float(self.cfg["min_caption_seconds"])
         self.sample_fps = float(self.cfg["frame_sample_fps"])
@@ -265,11 +275,30 @@ class ExtractCaptionPipeline:
         if self.model is not None:
             return
         import torch
-        from transformers import AutoModelForCausalLM, AutoProcessor
         if not torch.cuda.is_available():
-            raise RuntimeError("VideoLLaMA3 requires CUDA for this pipeline")
+            raise RuntimeError("Caption inference requires CUDA for this pipeline")
         self.logger.info("[CAPTION] Loading %s on CUDA", self.caption_model_name)
         self.caption_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        if self.caption_backend == "internvl":
+            import transformers
+            from packaging.version import Version
+            if Version(transformers.__version__) < Version("4.52.1"):
+                raise RuntimeError("InternVL3.5 requires transformers>=4.52.1; rerun notebook cell 3")
+            from transformers import AutoModel, AutoTokenizer
+            self.model = AutoModel.from_pretrained(
+                self.caption_model_name, trust_remote_code=True, low_cpu_mem_usage=True,
+                device_map={"": "cuda:0"}, torch_dtype=self.caption_dtype, use_flash_attn=False,
+            ).eval()
+            self.processor = AutoTokenizer.from_pretrained(
+                self.caption_model_name, trust_remote_code=True, use_fast=False,
+            )
+            self.model.system_message = "You are a precise video captioner."
+            self.internvl_image_size = int(getattr(self.model.config, "force_image_size", None) or
+                                          self.model.config.vision_config.image_size)
+            self.logger.info("[CAPTION] InternVL ready dtype=%s tile_size=%d max_tiles=%d (+ thumbnail if tiled)",
+                             self.caption_dtype, self.internvl_image_size, self.internvl_config.get("max_tiles", 1))
+            return
+        from transformers import AutoModelForCausalLM, AutoProcessor
         self.model = AutoModelForCausalLM.from_pretrained(
             self.caption_model_name, trust_remote_code=True,
             device_map={"": "cuda:0"}, torch_dtype=self.caption_dtype,
@@ -290,6 +319,9 @@ class ExtractCaptionPipeline:
         decoded = reader.get_batch(indices).asnumpy()
         frames = []
         for frame in decoded:
+            if self.caption_backend == "internvl":
+                frames.append(np.ascontiguousarray(frame.transpose(2, 0, 1)))
+                continue
             height, width = frame.shape[:2]
             scale = int(profile["short_side"]) / min(height, width)
             resized = cv2.resize(frame, (max(1, round(width * scale)),
@@ -305,6 +337,22 @@ class ExtractCaptionPipeline:
             inputs = ids = frames = None
             try:
                 frames, timestamps = self._sample_frames(reader, start, end, profile)
+                if self.caption_backend == "internvl":
+                    from .internvl import prepare_video, video_question
+                    inputs, counts = prepare_video(frames, self.internvl_image_size,
+                                                   self.internvl_config.get("max_tiles", 1))
+                    inputs = inputs.to(device="cuda:0", dtype=self.caption_dtype)
+                    self.logger.info("[CAPTION] [%.3f,%.3f)s backend=internvl profile=%d/%d frames=%d tiles=%d tile_size=%d",
+                                     start, end, attempt, len(self.profiles), len(frames), sum(counts), self.internvl_image_size)
+                    with torch.inference_mode():
+                        text = self.model.chat(
+                            self.processor, inputs, video_question(timestamps, self.prompt),
+                            {"max_new_tokens": self.max_new_tokens, "do_sample": False},
+                            num_patches_list=counts, history=None, return_history=False,
+                        ).strip()
+                    if not text:
+                        raise RuntimeError(f"Empty caption at [{start}, {end}]")
+                    return text
                 self.logger.info("[CAPTION] [%.3f,%.3f)s profile=%d/%d frames=%d short_side=%d",
                                  start, end, attempt, len(self.profiles), len(frames), profile["short_side"])
                 conversation = [
@@ -343,7 +391,7 @@ class ExtractCaptionPipeline:
     def caption_videos(self, videos: list[Path], overwrite: bool = False) -> None:
         import torch
 
-        # Finish labeling the whole pending batch before VideoLLaMA3 occupies VRAM.
+        # Finish labeling the whole pending batch before the caption model occupies VRAM.
         pending = [v for v in videos if overwrite or not (self.output_dir / f"{v.stem}.json").is_file()]
         labels_by_video = {}
         self.model = self.processor = None
@@ -373,6 +421,8 @@ class ExtractCaptionPipeline:
                          "profiles": self.profiles, "sample_fps": self.sample_fps,
                          "max_new_tokens": self.max_new_tokens, "windows": windows,
                          "speed_predictor": self.speed_config, "speed_prefix_version": 2}
+            if self.caption_backend == "internvl":
+                signature.update(caption_backend=self.caption_backend, internvl=self.internvl_config)
             if partial_path.is_file() and not overwrite:
                 state = json.loads(partial_path.read_text(encoding="utf-8"))
                 if state.get("signature") != signature:

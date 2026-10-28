@@ -3,6 +3,9 @@ extraction:
   shot_model: uva-cv-lab/OmniShotCut_v1.5
   shot_revision: 1bc678977ad48c65d57d600296d95f97c1be293f
   caption_model: DAMO-NLP-SG/VideoLLaMA3-2B
+  # Alternative: OpenGVLab/InternVL3_5-2B (GitHub format, not -HF).
+  internvl:
+    max_tiles: 1  # Official video default; tile resolution comes from model config (448).
   speed_predictor:
     label_rule_version: 2
     model: james020619/VideoMAEv2-SpeedPredictor
@@ -24,4 +27,4 @@ extraction:
   duplicate_max_gap: 0.25
   duplicate_similarity: 0.90
   prompt: >-
-    Describe the following video segment in English. Begin with "The video segment". In 2-4 detailed but concise sentences, describe the main visible subjects, their distinctive details and positions, and the relevant surroundings at that moment. Describe what happens from the beginning to the end in chronological order, including meaningful changes, interactions between subjects, and camera movement when visible. Be specific about observable actions, scene, interaction and subject attribute details and identity rather than giving a broad summary. Include only what can be seen; omit uncertain or absent details without mentioning their absence. Do not infer speech, sounds, names, or intent.
+    Describe the following video segment in English. Begin with "The video segment". In 1-4 detailed sentences, focusing main visible subjects, their distinctive details and positions, the relevant surroundings at that moment. Describe what happens from the beginning to the end in reasonable chronological order, including meaningful changes, interactions between subjects, and camera movement when visible. Be specific about observable actions, scene, interaction and subject attribute details and identity rather than giving a broad summary. Include only what can be seen; omit uncertain or absent details without mentioning their absence. DO NOT GUESS any event, action or intent.
