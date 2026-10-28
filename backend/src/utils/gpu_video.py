@@ -8,23 +8,36 @@ import torch.nn.functional as F
 
 
 class CudaVideoReader:
-    def __init__(self, path: Path, batch_size: int = 16):
+    def __init__(self, path: Path, batch_size: int = 16, diagnostics: bool = False):
         if not torch.cuda.is_available():
             raise RuntimeError('NVDEC requires a CUDA GPU; select Kaggle T4.')
         if batch_size < 1:
             raise ValueError('decode batch_size must be positive')
+        self.diagnostics = diagnostics
+        self.path = path
+        if diagnostics:
+            print(f'[NVDEC] {path.name} importing PyNvVideoCodec', flush=True)
         import PyNvVideoCodec as nvc
         self.batch_size = batch_size
         self.decoder = None
         try:
+            if diagnostics:
+                print(f'[NVDEC] {path.name} creating ThreadedDecoder; '
+                      f'PyNvVideoCodec={getattr(nvc, "__version__", "unknown")} '
+                      f'torch={torch.__version__} CUDA={torch.version.cuda} '
+                      f'gpu={torch.cuda.current_device()}', flush=True)
             self.decoder = nvc.ThreadedDecoder(
                 enc_file_path=str(path), gpu_id=torch.cuda.current_device(),
                 buffer_size=2 * batch_size, use_device_memory=True,
                 output_color_type=nvc.OutputColorType.RGBP,
             )
+            if diagnostics:
+                print(f'[NVDEC] {path.name} decoder created; reading stream metadata', flush=True)
             self.total = int(self.decoder.get_stream_metadata().num_frames)
             if self.total < 1:
                 raise ValueError('Decoder metadata contains no frames')
+            if diagnostics:
+                print(f'[NVDEC] {path.name} ready total_frames={self.total}', flush=True)
         except Exception as exc:
             self.close()
             raise RuntimeError(
@@ -41,12 +54,18 @@ class CudaVideoReader:
     def __iter__(self):
         count = 0
         while True:
+            if self.diagnostics and count == 0:
+                print(f'[NVDEC] {self.path.name} requesting first batch', flush=True)
             frames = self.decoder.get_batch_frames(self.batch_size)
             if not frames:
                 break
+            if self.diagnostics and count == 0:
+                print(f'[NVDEC] {self.path.name} first batch received frames={len(frames)}; DLPack -> torch', flush=True)
             batch = torch.stack([torch.from_dlpack(frame) for frame in frames])
             if not batch.is_cuda or batch.dtype != torch.uint8 or batch.ndim != 4 or batch.shape[1] != 3:
                 raise RuntimeError('NVDEC must return CUDA uint8 RGB in NCHW order')
+            if self.diagnostics and count == 0:
+                print(f'[NVDEC] {self.path.name} first CUDA tensor ready shape={tuple(batch.shape)}', flush=True)
             yield count, batch
             count += len(batch)
             del batch, frames

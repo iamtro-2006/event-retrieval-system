@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import logging
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ def backend_path(value: str | Path) -> Path:
 
 
 def main() -> None:
+    faulthandler.enable(all_threads=True)
     parser = argparse.ArgumentParser(description="Extract shot TXT and caption JSON from videos")
     parser.add_argument("--dataset", choices=("v3c", "lhe"), required=True)
     parser.add_argument("--video-id", action="append", dest="video_ids")
@@ -41,7 +43,14 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout,
                         format="%(asctime)s %(levelname)s %(message)s", force=True)
-    pipeline = ExtractCaptionPipeline(cfg, input_dir, scenes_dir, output_dir)
+    # A private handler remains active if a native dependency reconfigures root logging.
+    logger = logging.getLogger("caption_pipeline")
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.handlers[:] = [handler]
+    pipeline = ExtractCaptionPipeline(cfg, input_dir, scenes_dir, output_dir, logger=logger)
     videos = pipeline.video_files(args.video_ids)
     if not videos:
         raise FileNotFoundError(f"No videos found in {input_dir}")
