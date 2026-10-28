@@ -14,7 +14,6 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from torchvision.transforms.functional import resize
 
 from src.utils.gpu_video import CudaVideoReader
 from .speed_architecture import VisionTransformer
@@ -154,7 +153,12 @@ class ShotSpeedPredictor:
                     if left < right:
                         rgb = batch[left-offset:right-offset].float().div_(255)
                         rgb = (rgb - self.mean) / self.std
-                        chunks.append(resize(rgb, [self.size, self.size], antialias=True))
+                        # Same float bilinear/antialias resize without importing
+                        # torchvision (whose video I/O may import PyAV/FFmpeg).
+                        chunks.append(torch.nn.functional.interpolate(
+                            rgb, size=(self.size, self.size), mode="bilinear",
+                            align_corners=False, antialias=True,
+                        ))
                         del rgb
                     if last > batch_end:
                         break

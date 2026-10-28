@@ -10,12 +10,37 @@ from unittest.mock import patch
 import torch
 
 from src.caption_extraction.pipeline.speed import ShotSpeedPredictor, original_window_slices, speed_label
-from src.caption_extraction.pipeline.extract_caption import apply_speed_prefix, merge_duplicate_captions
+from src.caption_extraction.pipeline.extract_caption import apply_speed_prefix, merge_duplicate_captions, predict_speed_in_worker
 from src.utils.omni_progress import inference_with_progress
 from src.utils.gpu_video import CudaVideoReader
 
 
 class OriginalSpeedTests(unittest.TestCase):
+    def test_worker_stream_protocol_and_native_failure(self):
+        import io
+        class Pipe(io.StringIO):
+            def close(self): pass
+        class Process:
+            pid = 123
+            def __init__(self, **kw):
+                self.stdin = Pipe()
+                self.stdout = io.StringIO('diagnostic line\n__SPEED_LABELS__={"v.mp4":["normal"]}\n')
+            def __enter__(self): return self
+            def __exit__(self,*a): pass
+            def wait(self,**kw): return 0
+            def poll(self): return 0
+        videos = [dict(path="v.mp4",windows=[dict(start=0,end=5)],fps=30)]
+        with patch('src.caption_extraction.pipeline.extract_caption.subprocess.Popen',side_effect=lambda *a,**kw: Process(**kw)):
+            self.assertEqual(predict_speed_in_worker({},videos,logging.getLogger("test")),{"v.mp4":["normal"]})
+        class Crash(Process):
+            def __init__(self,**kw):
+                super().__init__(**kw)
+                self.stdout = io.StringIO('Fatal Python error: Segmentation fault\n')
+            def wait(self,**kw): return -11
+        with patch('src.caption_extraction.pipeline.extract_caption.subprocess.Popen',side_effect=lambda *a,**kw: Crash(**kw)):
+            with self.assertRaisesRegex(RuntimeError,'-11'):
+                predict_speed_in_worker({},videos,logging.getLogger("test"))
+
     def test_simple_decoder_is_gpu_only_and_does_not_construct_threaded(self):
         calls = []
         class Simple:

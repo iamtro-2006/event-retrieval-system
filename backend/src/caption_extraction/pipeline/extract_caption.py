@@ -6,6 +6,7 @@ import logging
 import math
 import re
 import subprocess
+import sys
 from difflib import SequenceMatcher
 from fractions import Fraction
 from pathlib import Path
@@ -56,6 +57,58 @@ def apply_speed_prefix(caption: str, label: str) -> str:
                   "", caption.strip(), count=1, flags=re.I)
     prefix = f"The {label} video segment" if label in {"timelapse", "slow-motion"} else "The video segment"
     return f"{prefix} {text}".strip()
+
+
+def predict_speed_in_worker(config: dict, videos: list[dict], logger) -> dict:
+    """Isolate native codec dependencies; stream diagnostics, transfer labels in RAM."""
+    import os
+    prefix = "__SPEED_LABELS__="
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    env["PYTHONFAULTHANDLER"] = "1"
+    backend = str(Path(__file__).resolve().parents[3])
+    env["PYTHONPATH"] = backend + os.pathsep + env.get("PYTHONPATH", "")
+    result = None
+    with subprocess.Popen(
+        [sys.executable, "-u", "-X", "faulthandler", "-m",
+         "src.caption_extraction.pipeline.speed_worker"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace", bufsize=1, env=env,
+    ) as process:
+        logger.info("[SPEED-WORKER] pid=%d START isolated NVDEC process", process.pid)
+        try:
+            process.stdin.write(json.dumps({"config": config, "videos": videos}))
+            process.stdin.close()
+            for line in process.stdout:
+                if line.startswith(prefix):
+                    result = json.loads(line[len(prefix):])
+                else:
+                    print(line, end="", flush=True)
+            code = process.wait()
+        except BaseException:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+            raise
+        logger.info("[SPEED-WORKER] pid=%d END exit_code=%d", process.pid, code)
+    if code:
+        raise RuntimeError(
+            f"Isolated GPU speed worker exited with code {code}. "
+            "-11 indicates a native SIGSEGV in the codec/CUDA stack. "
+            "See live worker output above; no CPU fallback was used."
+        )
+    if not isinstance(result, dict) or set(result) != {v["path"] for v in videos}:
+        raise RuntimeError("Speed worker returned incomplete labels")
+    for video in videos:
+        labels = result[video["path"]]
+        if (not isinstance(labels, list) or len(labels) != len(video["windows"])
+                or any(label not in {"normal", "timelapse", "slow-motion", "unknown"} for label in labels)):
+            raise RuntimeError(f"Invalid labels for {video['path']}")
+    return result
 
 
 def merge_duplicate_captions(records: list[dict], max_gap: float, similarity: float) -> list[dict]:
@@ -288,9 +341,7 @@ class ExtractCaptionPipeline:
         raise RuntimeError("No caption profile succeeded")
 
     def caption_videos(self, videos: list[Path], overwrite: bool = False) -> None:
-        from decord import VideoReader, cpu
         import torch
-        from .speed import ShotSpeedPredictor
 
         # Finish labeling the whole pending batch before VideoLLaMA3 occupies VRAM.
         pending = [v for v in videos if overwrite or not (self.output_dir / f"{v.stem}.json").is_file()]
@@ -299,21 +350,14 @@ class ExtractCaptionPipeline:
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        predictor = None
-        try:
-            if pending:
-                predictor = ShotSpeedPredictor(self.speed_config, self.logger)
-            for video in pending:
-                windows = self._windows(video)
-                labels_by_video[video] = predictor.predict(video, windows, _probe_video(video)[0])
-                self.logger.info("GPU speed labeling finished: %s (%d segments)", video.name, len(windows))
-        finally:
-            if predictor is not None:
-                predictor.close()
-            del predictor
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+        if pending:
+            requests = [{"path": str(v), "windows": self._windows(v), "fps": _probe_video(v)[0]}
+                        for v in pending]
+            results = predict_speed_in_worker(self.speed_config, requests, self.logger)
+            labels_by_video = {v: results[str(v)] for v in pending}
+
+        # Delay Decord until the NVDEC worker has fully exited.
+        from decord import VideoReader, cpu
 
         for video in videos:
             output_path = self.output_dir / f"{video.stem}.json"
