@@ -1,0 +1,5960 @@
+[
+  {
+    "video_id": "00105",
+    "start": 6.23,
+    "end": 11.61,
+    "transcript": "Donc nous allons aborder les aspects de l'innovation par le low cost qui aujourd'hui représente la majorité des innovations."
+  },
+  {
+    "video_id": "00105",
+    "start": 12.75,
+    "end": 19.47,
+    "transcript": "On va voir pourquoi actuellement c'est aussi important de mettre le facteur coût et prix à ce niveau d'importance."
+  },
+  {
+    "video_id": "00105",
+    "start": 20.11,
+    "end": 23.63,
+    "transcript": "Alors d'abord les fondamentaux, on va voir il y a quelques fondamentaux dans l'approche low cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 23.73,
+    "end": 30.39,
+    "transcript": "puis on verra toute une série de cas dans tout un tas de secteurs, l'automobile, l'aéronautique, les transports, les services, la santé, etc."
+  },
+  {
+    "video_id": "00105",
+    "start": 30.39,
+    "end": 40.59,
+    "transcript": "La high tech, les grands systèmes jusqu'au système de défense pour illustrer à partir d'une cinquantaine de cas la problématique du low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 41.23,
+    "end": 48.85,
+    "transcript": "Alors fondamentaux, on va voir tout d'abord toute innovation a une dimension low cost, pourquoi extraire ce facteur alors qu'il est commun à toutes les innovations ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 48.85,
+    "end": 50.61,
+    "transcript": "Pourquoi est-ce qu'il devient si important ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 50.61,
+    "end": 59.07,
+    "transcript": "Low cost et crise, c'est le contexte de crise qui fait que c'est un facteur qui parmi d'autres habituellement monte comme étant le facteur dit différenciant clé."
+  },
+  {
+    "video_id": "00105",
+    "start": 59.07,
+    "end": 63.21,
+    "transcript": "Low cost et développement durable, il y a une composante importante de développement durable."
+  },
+  {
+    "video_id": "00105",
+    "start": 63.81,
+    "end": 73.63,
+    "transcript": "Il y a une dimension importante aujourd'hui qui est la relation low cost pays émergents, qui nous emmène vers le très low cost avec Inde, Chine, pays émergents,"
+  },
+  {
+    "video_id": "00105",
+    "start": 74.01,
+    "end": 82.23,
+    "transcript": "qui fait une connexion entre un marché global de consommateurs qui ont la capacité d'acheter par exemple un smartphone, un milliard cette année,"
+  },
+  {
+    "video_id": "00105",
+    "start": 82.89,
+    "end": 88.03,
+    "transcript": "et là ça nous mène vers 3-5 milliards d'utilisateurs avec des concepts de coût et de prix très différents."
+  },
+  {
+    "video_id": "00105",
+    "start": 89.07,
+    "end": 96.15,
+    "transcript": "Et puis les composantes du low cost, la technologie, le low cost c'est très high tech, contrairement à une idée reçue, c'est difficile, c'est les gros investissements,"
+  },
+  {
+    "video_id": "00105",
+    "start": 97.11,
+    "end": 105.05,
+    "transcript": "c'est un effet de série important, c'est les volumes, il n'y a pas de low cost sans volume, modularité, fonction essentielle, sélection des fonctions essentielles,"
+  },
+  {
+    "video_id": "00105",
+    "start": 105.05,
+    "end": 112.49,
+    "transcript": "et ce qu'on appelle design to cost, il y en a qui à une période dans des crises précédentes ont fait de l'analyse de la valeur ou du design to cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 112.67,
+    "end": 118.07,
+    "transcript": "on retrouve ces approches et redéfinir pour un prix objectif, au-dessus, il ne faut même pas en parler, ça ne correspond pas au marché."
+  },
+  {
+    "video_id": "00105",
+    "start": 118.51,
+    "end": 119.05,
+    "transcript": "Donc le kérité..."
+  },
+  {
+    "video_id": "00105",
+    "start": 119.07,
+    "end": 121.41,
+    "transcript": "Le kérité des prix devient un critère de design, de conception."
+  },
+  {
+    "video_id": "00105",
+    "start": 123.11,
+    "end": 125.05,
+    "transcript": "Alors toute innovation a une dimension low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 125.25,
+    "end": 132.09,
+    "transcript": "Si on regarde l'évolution des technologies, des systèmes, vous ne verrez que des courbes avec des prix qui descendent, et des coûts qui descendent."
+  },
+  {
+    "video_id": "00105",
+    "start": 132.41,
+    "end": 142.27,
+    "transcript": "Le coût de stocker un gigabit, le coût de transférer une communication téléphonique, le coût d'un séquençage ADN, enfin tout, vous allez voir, c'est que des courbes qui descendent."
+  },
+  {
+    "video_id": "00105",
+    "start": 142.77,
+    "end": 147.79,
+    "transcript": "Donc en soi, l'innovation, c'est fournir un même service à un coût nettement inférieur."
+  },
+  {
+    "video_id": "00105",
+    "start": 147.79,
+    "end": 150.49,
+    "transcript": "Ce qui ne veut pas dire que le système lui-même est moins cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 150.87,
+    "end": 153.89,
+    "transcript": "Les prix ne cessent de baisser pour un même service rendu, je vous l'illustre."
+  },
+  {
+    "video_id": "00105",
+    "start": 154.51,
+    "end": 156.69,
+    "transcript": "30 ans de réduction des coûts dans le stockage des données."
+  },
+  {
+    "video_id": "00105",
+    "start": 157.17,
+    "end": 159.03,
+    "transcript": "Et vous voyez, en plus, c'est une courbe logarithmique."
+  },
+  {
+    "video_id": "00105",
+    "start": 159.51,
+    "end": 163.73,
+    "transcript": "C'est-à-dire qu'on peut dire, mais on n'arrête pas de faire du low cost dans le stockage des données."
+  },
+  {
+    "video_id": "00105",
+    "start": 164.25,
+    "end": 172.43,
+    "transcript": "Effectivement, si vous regardez les puces d'Intel, ce que coûte un transistor, ce que coûte un micro-ordinateur, vous êtes dans une chute continue du coût."
+  },
+  {
+    "video_id": "00105",
+    "start": 173.83,
+    "end": 177.63,
+    "transcript": "Pareil, vous voyez, microprocesseur, coût par cycle transistor, vous voyez, échappent."
+  },
+  {
+    "video_id": "00105",
+    "start": 177.79,
+    "end": 181.21,
+    "transcript": "Echelle logarithmique, donc une chute continue qui permet..."
+  },
+  {
+    "video_id": "00105",
+    "start": 181.21,
+    "end": 187.69,
+    "transcript": "Aujourd'hui, la bécane que j'ai là, elle a plus de capacité que toute générale électrique il y a 35 ans, quand même."
+  },
+  {
+    "video_id": "00105",
+    "start": 187.85,
+    "end": 189.69,
+    "transcript": "Vous voyez, qui était la plus grosse entreprise du monde."
+  },
+  {
+    "video_id": "00105",
+    "start": 190.49,
+    "end": 193.55,
+    "transcript": "Et ça a permis, à ce prix, à ce coût, d'avoir ce système."
+  },
+  {
+    "video_id": "00105",
+    "start": 194.89,
+    "end": 202.33,
+    "transcript": "Par exemple, ici, sur les technologies actuelles en pleine évolution, les panneaux photovoltaïques, par exemple, vous voyez l'évolution des coûts."
+  },
+  {
+    "video_id": "00105",
+    "start": 202.49,
+    "end": 206.51,
+    "transcript": "On ne cesse de réduire le coût pour une même quantité d'énergie prévue."
+  },
+  {
+    "video_id": "00105",
+    "start": 206.51,
+    "end": 207.51,
+    "transcript": "Et vous voyez l'arrivée d'une..."
+  },
+  {
+    "video_id": "00105",
+    "start": 207.79,
+    "end": 212.83,
+    "transcript": "Une nouvelle technologie, sur les films fins, qui a pour but de réduire les coûts."
+  },
+  {
+    "video_id": "00105",
+    "start": 213.37,
+    "end": 215.15,
+    "transcript": "Donc, en soi, c'est une donne constante."
+  },
+  {
+    "video_id": "00105",
+    "start": 215.89,
+    "end": 218.25,
+    "transcript": "Vous voyez, par exemple, 2013, 2010..."
+  },
+  {
+    "video_id": "00105",
+    "start": 218.25,
+    "end": 220.09,
+    "transcript": "Alors, oui, celle-ci, c'est..."
+  },
+  {
+    "video_id": "00105",
+    "start": 220.09,
+    "end": 221.71,
+    "transcript": "Projection, ça doit être sur le site suivant."
+  },
+  {
+    "video_id": "00105",
+    "start": 222.09,
+    "end": 227.03,
+    "transcript": "On voit ici que, par exemple, les panneaux photovoltaïques ont baissé de 55% en deux ans."
+  },
+  {
+    "video_id": "00105",
+    "start": 227.19,
+    "end": 229.05,
+    "transcript": "On voit les composantes de la réduction du coût."
+  },
+  {
+    "video_id": "00105",
+    "start": 229.95,
+    "end": 232.89,
+    "transcript": "Et les perspectives de réduction, ils sont 2017."
+  },
+  {
+    "video_id": "00105",
+    "start": 233.59,
+    "end": 235.07,
+    "transcript": "Vous voyez, toujours pareil."
+  },
+  {
+    "video_id": "00105",
+    "start": 235.07,
+    "end": 237.29,
+    "transcript": "Et on voit une évolution continue."
+  },
+  {
+    "video_id": "00105",
+    "start": 237.79,
+    "end": 240.77,
+    "transcript": "Et on dit, pour tout un tas d'applications, il faut encore que les coûts baissent"
+  },
+  {
+    "video_id": "00105",
+    "start": 240.77,
+    "end": 243.29,
+    "transcript": "pour pouvoir utiliser de façon récurrente."
+  },
+  {
+    "video_id": "00105",
+    "start": 243.97,
+    "end": 246.25,
+    "transcript": "Donc, j'irais parler de réduction du coût,"
+  },
+  {
+    "video_id": "00105",
+    "start": 246.43,
+    "end": 249.89,
+    "transcript": "c'est parler d'innovation dans sa généralité, apparemment."
+  },
+  {
+    "video_id": "00105",
+    "start": 250.41,
+    "end": 253.41,
+    "transcript": "Ici, donc, vous voyez, pareil pour les éoliennes offshore."
+  },
+  {
+    "video_id": "00105",
+    "start": 253.99,
+    "end": 258.43,
+    "transcript": "Vous voyez, 94 à fin 2012, les prix n'ont cessé de baisser."
+  },
+  {
+    "video_id": "00105",
+    "start": 258.79,
+    "end": 260.21,
+    "transcript": "Et vous voyez, on est en échelle logarithmique."
+  },
+  {
+    "video_id": "00105",
+    "start": 261.29,
+    "end": 264.03,
+    "transcript": "Alors, un domaine dans lequel c'est tombé de façon phénoménale."
+  },
+  {
+    "video_id": "00105",
+    "start": 264.19,
+    "end": 267.01,
+    "transcript": "Je vous ai mis en haut la ligne de ce qu'on appelle la loi de Moore."
+  },
+  {
+    "video_id": "00105",
+    "start": 267.79,
+    "end": 271.75,
+    "transcript": "Vous connaissez, pour les microprocesseurs, pour les ordinateurs,"
+  },
+  {
+    "video_id": "00105",
+    "start": 272.15,
+    "end": 274.81,
+    "transcript": "un cycle de 18 mois."
+  },
+  {
+    "video_id": "00105",
+    "start": 275.15,
+    "end": 277.39,
+    "transcript": "Ici, vous voyez, on est à peu près sur l'évolution de la loi de Moore"
+  },
+  {
+    "video_id": "00105",
+    "start": 277.39,
+    "end": 278.51,
+    "transcript": "pour les tests ADN."
+  },
+  {
+    "video_id": "00105",
+    "start": 278.59,
+    "end": 281.99,
+    "transcript": "Et vous voyez la chute considérable du coût des tests ADN."
+  },
+  {
+    "video_id": "00105",
+    "start": 282.51,
+    "end": 283.97,
+    "transcript": "Et ça part de 2001."
+  },
+  {
+    "video_id": "00105",
+    "start": 284.21,
+    "end": 289.11,
+    "transcript": "C'est-à-dire qu'en 12 ans, vous voyez, on a divisé dans un facteur considérable."
+  },
+  {
+    "video_id": "00105",
+    "start": 290.15,
+    "end": 294.01,
+    "transcript": "Je dirais, 1, 2, 3, 4, 5 ordres de grandeur, le coût d'un test ADN."
+  },
+  {
+    "video_id": "00105",
+    "start": 294.01,
+    "end": 294.83,
+    "transcript": "Aujourd'hui, c'est banal."
+  },
+  {
+    "video_id": "00105",
+    "start": 294.97,
+    "end": 296.99,
+    "transcript": "On dit, il faut faire un test ADN, faites un test ADN."
+  },
+  {
+    "video_id": "00105",
+    "start": 297.79,
+    "end": 298.01,
+    "transcript": "Mais rien."
+  },
+  {
+    "video_id": "00105",
+    "start": 298.29,
+    "end": 299.83,
+    "transcript": "Or, il y a eu une première génération que je vous ai mis."
+  },
+  {
+    "video_id": "00105",
+    "start": 299.89,
+    "end": 302.05,
+    "transcript": "Il y a eu une deuxième génération intermédiaire."
+  },
+  {
+    "video_id": "00105",
+    "start": 302.13,
+    "end": 303.51,
+    "transcript": "On a appelé génération intermédiaire."
+  },
+  {
+    "video_id": "00105",
+    "start": 303.57,
+    "end": 304.61,
+    "transcript": "Un 5 a fait baisser le prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 305.27,
+    "end": 307.37,
+    "transcript": "La deuxième génération, c'est une chute considérable."
+  },
+  {
+    "video_id": "00105",
+    "start": 307.45,
+    "end": 311.25,
+    "transcript": "Et il arrive une troisième génération qui va encore réduire les coûts d'un facteur de 100."
+  },
+  {
+    "video_id": "00105",
+    "start": 311.65,
+    "end": 316.09,
+    "transcript": "Au point que ça va ramener le test ADN pratiquement à un test"
+  },
+  {
+    "video_id": "00105",
+    "start": 316.09,
+    "end": 318.97,
+    "transcript": "comme celui que vous allez faire quand vous faites une analyse médicale."
+  },
+  {
+    "video_id": "00105",
+    "start": 320.71,
+    "end": 323.11,
+    "transcript": "Et puis alors, sachez que ça touche la grande high-tech."
+  },
+  {
+    "video_id": "00105",
+    "start": 323.11,
+    "end": 323.95,
+    "transcript": "Vous avez vu Karma."
+  },
+  {
+    "video_id": "00105",
+    "start": 324.13,
+    "end": 325.31,
+    "transcript": "On avait remis un prix à Karma."
+  },
+  {
+    "video_id": "00105",
+    "start": 325.43,
+    "end": 327.09,
+    "transcript": "On avait reçu toute l'équipe depuis 5 ans."
+  },
+  {
+    "video_id": "00105",
+    "start": 327.15,
+    "end": 327.65,
+    "transcript": "On les voyait arriver."
+  },
+  {
+    "video_id": "00105",
+    "start": 327.79,
+    "end": 329.19,
+    "transcript": "Ça fait 27 ans de recherche-développement."
+  },
+  {
+    "video_id": "00105",
+    "start": 329.67,
+    "end": 331.67,
+    "transcript": "Mais leur cœur artificiel vient d'être intégré."
+  },
+  {
+    "video_id": "00105",
+    "start": 332.07,
+    "end": 338.07,
+    "transcript": "Les premiers, c'est 40% moins coûteux qu'une greffe d'un cœur humain, si vous voulez."
+  },
+  {
+    "video_id": "00105",
+    "start": 338.45,
+    "end": 343.51,
+    "transcript": "Et l'objectif, c'est de tomber beaucoup plus bas sur une perspective d'en faire 12 millions."
+  },
+  {
+    "video_id": "00105",
+    "start": 344.07,
+    "end": 347.13,
+    "transcript": "Et donc, on peut analyser pratiquement toutes les innovations"
+  },
+  {
+    "video_id": "00105",
+    "start": 347.13,
+    "end": 351.01,
+    "transcript": "comme une réduction drastique du coût par rapport au coût précédent."
+  },
+  {
+    "video_id": "00105",
+    "start": 351.85,
+    "end": 354.47,
+    "transcript": "Alors, ce qui se traduit, on va dire, oui, mais ça, c'est de la technique."
+  },
+  {
+    "video_id": "00105",
+    "start": 354.61,
+    "end": 356.63,
+    "transcript": "C'est des microprocesseurs, c'est des panneaux voltaïques."
+  },
+  {
+    "video_id": "00105",
+    "start": 356.69,
+    "end": 357.71,
+    "transcript": "Mais pour l'individu."
+  },
+  {
+    "video_id": "00105",
+    "start": 357.79,
+    "end": 361.33,
+    "transcript": "Il y a l'idée générale que les prix montent tout le temps, qu'on a une inflation,"
+  },
+  {
+    "video_id": "00105",
+    "start": 361.59,
+    "end": 362.83,
+    "transcript": "que tout coûte de plus en plus cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 363.41,
+    "end": 367.09,
+    "transcript": "Ici, je vous montre la part dans le revenu des Américains."
+  },
+  {
+    "video_id": "00105",
+    "start": 367.45,
+    "end": 370.71,
+    "transcript": "Vous voyez, c'est sur 60 ans de tout ce qui fait la vie quotidienne."
+  },
+  {
+    "video_id": "00105",
+    "start": 370.85,
+    "end": 375.87,
+    "transcript": "Les aliments, les voitures, les vêtements, le matériel que vous avez dans votre maison."
+  },
+  {
+    "video_id": "00105",
+    "start": 376.55,
+    "end": 380.39,
+    "transcript": "Tout ce qui est consommation personnelle, de 1948 à 2010,"
+  },
+  {
+    "video_id": "00105",
+    "start": 380.89,
+    "end": 384.71,
+    "transcript": "c'est passé de 45% du revenu des gens à 16%."
+  },
+  {
+    "video_id": "00105",
+    "start": 385.39,
+    "end": 387.71,
+    "transcript": "Le reste étant allé sur des choses plus sophistiquées."
+  },
+  {
+    "video_id": "00105",
+    "start": 388.45,
+    "end": 393.93,
+    "transcript": "L'enseignement supérieur qui coûte cher pour ses enfants, des loisirs, des vacances, d'autres choses."
+  },
+  {
+    "video_id": "00105",
+    "start": 395.77,
+    "end": 401.61,
+    "transcript": "Aussi, d'avoir le poste d'habitation, d'acheter sa maison, sur des gros éléments de consommation."
+  },
+  {
+    "video_id": "00105",
+    "start": 402.23,
+    "end": 407.15,
+    "transcript": "Alors, je vous l'illustre là sur un schéma qu'a fait un collègue américain, professeur Pérys."
+  },
+  {
+    "video_id": "00105",
+    "start": 407.53,
+    "end": 410.73,
+    "transcript": "Il dit, voilà ce qu'on obtenait pour 5 650 dollars."
+  },
+  {
+    "video_id": "00105",
+    "start": 410.87,
+    "end": 412.83,
+    "transcript": "Alors, c'est ramené en dollars valeur 2010."
+  },
+  {
+    "video_id": "00105",
+    "start": 413.35,
+    "end": 417.61,
+    "transcript": "Vous savez, la monnaie, avec le phénomène d'inflation, elle perd de sa valeur."
+  },
+  {
+    "video_id": "00105",
+    "start": 417.61,
+    "end": 422.31,
+    "transcript": "On dit, voilà, c'était 799 dollars, mais ça veut dire 5 600 dollars 2010."
+  },
+  {
+    "video_id": "00105",
+    "start": 422.85,
+    "end": 424.85,
+    "transcript": "En 1964, vous achetez un téléviseur."
+  },
+  {
+    "video_id": "00105",
+    "start": 425.05,
+    "end": 426.47,
+    "transcript": "Alors, ça a vu une drôle de gueule, un téléviseur."
+  },
+  {
+    "video_id": "00105",
+    "start": 426.57,
+    "end": 427.35,
+    "transcript": "Enfin, c'était comme ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 427.93,
+    "end": 431.15,
+    "transcript": "C'était semi-circulaire avec les composants, les lampes et tout le barda."
+  },
+  {
+    "video_id": "00105",
+    "start": 431.55,
+    "end": 436.53,
+    "transcript": "Aujourd'hui, pour le même montant, vous équipez tout le foyer avec vos smartphones, vos écrans plats,"
+  },
+  {
+    "video_id": "00105",
+    "start": 437.29,
+    "end": 442.03,
+    "transcript": "vos téléphones, vos GPS, ordinateurs, appareils photos,"
+  },
+  {
+    "video_id": "00105",
+    "start": 442.03,
+    "end": 447.03,
+    "transcript": "et puis le lave-linge, la machine à laver la vaisselle, la cuisinière, le congélateur,"
+  },
+  {
+    "video_id": "00105",
+    "start": 447.61,
+    "end": 448.61,
+    "transcript": "tout le barda."
+  },
+  {
+    "video_id": "00105",
+    "start": 448.81,
+    "end": 456.11,
+    "transcript": "Vous êtes exactement au même montant qui vous fait 5 700 dollars, 620 dollars, pour arriver moins."
+  },
+  {
+    "video_id": "00105",
+    "start": 456.41,
+    "end": 461.41,
+    "transcript": "Donc, il y a bien, quand on regarde l'évolution du monde, une réduction des coûts."
+  },
+  {
+    "video_id": "00105",
+    "start": 461.91,
+    "end": 467.29,
+    "transcript": "Alors, on les mesure généralement par heure de travail ou par heure de revenus pour voir la partie,"
+  },
+  {
+    "video_id": "00105",
+    "start": 468.29,
+    "end": 469.79,
+    "transcript": "je dirais, ce que ça a permis de gagner."
+  },
+  {
+    "video_id": "00105",
+    "start": 470.89,
+    "end": 473.53,
+    "transcript": "Ça touche beaucoup plus les produits que les services, parce que les services,"
+  },
+  {
+    "video_id": "00105",
+    "start": 473.53,
+    "end": 477.09,
+    "transcript": "c'est essentiellement l'intervention de quelqu'un, un médecin, une infirmière, un professeur,"
+  },
+  {
+    "video_id": "00105",
+    "start": 477.09,
+    "end": 477.59,
+    "transcript": "un médecin, une infirmière, un professeur, un médecin, une infirmière, un professeur,"
+  },
+  {
+    "video_id": "00105",
+    "start": 477.61,
+    "end": 482.77,
+    "transcript": "lui, il n'a pas d'effet de série, et souvent, on dit, couper les cheveux, par exemple,"
+  },
+  {
+    "video_id": "00105",
+    "start": 482.77,
+    "end": 488.35,
+    "transcript": "si vous allez chez un coiffeur à Paris, on va dire, il va mettre le même temps que mettait un coiffeur"
+  },
+  {
+    "video_id": "00105",
+    "start": 488.35,
+    "end": 494.57,
+    "transcript": "dans un caravane-serraille de Damas au 14e siècle. Ça va vous prendre une heure, parce que les ciseaux"
+  },
+  {
+    "video_id": "00105",
+    "start": 494.57,
+    "end": 499.37,
+    "transcript": "ne sont pas devenus électroniques, il ne fait pas au laser, il discute au temps, et donc,"
+  },
+  {
+    "video_id": "00105",
+    "start": 499.37,
+    "end": 502.81,
+    "transcript": "vous avez des domaines dont le prix ne baisse pas du tout à la même vitesse, qui sont le domaine"
+  },
+  {
+    "video_id": "00105",
+    "start": 502.81,
+    "end": 506.71,
+    "transcript": "des services, quand quelqu'un rend service à quelqu'un d'autre. Mais voyez cette évolution"
+  },
+  {
+    "video_id": "00105",
+    "start": 506.71,
+    "end": 512.41,
+    "transcript": "extrêmement importante. Alors, pourquoi parler de low cost actuellement, alors que, je dirais,"
+  },
+  {
+    "video_id": "00105",
+    "start": 512.41,
+    "end": 517.15,
+    "transcript": "on ne parle que de ça quand on parle d'innovation ? En période de crise, alors, je vous renvoie,"
+  },
+  {
+    "video_id": "00105",
+    "start": 517.15,
+    "end": 520.63,
+    "transcript": "je ne vais pas vous refaire le cours sur innovation et crise. En période de crise,"
+  },
+  {
+    "video_id": "00105",
+    "start": 520.63,
+    "end": 524.53,
+    "transcript": "il se passe quelque chose d'important. On a un phénomène de destruction créative,"
+  },
+  {
+    "video_id": "00105",
+    "start": 524.53,
+    "end": 530.45,
+    "transcript": "qui se traduit par une perte nette de valeur pour la société. Avant que l'on compense ce qui tombe,"
+  },
+  {
+    "video_id": "00105",
+    "start": 530.45,
+    "end": 536.19,
+    "transcript": "par ce qui progresse, on a une perte de valeur, qui fait généralement 20-25% du PNB pour"
+  },
+  {
+    "video_id": "00105",
+    "start": 536.19,
+    "end": 542.67,
+    "transcript": "une grosse vague d'innovation. Ce qui fait que des gens perdent du revenu, déjà parce qu'ils sont"
+  },
+  {
+    "video_id": "00105",
+    "start": 542.67,
+    "end": 547.05,
+    "transcript": "au chômage, certains, donc leur perte de revenu, c'est le décalage que vous avez entre votre salaire"
+  },
+  {
+    "video_id": "00105",
+    "start": 547.05,
+    "end": 551.43,
+    "transcript": "et ce que vous touchez si vous êtes au chômage, souvent moins de 40%. C'est aussi pour tous,"
+  },
+  {
+    "video_id": "00105",
+    "start": 551.43,
+    "end": 556.77,
+    "transcript": "tous les gens, ils vont payer plus d'impôts, généralement, et ça va marquer fort. Vous dire,"
+  },
+  {
+    "video_id": "00105",
+    "start": 556.77,
+    "end": 560.31,
+    "transcript": "oui, mais ils paient beaucoup d'impôts, mais ils gagnent beaucoup. Mais, enfin, proportionnellement,"
+  },
+  {
+    "video_id": "00105",
+    "start": 560.31,
+    "end": 564.45,
+    "transcript": "leur perte de revenu est aussi importante, voire plus importante. Vous entendez des taxes,"
+  },
+  {
+    "video_id": "00105",
+    "start": 564.45,
+    "end": 566.17,
+    "transcript": "et des gens veulent garder le même niveau de consommation. Donc, c'est un phénomène d'innovation."
+  },
+  {
+    "video_id": "00105",
+    "start": 566.19,
+    "end": 573.99,
+    "transcript": "C'est-à-dire que là, le facteur coût du produit et coût direct, parce que souvent, on dit,"
+  },
+  {
+    "video_id": "00105",
+    "start": 573.99,
+    "end": 578.63,
+    "transcript": "le coût d'utilisation a baissé, mais on dit, oui, mais il y a un investissement lourd. Ça fait"
+  },
+  {
+    "video_id": "00105",
+    "start": 578.63,
+    "end": 583.11,
+    "transcript": "quand on dit, tiens, vous allez vous équiper d'une pompe à chaleur, vous l'amortissez en moins"
+  },
+  {
+    "video_id": "00105",
+    "start": 583.11,
+    "end": 587.97,
+    "transcript": "de 15 ans. Bonjour, quoi. C'est un gros investissement avant de dire, ça va réduire ma"
+  },
+  {
+    "video_id": "00105",
+    "start": 587.97,
+    "end": 594.27,
+    "transcript": "facture. Là, ça touche le prix d'achat, le prix d'entretien, tous les éléments coûts vont monter"
+  },
+  {
+    "video_id": "00105",
+    "start": 594.27,
+    "end": 598.53,
+    "transcript": "comme facteur déterminant. Pour une simple raison, c'est que les gens ont moins de pouvoir d'achat."
+  },
+  {
+    "video_id": "00105",
+    "start": 598.53,
+    "end": 602.85,
+    "transcript": "C'est-à-dire que si vous êtes au chômage, vous dites, j'aimerais quand même aller en Italie ou"
+  },
+  {
+    "video_id": "00105",
+    "start": 602.85,
+    "end": 607.29,
+    "transcript": "ailleurs voir ma famille, vous allez vous orienter vers des avions low cost. Vous direz, ah oui,"
+  },
+  {
+    "video_id": "00105",
+    "start": 607.29,
+    "end": 613.23,
+    "transcript": "c'est 48 % moins cher qu'une compagnie habituelle. J'ai perdu 40 %, c'est 48 % moins cher,"
+  },
+  {
+    "video_id": "00105",
+    "start": 613.23,
+    "end": 617.97,
+    "transcript": "je garde mon pouvoir d'achat. Et donc, le facteur, pourquoi on parle beaucoup de low cost dans ces"
+  },
+  {
+    "video_id": "00105",
+    "start": 617.97,
+    "end": 624.01,
+    "transcript": "périodes-là, revoyez la leçon sur les crises. La crise de 29, on a eu plein de low cost et on en a"
+  },
+  {
+    "video_id": "00105",
+    "start": 624.01,
+    "end": 629.59,
+    "transcript": "eu dans les périodes de crise autres. Alors, le facteur prix devient prépondérant. C'est-à-dire"
+  },
+  {
+    "video_id": "00105",
+    "start": 629.59,
+    "end": 634.57,
+    "transcript": "que les gens disent, eh bien, votre voiture à 23 000 €, moi, je n'ai de disponible que 12 000."
+  },
+  {
+    "video_id": "00105",
+    "start": 634.57,
+    "end": 638.47,
+    "transcript": "Alors, vous pouvez me raconter tout ce que vous voulez sur 23 000, ça ne m'intéresse pas,"
+  },
+  {
+    "video_id": "00105",
+    "start": 638.47,
+    "end": 642.55,
+    "transcript": "puisque je n'ai pas le pouvoir d'achat. Donc, pour moi, si ce n'est pas en dessous d'un certain"
+  },
+  {
+    "video_id": "00105",
+    "start": 642.55,
+    "end": 647.91,
+    "transcript": "prix, ça ne me touche pas. D'où, position très importante pour le fournisseur, c'est de dire,"
+  },
+  {
+    "video_id": "00105",
+    "start": 647.91,
+    "end": 652.93,
+    "transcript": "est-ce que je suis sur ce terrain-là ? Est-ce que je vais arriver à avoir une offre plus basse pour"
+  },
+  {
+    "video_id": "00105",
+    "start": 652.93,
+    "end": 652.97,
+    "transcript": "aller capter un certain prix ? C'est-à-dire, est-ce que je vais arriver à avoir une offre plus basse pour"
+  },
+  {
+    "video_id": "00105",
+    "start": 652.97,
+    "end": 658.31,
+    "transcript": "aller capter cette demande qui est très exigeante en coût ou est-ce que je me replie sur le haut de"
+  },
+  {
+    "video_id": "00105",
+    "start": 658.31,
+    "end": 663.53,
+    "transcript": "gamme ? Et il y a une tendance qui est assez dangereuse qu'on appelle mourir sur le haut de"
+  },
+  {
+    "video_id": "00105",
+    "start": 663.53,
+    "end": 669.15,
+    "transcript": "gamme. C'est-à-dire qu'on dit, attendez, je le laisse aux autres. Moi, je suis sur la voiture"
+  },
+  {
+    "video_id": "00105",
+    "start": 669.15,
+    "end": 674.09,
+    "transcript": "qui coûte plus de 25 000 €, c'est-à-dire 8 % du marché. Et là, vous vous retrouvez à 7 ou 8,"
+  },
+  {
+    "video_id": "00105",
+    "start": 674.09,
+    "end": 677.81,
+    "transcript": "à vouloir absolument vendre des voitures très chères à une clientèle qui s'est réduite."
+  },
+  {
+    "video_id": "00105",
+    "start": 678.73,
+    "end": 682.37,
+    "transcript": "Et l'essentiel du marché se fait sur une partie moins coûteuse."
+  },
+  {
+    "video_id": "00105",
+    "start": 682.37,
+    "end": 688.19,
+    "transcript": "Et donc, c'est un enjeu clé, on verra, en stratégie. La survie ou l'expansion des entreprises"
+  },
+  {
+    "video_id": "00105",
+    "start": 688.19,
+    "end": 691.97,
+    "transcript": "va être en grande partie liée à leur capacité de réduire les coûts dans les périodes de crise."
+  },
+  {
+    "video_id": "00105",
+    "start": 691.97,
+    "end": 696.59,
+    "transcript": "S'ils n'y arrivent pas, ils risquent d'être purement et simplement éliminés du marché. Il y a des"
+  },
+  {
+    "video_id": "00105",
+    "start": 696.59,
+    "end": 700.53,
+    "transcript": "entreprises d'automobiles qui, actuellement, le vivent, mais ils ne sont pas les seuls. Par"
+  },
+  {
+    "video_id": "00105",
+    "start": 700.53,
+    "end": 704.57,
+    "transcript": "ailleurs, tout entendre sur les prix devient inefficace. Dans ces cas-là, il y a une première"
+  },
+  {
+    "video_id": "00105",
+    "start": 704.57,
+    "end": 709.61,
+    "transcript": "réaction, c'est de s'entendre. De dire, attendez, on revient à des prix invraisemblables. Petite"
+  },
+  {
+    "video_id": "00105",
+    "start": 709.61,
+    "end": 712.07,
+    "transcript": "entente sur le coin du gaz. Là encore, j'avais l'impression qu'il n'y avait pas de prix. Là encore,"
+  },
+  {
+    "video_id": "00105",
+    "start": 712.07,
+    "end": 716.15,
+    "transcript": "j'avais intégré en stratégie. Tous les secteurs ont été condamnés pour entente en Europe depuis"
+  },
+  {
+    "video_id": "00105",
+    "start": 716.15,
+    "end": 720.55,
+    "transcript": "cinq ans. Tous. Depuis les ventes de billets pour les spectacles, où la FNAC s'est fait aligner,"
+  },
+  {
+    "video_id": "00105",
+    "start": 720.55,
+    "end": 727.27,
+    "transcript": "en passant par les ventes de casseroles, de PC, d'ordinateurs. Les trois opérateurs historiques"
+  },
+  {
+    "video_id": "00105",
+    "start": 727.27,
+    "end": 732.69,
+    "transcript": "français de téléphonie mobile, SFR, Bouygues et Orange, se sont fait aligner. L'entrée de"
+  },
+  {
+    "video_id": "00105",
+    "start": 732.69,
+    "end": 736.43,
+    "transcript": "fric, ça a été une sanction contre l'entente qu'il y avait eu sur les prix. Sinon, il n'y aurait"
+  },
+  {
+    "video_id": "00105",
+    "start": 736.43,
+    "end": 741.31,
+    "transcript": "pas eu de fric. Généralement, on laisse trois opérateurs et pas quatre. Pourquoi ça devient"
+  },
+  {
+    "video_id": "00105",
+    "start": 741.31,
+    "end": 742.03,
+    "transcript": "inefficace ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 742.07,
+    "end": 747.73,
+    "transcript": "Alors, je ne vais pas zoomer là-dessus parce que c'est un point clé. Par exemple, quand il y a eu la première grande crise du pétrole,"
+  },
+  {
+    "video_id": "00105",
+    "start": 747.73,
+    "end": 755.89,
+    "transcript": "années 1973-1974, aux États-Unis, l'industrie automobile n'était pas très compétitive. C'était d'énormes"
+  },
+  {
+    "video_id": "00105",
+    "start": 755.89,
+    "end": 760.15,
+    "transcript": "voitures américaines. Vous avez vu dans les films, pour ceux qui sont aux États-Unis il y a un certain temps,"
+  },
+  {
+    "video_id": "00105",
+    "start": 760.15,
+    "end": 766.29,
+    "transcript": "elles consommaient trop le pétrole triple de prix. Et donc, l'industrie américaine s'est trouvée en grave"
+  },
+  {
+    "video_id": "00105",
+    "start": 766.29,
+    "end": 770.73,
+    "transcript": "difficulté. C'est là où Volkswagen, Honda, etc. sont rentrés sur le marché avec des véhicules qui"
+  },
+  {
+    "video_id": "00105",
+    "start": 770.73,
+    "end": 771.31,
+    "transcript": "consommaient moins."
+  },
+  {
+    "video_id": "00105",
+    "start": 771.31,
+    "end": 778.01,
+    "transcript": "Il y a eu entente. Alors, on l'observe d'une façon simple. Vous voyez le prix des voitures américaines qui, pouf, ils montent de 7% comme ça en deux mois."
+  },
+  {
+    "video_id": "00105",
+    "start": 779.01,
+    "end": 786.51,
+    "transcript": "Entente. Nous, on s'est dit, il faut réinvestir dans l'industrie américaine pour créer des modèles moins coûteux. Ça va coûter de l'argent."
+  },
+  {
+    "video_id": "00105",
+    "start": 787.23,
+    "end": 793.15,
+    "transcript": "Eh bien, on s'entend pour que personne ne perde de l'argent. En fait, ça n'a pas du tout été efficace pour les constructeurs eux-mêmes."
+  },
+  {
+    "video_id": "00105",
+    "start": 793.69,
+    "end": 799.49,
+    "transcript": "Les gens ayant moins de revenus, eux, ils n'ont pas arrêté l'éducation des enfants parce que les voitures avaient augmenté de prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 799.93,
+    "end": 801.23,
+    "transcript": "Et on a vu la durée."
+  },
+  {
+    "video_id": "00105",
+    "start": 801.31,
+    "end": 804.45,
+    "transcript": "L'utilisation d'une automobile américaine s'est allongée de deux ans."
+  },
+  {
+    "video_id": "00105",
+    "start": 805.55,
+    "end": 807.73,
+    "transcript": "Exactement ce qu'on observe aujourd'hui en Europe."
+  },
+  {
+    "video_id": "00105",
+    "start": 808.19,
+    "end": 810.35,
+    "transcript": "C'est-à-dire qu'on changera la voiture un peu plus tard."
+  },
+  {
+    "video_id": "00105",
+    "start": 810.77,
+    "end": 813.27,
+    "transcript": "Au lieu de la changer au bout de sept ans, on l'achète au bout de neuf."
+  },
+  {
+    "video_id": "00105",
+    "start": 813.67,
+    "end": 815.03,
+    "transcript": "Et ce n'est pas la mort du petit chat."
+  },
+  {
+    "video_id": "00105",
+    "start": 815.29,
+    "end": 819.05,
+    "transcript": "Et donc, les constructeurs n'ont pas eu un dollar de plus de recette."
+  },
+  {
+    "video_id": "00105",
+    "start": 819.97,
+    "end": 822.25,
+    "transcript": "Puisqu'il n'y a pas l'argent disponible."
+  },
+  {
+    "video_id": "00105",
+    "start": 822.89,
+    "end": 827.31,
+    "transcript": "Soit on fait face à la demande, soit on se replie sur d'autres choses et les gens tiennent immédiatement l'argent."
+  },
+  {
+    "video_id": "00105",
+    "start": 827.31,
+    "end": 830.71,
+    "transcript": "Comme c'est le premier poste de dépense après l'habitation."
+  },
+  {
+    "video_id": "00105",
+    "start": 831.31,
+    "end": 832.65,
+    "transcript": "Aujourd'hui, aux Etats-Unis, c'est l'automobile."
+  },
+  {
+    "video_id": "00105",
+    "start": 833.29,
+    "end": 835.53,
+    "transcript": "Un investissement égal à tous les autres achats dans la maison."
+  },
+  {
+    "video_id": "00105",
+    "start": 836.39,
+    "end": 840.17,
+    "transcript": "Donc, dans ce cas-là, le prix devient un critère déterminant."
+  },
+  {
+    "video_id": "00105",
+    "start": 841.03,
+    "end": 845.09,
+    "transcript": "Et ça va mener à des produits qui vont en fait remplacer l'offre précédente."
+  },
+  {
+    "video_id": "00105",
+    "start": 845.15,
+    "end": 848.53,
+    "transcript": "Je vous montre deux produits, par exemple, de low cost absolu."
+  },
+  {
+    "video_id": "00105",
+    "start": 849.21,
+    "end": 849.85,
+    "transcript": "Les jeans."
+  },
+  {
+    "video_id": "00105",
+    "start": 850.43,
+    "end": 853.23,
+    "transcript": "Les jeans, c'est un produit low cost à partir d'une toile de bâche."
+  },
+  {
+    "video_id": "00105",
+    "start": 853.39,
+    "end": 857.35,
+    "transcript": "Si vous regardez partout sur Terre, un tiers des gens portent un jean encore aujourd'hui."
+  },
+  {
+    "video_id": "00105",
+    "start": 857.35,
+    "end": 859.79,
+    "transcript": "C'est un produit qui est né au cœur de la crise."
+  },
+  {
+    "video_id": "00105",
+    "start": 860.35,
+    "end": 860.87,
+    "transcript": "Simple."
+  },
+  {
+    "video_id": "00105",
+    "start": 861.31,
+    "end": 862.33,
+    "transcript": "Plus solide."
+  },
+  {
+    "video_id": "00105",
+    "start": 862.99,
+    "end": 864.53,
+    "transcript": "S'il se déchire, ce n'est pas grave."
+  },
+  {
+    "video_id": "00105",
+    "start": 864.87,
+    "end": 866.11,
+    "transcript": "C'est tout ce que vous voulez."
+  },
+  {
+    "video_id": "00105",
+    "start": 866.63,
+    "end": 867.85,
+    "transcript": "Le bannilon ou d'autres choses."
+  },
+  {
+    "video_id": "00105",
+    "start": 868.01,
+    "end": 874.11,
+    "transcript": "Dans ces périodes-là, celui qui arrive à réintroduire un produit moins cher, extrêmement performant,"
+  },
+  {
+    "video_id": "00105",
+    "start": 874.55,
+    "end": 879.73,
+    "transcript": "il va ramasser effectivement la mise, comme avec la Ford 2T ou avec d'autres produits."
+  },
+  {
+    "video_id": "00105",
+    "start": 879.83,
+    "end": 883.93,
+    "transcript": "L'aspirine, par exemple, c'est encore aujourd'hui le médicament le plus vendu sur Terre."
+  },
+  {
+    "video_id": "00105",
+    "start": 884.09,
+    "end": 886.69,
+    "transcript": "13 par habitant par an, plus de 100 milliards par an."
+  },
+  {
+    "video_id": "00105",
+    "start": 887.07,
+    "end": 889.29,
+    "transcript": "Produit simple, peu cher, extrêmement efficace."
+  },
+  {
+    "video_id": "00105",
+    "start": 889.29,
+    "end": 891.29,
+    "transcript": "Premier médicament chimique."
+  },
+  {
+    "video_id": "00105",
+    "start": 891.31,
+    "end": 898.59,
+    "transcript": "Une formule d'une simplicité diabolique, vous la voyez en bas, qui est restée un des grands produits nés en période de crise."
+  },
+  {
+    "video_id": "00105",
+    "start": 899.15,
+    "end": 908.65,
+    "transcript": "La cocotte minute Seb, 53 des millions de produits simples, faisant gagner du temps, peu coûteuse, à la portée de tous,"
+  },
+  {
+    "video_id": "00105",
+    "start": 909.13,
+    "end": 917.37,
+    "transcript": "qui aujourd'hui a permis à Seb de devenir leader mondial de l'électroménager avec un produit extrêmement simple et diffusé partout."
+  },
+  {
+    "video_id": "00105",
+    "start": 917.69,
+    "end": 919.69,
+    "transcript": "Ici, actuellement, je vous montre la crise actuelle."
+  },
+  {
+    "video_id": "00105",
+    "start": 919.69,
+    "end": 924.73,
+    "transcript": "L'impact de la crise sur les réductions de coûts aux Etats-Unis, dans deux secteurs, on pourrait en prendre d'autres."
+  },
+  {
+    "video_id": "00105",
+    "start": 925.45,
+    "end": 928.09,
+    "transcript": "Réduction des coûts dans la pharmacie, réduction des coûts dans l'automobile."
+  },
+  {
+    "video_id": "00105",
+    "start": 928.63,
+    "end": 934.15,
+    "transcript": "Vous voyez, on a vu une situation stable, en période où il n'y a pas de crise, d'augmentation du pouvoir d'achat."
+  },
+  {
+    "video_id": "00105",
+    "start": 934.61,
+    "end": 940.73,
+    "transcript": "On a tendance à dire, je vais faire la marge en augmentant le prix, en rajoutant des fonctionnalités, etc."
+  },
+  {
+    "video_id": "00105",
+    "start": 941.53,
+    "end": 946.13,
+    "transcript": "Il arrive la crise, et là, le haut de gamme, vous voyez la baisse, le bas de gamme, et l'intermédiaire."
+  },
+  {
+    "video_id": "00105",
+    "start": 946.13,
+    "end": 948.65,
+    "transcript": "Il faut aller chercher la demande."
+  },
+  {
+    "video_id": "00105",
+    "start": 949.69,
+    "end": 951.65,
+    "transcript": "Donc, un critère de prix est devenu déterminant."
+  },
+  {
+    "video_id": "00105",
+    "start": 951.73,
+    "end": 961.69,
+    "transcript": "L'automobile s'était remontée essentiellement par rapport à des fonctionnalités nouvelles, et l'hybride a contribué à cette montée."
+  },
+  {
+    "video_id": "00105",
+    "start": 961.83,
+    "end": 964.31,
+    "transcript": "Et là, il faut absolument redescendre le coût."
+  },
+  {
+    "video_id": "00105",
+    "start": 964.63,
+    "end": 966.39,
+    "transcript": "On va voir tout à l'heure dans le cas de l'automobile."
+  },
+  {
+    "video_id": "00105",
+    "start": 966.55,
+    "end": 970.07,
+    "transcript": "Donc, en période de crise, le facteur coût remonte à la première place."
+  },
+  {
+    "video_id": "00105",
+    "start": 971.05,
+    "end": 972.87,
+    "transcript": "Et il devient discriminant."
+  },
+  {
+    "video_id": "00105",
+    "start": 973.27,
+    "end": 975.29,
+    "transcript": "Aujourd'hui, il est extrêmement difficile."
+  },
+  {
+    "video_id": "00105",
+    "start": 975.71,
+    "end": 978.87,
+    "transcript": "Le marché des voitures à plus de 15 000 euros en Europe, ce n'est pas énorme."
+  },
+  {
+    "video_id": "00105",
+    "start": 979.69,
+    "end": 981.51,
+    "transcript": "On est dans les 20%, c'est tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 981.57,
+    "end": 982.57,
+    "transcript": "80% c'est en dessous."
+  },
+  {
+    "video_id": "00105",
+    "start": 983.57,
+    "end": 988.23,
+    "transcript": "Vous voyez, moi, sur le moteur espace, c'est du malgain, c'est grave, parce que ça représente beaucoup de millions de voitures."
+  },
+  {
+    "video_id": "00105",
+    "start": 988.65,
+    "end": 992.13,
+    "transcript": "Et celui qui fournira ça, il aura la base industrielle pour remonter en gamme, en plus."
+  },
+  {
+    "video_id": "00105",
+    "start": 992.63,
+    "end": 995.97,
+    "transcript": "Ça n'exclut absolument pas le fait de faire du haut de gamme."
+  },
+  {
+    "video_id": "00105",
+    "start": 996.87,
+    "end": 998.75,
+    "transcript": "Alors ici, vous voyez, les Français aiment le hausse-coste."
+  },
+  {
+    "video_id": "00105",
+    "start": 999.39,
+    "end": 1003.35,
+    "transcript": "Là, c'est en quête septembre 2012, c'est une récente."
+  },
+  {
+    "video_id": "00105",
+    "start": 1003.71,
+    "end": 1004.69,
+    "transcript": "Et est-ce qu'ils sont prêts ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 1004.69,
+    "end": 1008.95,
+    "transcript": "Alors, pour chacune des dépenses suivantes, est-ce que vous iriez davantage sur une offre classique qu'une offre low-cost ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 1009.69,
+    "end": 1013.87,
+    "transcript": "Vous voyez, réservation, vacances, billets d'avion, c'est rentré dans les mœurs, 63%."
+  },
+  {
+    "video_id": "00105",
+    "start": 1013.87,
+    "end": 1018.29,
+    "transcript": "Ce n'est pas pour rien que les deux plus grosses compagnies d'Europe s'appellent EasyJet et Ryanair,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1018.63,
+    "end": 1023.71,
+    "transcript": "et que tous les offreurs, on verra la stratégie d'Air France, qui développent une triple offre low-cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1024.15,
+    "end": 1027.81,
+    "transcript": "Les gros achats, logements électroménagers, meubles, etc., à 43%."
+  },
+  {
+    "video_id": "00105",
+    "start": 1027.81,
+    "end": 1031.45,
+    "transcript": "Vous voyez, nouvelles technologies, ordinateurs, smartphones, 36%."
+  },
+  {
+    "video_id": "00105",
+    "start": 1031.45,
+    "end": 1034.97,
+    "transcript": "Alimentaires, vous avez des lits d'orbrasse, etc., et autres."
+  },
+  {
+    "video_id": "00105",
+    "start": 1035.43,
+    "end": 1037.11,
+    "transcript": "Vous voyez, ce qui dépend sur santé."
+  },
+  {
+    "video_id": "00105",
+    "start": 1037.11,
+    "end": 1038.97,
+    "transcript": "Les gens disent, attention, on ne peut pas jouer avec la santé."
+  },
+  {
+    "video_id": "00105",
+    "start": 1039.69,
+    "end": 1042.61,
+    "transcript": "Aujourd'hui, l'arrivée du low-cost dans la santé, c'est quelque chose de considérable."
+  },
+  {
+    "video_id": "00105",
+    "start": 1043.11,
+    "end": 1048.75,
+    "transcript": "Vous avez entendu le débat sur le coût des lunettes, sur le coût des soins dentaires, sur les mutuelles low-cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1049.43,
+    "end": 1055.81,
+    "transcript": "Il faut impérativement réduire les coûts avec une qualité de santé, sinon la sécurité sociale vole en éclats, et l'hôpital, et tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 1055.93,
+    "end": 1060.01,
+    "transcript": "Aujourd'hui, sachez que tous les acteurs de la santé ont un axe low-cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1060.11,
+    "end": 1061.85,
+    "transcript": "Pour les médicaments, ça s'appelle du générique."
+  },
+  {
+    "video_id": "00105",
+    "start": 1063.21,
+    "end": 1065.29,
+    "transcript": "On va à l'essentiel, donc on va voir, ça touche aussi."
+  },
+  {
+    "video_id": "00105",
+    "start": 1065.55,
+    "end": 1068.77,
+    "transcript": "Donc, en période de crise, l'offre low-cost, elle s'impose."
+  },
+  {
+    "video_id": "00105",
+    "start": 1069.69,
+    "end": 1071.59,
+    "transcript": "De toute façon, sinon, je ne pourrais pas faire nier mon mois."
+  },
+  {
+    "video_id": "00105",
+    "start": 1071.73,
+    "end": 1074.67,
+    "transcript": "Donc, je pars de cela, et à partir de là, je vais choisir ce qui est le plus performant."
+  },
+  {
+    "video_id": "00105",
+    "start": 1075.43,
+    "end": 1077.19,
+    "transcript": "Mais le prix devient critère absolu."
+  },
+  {
+    "video_id": "00105",
+    "start": 1077.77,
+    "end": 1080.09,
+    "transcript": "Alors, low-cost et développement durable, je ne le développerai pas trop,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1080.71,
+    "end": 1083.61,
+    "transcript": "parce que l'aspect low-cost étant transverse à tous les domaines,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1083.67,
+    "end": 1090.43,
+    "transcript": "on va les réaborder quand on va faire des analyses, innovation dans la santé, innovation dans les services, innovation dans les transports."
+  },
+  {
+    "video_id": "00105",
+    "start": 1090.49,
+    "end": 1092.29,
+    "transcript": "Donc, je ne vais pas énormément développer développement durable."
+  },
+  {
+    "video_id": "00105",
+    "start": 1092.87,
+    "end": 1099.57,
+    "transcript": "Alors ici, je vous montre par exemple l'évolution de la consommation de carburant par automobile aux Etats-Unis."
+  },
+  {
+    "video_id": "00105",
+    "start": 1099.69,
+    "end": 1104.39,
+    "transcript": "100 miles par gallon, il ne faut pas passer au système métrique, ils y sont officiellement, mais pas dans la réalité."
+  },
+  {
+    "video_id": "00105",
+    "start": 1104.97,
+    "end": 1110.87,
+    "transcript": "Alors, vous voyez ici, vous avez une augmentation du nombre de kilomètres parcourus, c'est-à-dire diminution de la consommation."
+  },
+  {
+    "video_id": "00105",
+    "start": 1110.87,
+    "end": 1112.97,
+    "transcript": "C'est un graphique inverse."
+  },
+  {
+    "video_id": "00105",
+    "start": 1113.45,
+    "end": 1119.51,
+    "transcript": "Et puis, vous voyez là, pendant 10 ans, plus presque 12 ans, pas d'amélioration de la consommation des véhicules automobiles."
+  },
+  {
+    "video_id": "00105",
+    "start": 1119.93,
+    "end": 1124.09,
+    "transcript": "En fait, on est dans une situation où le prix du pétrole a baissé tout le long."
+  },
+  {
+    "video_id": "00105",
+    "start": 1124.65,
+    "end": 1128.23,
+    "transcript": "Et puis là, on revient vers une période de forte croissance du prix du pétrole."
+  },
+  {
+    "video_id": "00105",
+    "start": 1128.79,
+    "end": 1129.67,
+    "transcript": "Ça redevient le prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 1129.69,
+    "end": 1135.25,
+    "transcript": "C'est une priorité très forte de consommer moins, puisque ça fait le principal poste d'utilisation d'une auto."
+  },
+  {
+    "video_id": "00105",
+    "start": 1135.37,
+    "end": 1137.47,
+    "transcript": "Ce n'est pas son achat, c'est la consommation d'essence."
+  },
+  {
+    "video_id": "00105",
+    "start": 1138.13,
+    "end": 1142.43,
+    "transcript": "Ou ce gasoil que vous avez, il est venu le premier poste par rapport à l'amortissement de l'achat."
+  },
+  {
+    "video_id": "00105",
+    "start": 1142.79,
+    "end": 1145.49,
+    "transcript": "Et là, vous voyez la montée très forte et les perspectives 2015."
+  },
+  {
+    "video_id": "00105",
+    "start": 1146.19,
+    "end": 1152.09,
+    "transcript": "C'est-à-dire, vous voyez, on passe de 25 miles par gallon à 35 miles par gallon, parce que ça devient des objectifs."
+  },
+  {
+    "video_id": "00105",
+    "start": 1152.63,
+    "end": 1159.43,
+    "transcript": "Aujourd'hui, le low cost, c'est un des principaux facteurs qui mènent à des produits plus simples, plus légers, qui consomment moins d'éléments."
+  },
+  {
+    "video_id": "00105",
+    "start": 1159.43,
+    "end": 1160.27,
+    "transcript": "On le verra dans l'auto."
+  },
+  {
+    "video_id": "00105",
+    "start": 1160.73,
+    "end": 1163.53,
+    "transcript": "L'auto européenne était devenue grassouillette, peut-on dire."
+  },
+  {
+    "video_id": "00105",
+    "start": 1163.65,
+    "end": 1166.75,
+    "transcript": "Elle gagnait pratiquement 15 kilos par an pendant 20 ans."
+  },
+  {
+    "video_id": "00105",
+    "start": 1167.23,
+    "end": 1175.81,
+    "transcript": "Et là, slim fast, elle est repassée, je veux dire, à moins 100 kilos, moins 150 kilos, à peu près moins 50 kilos par an depuis 5 ans."
+  },
+  {
+    "video_id": "00105",
+    "start": 1176.01,
+    "end": 1182.75,
+    "transcript": "On élimine tout ce qui était superflu et qu'on transportait pour rien, pour revenir à un produit beaucoup plus compact,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1182.75,
+    "end": 1189.23,
+    "transcript": "beaucoup plus frugal, dirait-on en Inde, plus simple, en allant à l'essentiel."
+  },
+  {
+    "video_id": "00105",
+    "start": 1189.43,
+    "end": 1192.13,
+    "transcript": "Si des gens veulent plus, ils le paieront en plus, mais on ramène à plus bas."
+  },
+  {
+    "video_id": "00105",
+    "start": 1192.57,
+    "end": 1194.25,
+    "transcript": "Donc, il y a synergie aujourd'hui."
+  },
+  {
+    "video_id": "00105",
+    "start": 1194.35,
+    "end": 1198.65,
+    "transcript": "Alors, vous voyez le véhicule moyen américain de 1973, vous voyez l'engin."
+  },
+  {
+    "video_id": "00105",
+    "start": 1199.69,
+    "end": 1203.59,
+    "transcript": "Et puis voilà, aujourd'hui, le standard qui est la partie qui croit le plus sur le marché américain."
+  },
+  {
+    "video_id": "00105",
+    "start": 1204.07,
+    "end": 1206.83,
+    "transcript": "Vous voyez que le nombre de kilos de ferraille est de moins."
+  },
+  {
+    "video_id": "00105",
+    "start": 1208.83,
+    "end": 1211.11,
+    "transcript": "Donc, il y a un lien très fort avec le développement durable."
+  },
+  {
+    "video_id": "00105",
+    "start": 1211.59,
+    "end": 1214.37,
+    "transcript": "Je l'ai vu l'autre jour au collège du directeur du développement durable."
+  },
+  {
+    "video_id": "00105",
+    "start": 1214.75,
+    "end": 1218.25,
+    "transcript": "En fait, ça arrive plus par le low cost que c'est un objectif en soi."
+  },
+  {
+    "video_id": "00105",
+    "start": 1218.25,
+    "end": 1219.25,
+    "transcript": "C'est pas une question de réglementation."
+  },
+  {
+    "video_id": "00105",
+    "start": 1220.37,
+    "end": 1223.15,
+    "transcript": "Si on a 150 kilos de moins sur une voiture, c'est deux personnes."
+  },
+  {
+    "video_id": "00105",
+    "start": 1223.83,
+    "end": 1227.55,
+    "transcript": "C'est énorme la différence de coût et de consommation."
+  },
+  {
+    "video_id": "00105",
+    "start": 1228.11,
+    "end": 1229.27,
+    "transcript": "On le reverra quand le cas auto."
+  },
+  {
+    "video_id": "00105",
+    "start": 1229.69,
+    "end": 1232.11,
+    "transcript": "Et puis, par exemple, l'énergie, je vous prends un exemple."
+  },
+  {
+    "video_id": "00105",
+    "start": 1232.67,
+    "end": 1236.25,
+    "transcript": "Réduire 20% le coût d'énergie d'un restaurant, ça accroît d'un tiers sa rentabilité."
+  },
+  {
+    "video_id": "00105",
+    "start": 1237.41,
+    "end": 1242.51,
+    "transcript": "Un restaurant, la cuisine, c'est un des postes les plus élevés d'achat d'électricité, de gaz, etc."
+  },
+  {
+    "video_id": "00105",
+    "start": 1243.23,
+    "end": 1246.23,
+    "transcript": "Et donc là, la réduction du coût permet de retrouver de la marge."
+  },
+  {
+    "video_id": "00105",
+    "start": 1246.23,
+    "end": 1249.41,
+    "transcript": "En moyenne, un restaurant, il fait entre 3% et 9% de marge, pour vous dire."
+  },
+  {
+    "video_id": "00105",
+    "start": 1249.49,
+    "end": 1250.15,
+    "transcript": "C'est pas énorme."
+  },
+  {
+    "video_id": "00105",
+    "start": 1250.97,
+    "end": 1257.45,
+    "transcript": "S'il arrive à réduire fortement son coût d'énergie, mais même à partir de 9%, c'est énorme sur sa marge."
+  },
+  {
+    "video_id": "00105",
+    "start": 1257.99,
+    "end": 1262.51,
+    "transcript": "Donc, dans une période comme ça, où l'objectif bascule vers une réduction des coûts,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1263.13,
+    "end": 1265.97,
+    "transcript": "si vous voulez, ça traverse toute la société, d'un secteur à l'autre."
+  },
+  {
+    "video_id": "00105",
+    "start": 1266.11,
+    "end": 1266.93,
+    "transcript": "On dit, est-ce qu'on peut réduire ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 1266.93,
+    "end": 1271.09,
+    "transcript": "Et notamment, la réduction du coût d'énergie, qui est un des points les plus fondamentaux,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1271.53,
+    "end": 1272.67,
+    "transcript": "les plus évidents."
+  },
+  {
+    "video_id": "00105",
+    "start": 1272.93,
+    "end": 1274.35,
+    "transcript": "La facture apparaît immédiatement."
+  },
+  {
+    "video_id": "00105",
+    "start": 1274.41,
+    "end": 1278.89,
+    "transcript": "Vous voyez, toutes les discussions sur le prix du gaz, sur l'électricité, le prix du pétrole."
+  },
+  {
+    "video_id": "00105",
+    "start": 1278.89,
+    "end": 1279.67,
+    "transcript": "Et autres."
+  },
+  {
+    "video_id": "00105",
+    "start": 1281.25,
+    "end": 1286.89,
+    "transcript": "Alors, il y a une dimension, je dirais pas complètement nouvelle, mais qui a pris une valeur considérable."
+  },
+  {
+    "video_id": "00105",
+    "start": 1287.73,
+    "end": 1293.25,
+    "transcript": "C'est qu'aujourd'hui, on va voir, on est à peu près, on disait, on est à peu près à 800 millions de personnes dans le monde"
+  },
+  {
+    "video_id": "00105",
+    "start": 1293.25,
+    "end": 1295.71,
+    "transcript": "qui ont une consommation comparable à celle que vous avez."
+  },
+  {
+    "video_id": "00105",
+    "start": 1296.33,
+    "end": 1300.49,
+    "transcript": "Qui peuvent s'acheter un ordinateur, un écran plasma, un véhicule, aller en vacances et tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 1300.97,
+    "end": 1303.35,
+    "transcript": "En fait, on passe le milliard cette année, environ."
+  },
+  {
+    "video_id": "00105",
+    "start": 1303.79,
+    "end": 1305.71,
+    "transcript": "Classe supérieure, supérieure, dit-on."
+  },
+  {
+    "video_id": "00105",
+    "start": 1307.11,
+    "end": 1308.87,
+    "transcript": "Mais derrière, on a une montée."
+  },
+  {
+    "video_id": "00105",
+    "start": 1308.89,
+    "end": 1315.99,
+    "transcript": "On a une montée rapide d'une classe supérieure intermédiaire, classe moyenne supérieure, classe moyenne intermédiaire, classe moyenne inférieure."
+  },
+  {
+    "video_id": "00105",
+    "start": 1316.07,
+    "end": 1317.77,
+    "transcript": "Je passe, c'est pas des jugements de valeur."
+  },
+  {
+    "video_id": "00105",
+    "start": 1318.21,
+    "end": 1321.63,
+    "transcript": "C'est-à-dire l'arrivée d'un milliard 500 millions de consommateurs de plus,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1322.17,
+    "end": 1327.57,
+    "transcript": "essentiellement venus de Chine, d'Inde, du Brésil, de pays émergents,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1327.89,
+    "end": 1331.35,
+    "transcript": "qui abordent la possibilité de consommer, mais avec un décalage."
+  },
+  {
+    "video_id": "00105",
+    "start": 1332.09,
+    "end": 1337.27,
+    "transcript": "Vous verrez, je vous montrerai une carte du monde qui vous donne la valeur d'un iPhone en mois de travail."
+  },
+  {
+    "video_id": "00105",
+    "start": 1337.27,
+    "end": 1337.35,
+    "transcript": "Merci."
+  },
+  {
+    "video_id": "00105",
+    "start": 1338.89,
+    "end": 1341.31,
+    "transcript": "On ne peut pas mettre trois mois de travail pour s'acheter un smartphone."
+  },
+  {
+    "video_id": "00105",
+    "start": 1341.97,
+    "end": 1343.03,
+    "transcript": "C'est trop pour un truc."
+  },
+  {
+    "video_id": "00105",
+    "start": 1343.35,
+    "end": 1347.15,
+    "transcript": "Et donc, la bagarre sur les smartphones, on va voir le low cost dans les smartphones,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1347.31,
+    "end": 1351.33,
+    "transcript": "la bataille entre Apple qui va absolument garder ses marges, elle est vitale aujourd'hui."
+  },
+  {
+    "video_id": "00105",
+    "start": 1351.69,
+    "end": 1353.89,
+    "transcript": "Toute la croissance du marché se fait sur le low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1354.69,
+    "end": 1358.51,
+    "transcript": "On peut dire, moi, je ne m'intéresse pas au Niakwe, c'est dangereux, parce qu'ils sont beaucoup."
+  },
+  {
+    "video_id": "00105",
+    "start": 1359.07,
+    "end": 1363.35,
+    "transcript": "Et à partir du moment où quelqu'un fournit deux milliards d'équipements à ces gens-là,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1363.53,
+    "end": 1367.01,
+    "transcript": "évidemment, ils vont arriver sur les pays développés avec des critères de coûts différents."
+  },
+  {
+    "video_id": "00105",
+    "start": 1367.47,
+    "end": 1368.75,
+    "transcript": "Donc, nouvelle donne du low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1368.89,
+    "end": 1369.73,
+    "transcript": "C'est aux pays émergents."
+  },
+  {
+    "video_id": "00105",
+    "start": 1370.05,
+    "end": 1372.33,
+    "transcript": "Et c'est la préoccupation de tous les grands leaders, je peux vous dire."
+  },
+  {
+    "video_id": "00105",
+    "start": 1373.01,
+    "end": 1375.07,
+    "transcript": "Quand on forme des dirigeants, on voit bien, ils disent, nous, maintenant,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1375.57,
+    "end": 1378.27,
+    "transcript": "il faut qu'on ait une offre qui corresponde aux deux milliards d'habitants suivants."
+  },
+  {
+    "video_id": "00105",
+    "start": 1378.85,
+    "end": 1383.07,
+    "transcript": "Et ils sont là, on les voit arriver, au niveau de leur pouvoir d'achat,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1383.19,
+    "end": 1384.95,
+    "transcript": "passer d'un milliard à trois milliards, puis cinq."
+  },
+  {
+    "video_id": "00105",
+    "start": 1385.47,
+    "end": 1387.27,
+    "transcript": "Aujourd'hui, il y a sept milliards d'habitants sur Terre."
+  },
+  {
+    "video_id": "00105",
+    "start": 1387.83,
+    "end": 1391.47,
+    "transcript": "Il y a des autres qui ont un revenu beaucoup moindre, plus aidé, si vous voulez."
+  },
+  {
+    "video_id": "00105",
+    "start": 1391.85,
+    "end": 1393.01,
+    "transcript": "Donc, on a un changement d'échelle."
+  },
+  {
+    "video_id": "00105",
+    "start": 1393.45,
+    "end": 1395.25,
+    "transcript": "Par exemple, si je prends le cas des smartphones,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1395.81,
+    "end": 1398.65,
+    "transcript": "il s'est vendu un tout petit peu plus qu'un milliard de smartphones."
+  },
+  {
+    "video_id": "00105",
+    "start": 1398.89,
+    "end": 1401.97,
+    "transcript": "2013, vous voyez, on est typiquement sur ce type de marché."
+  },
+  {
+    "video_id": "00105",
+    "start": 1402.63,
+    "end": 1405.01,
+    "transcript": "39% de croissance par rapport à 2012."
+  },
+  {
+    "video_id": "00105",
+    "start": 1405.19,
+    "end": 1407.17,
+    "transcript": "Vous voyez l'ampleur de la croissance sur le smartphone."
+  },
+  {
+    "video_id": "00105",
+    "start": 1407.35,
+    "end": 1410.39,
+    "transcript": "Mais, l'essentiel de la croissance, pratiquement tout,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1410.59,
+    "end": 1416.01,
+    "transcript": "c'est la demande de low cost smartphones venus essentiellement des pays d'Asie."
+  },
+  {
+    "video_id": "00105",
+    "start": 1416.37,
+    "end": 1419.23,
+    "transcript": "Alors, je vais l'illustrer de façon plus précise, avec des statistiques."
+  },
+  {
+    "video_id": "00105",
+    "start": 1419.81,
+    "end": 1423.87,
+    "transcript": "Vous voyez, 2013, je parle des smartphones, je ne parle pas du téléphone portable,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1423.99,
+    "end": 1427.91,
+    "transcript": "du smartphone, donc déjà équipé, connexion Internet et tout le barda."
+  },
+  {
+    "video_id": "00105",
+    "start": 1428.89,
+    "end": 1436.69,
+    "transcript": "Et Asie-Pacifique, 528 millions en 2013, perspective 2017, 986 millions, un milliard."
+  },
+  {
+    "video_id": "00105",
+    "start": 1437.69,
+    "end": 1443.57,
+    "transcript": "Et on est entre 2013 et 2017, c'est-à-dire quatre ans, passage de 52% à 58% du marché."
+  },
+  {
+    "video_id": "00105",
+    "start": 1443.67,
+    "end": 1449.39,
+    "transcript": "Europe, 182 millions, 261 millions, 18 à 15%, mais il y a encore une croissance forte."
+  },
+  {
+    "video_id": "00105",
+    "start": 1449.49,
+    "end": 1451.73,
+    "transcript": "Etats-Unis, ce n'est pas beaucoup le smartphone."
+  },
+  {
+    "video_id": "00105",
+    "start": 1451.83,
+    "end": 1456.73,
+    "transcript": "151 millions, passage à 189 millions, descente à 11% du marché."
+  },
+  {
+    "video_id": "00105",
+    "start": 1456.83,
+    "end": 1458.43,
+    "transcript": "Vous voyez, montée de l'Amérique latine,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1458.43,
+    "end": 1459.99,
+    "transcript": "ce n'est pas des grosses populations."
+  },
+  {
+    "video_id": "00105",
+    "start": 1460.09,
+    "end": 1467.93,
+    "transcript": "Moyen-Orient, Afrique, 57 à 95 millions, total 1 milliard, 1,7 milliard prévus en 2017."
+  },
+  {
+    "video_id": "00105",
+    "start": 1468.03,
+    "end": 1472.13,
+    "transcript": "Mais ça ne se fait pas du tout à prix constant, pas du tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 1472.23,
+    "end": 1475.93,
+    "transcript": "C'est-à-dire qu'en fait, si vous regardez le prix moyen d'un smartphone,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1476.03,
+    "end": 1482.53,
+    "transcript": "vous voyez, 2013, Asie-Pacifique, 268 dollars, Europe, 419, Etats-Unis, 531."
+  },
+  {
+    "video_id": "00105",
+    "start": 1482.63,
+    "end": 1487.93,
+    "transcript": "Le seul marché où Apple soit leader actuellement, par rapport à Samsung."
+  },
+  {
+    "video_id": "00105",
+    "start": 1487.93,
+    "end": 1490.73,
+    "transcript": "Donc, Amérique latine, 288, Moyen-Orient, Afrique."
+  },
+  {
+    "video_id": "00105",
+    "start": 1490.83,
+    "end": 1497.13,
+    "transcript": "Prévisions 2017, prix moyen mondial, passage de 337 dollars à 265 dollars,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1497.23,
+    "end": 1500.43,
+    "transcript": "avec surtout, moins 8% en Asie-Pacifique, moins 9% en Europe,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1500.53,
+    "end": 1503.93,
+    "transcript": "que, aux Etats-Unis, ils espèrent garder une croissance nette."
+  },
+  {
+    "video_id": "00105",
+    "start": 1504.03,
+    "end": 1506.43,
+    "transcript": "Et c'est, vous allez voir, c'est la stratégie d'Apple,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1506.53,
+    "end": 1508.53,
+    "transcript": "dont tout le monde pense qu'elle est très dangereuse,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1508.63,
+    "end": 1511.73,
+    "transcript": "notamment les banques et les analystes dont je fais partie,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1511.83,
+    "end": 1514.23,
+    "transcript": "qui pensent que c'est une politique à courte vue."
+  },
+  {
+    "video_id": "00105",
+    "start": 1514.33,
+    "end": 1515.63,
+    "transcript": "Donc, moins 7%."
+  },
+  {
+    "video_id": "00105",
+    "start": 1515.73,
+    "end": 1517.63,
+    "transcript": "Donc, si on veut écrans de plus,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1517.63,
+    "end": 1520.03,
+    "transcript": "il faut être moins cher, puisqu'on va toucher des gens qui ont un pouvoir d'achat moindre,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1520.13,
+    "end": 1520.93,
+    "transcript": "c'est QFD."
+  },
+  {
+    "video_id": "00105",
+    "start": 1521.03,
+    "end": 1524.53,
+    "transcript": "Et du coup, ça fait baisser le prix moyen de tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 1524.63,
+    "end": 1526.93,
+    "transcript": "Alors, par ailleurs, Inde, je ne vais pas développer..."
+  },
+  {
+    "video_id": "00105",
+    "start": 1527.03,
+    "end": 1530.93,
+    "transcript": "Il faut voir qu'aujourd'hui, le pays driver de l'innovation low-cost, c'est l'Inde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1531.03,
+    "end": 1532.33,
+    "transcript": "Et ce n'est pas une question de Juga,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1532.43,
+    "end": 1534.03,
+    "transcript": "je sais qu'il y a un bouquin très tendant qui s'appelle Juga."
+  },
+  {
+    "video_id": "00105",
+    "start": 1534.13,
+    "end": 1538.03,
+    "transcript": "Ça ne se passe pas sur Juga, ça se passe sur Frugal, Grace Route, Nano, Inclusive et tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 1538.13,
+    "end": 1540.73,
+    "transcript": "Je vous renvoie sur la leçon sur l'Inde, je ne vais pas vous faire un détail."
+  },
+  {
+    "video_id": "00105",
+    "start": 1540.83,
+    "end": 1544.63,
+    "transcript": "Parce que là, on arrive dans le pays de l'ultra low-cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1544.63,
+    "end": 1548.03,
+    "transcript": "C'est-à-dire qu'on n'est plus à des pouvoirs d'achat qui s'approchent,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1548.13,
+    "end": 1552.13,
+    "transcript": "à dire, est-ce que le smart zone doit être à 300 dollars ou à 200 dollars ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 1552.23,
+    "end": 1554.53,
+    "transcript": "Parce qu'on est dans le même ordre de grandeur."
+  },
+  {
+    "video_id": "00105",
+    "start": 1554.63,
+    "end": 1558.13,
+    "transcript": "Est-ce qu'il doit être à 300 dollars ou à 20 dollars ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 1558.23,
+    "end": 1562.73,
+    "transcript": "Et là, on va arriver à une offre qui s'appelle les produits ultra low-cost Inde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1562.83,
+    "end": 1564.63,
+    "transcript": "Mais je ne vais pas vous refaire la leçon sur l'Inde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1564.73,
+    "end": 1567.63,
+    "transcript": "Mais sachez que vous allez voir dans les stratégies des acteurs,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1567.73,
+    "end": 1573.13,
+    "transcript": "je vous montrerai que ça fait un moment que Volkswagen est passé à une stratégie low-cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1573.23,
+    "end": 1574.53,
+    "transcript": "sur toute sa gamme."
+  },
+  {
+    "video_id": "00105",
+    "start": 1574.63,
+    "end": 1577.43,
+    "transcript": "Alors, les gens disent, je ne comprends pas, vous parlez de low-cost pour Volkswagen,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1577.53,
+    "end": 1578.63,
+    "transcript": "je vais vous montrer."
+  },
+  {
+    "video_id": "00105",
+    "start": 1578.73,
+    "end": 1581.03,
+    "transcript": "Mais la low-cost touche toute la gamme."
+  },
+  {
+    "video_id": "00105",
+    "start": 1581.13,
+    "end": 1584.03,
+    "transcript": "C'est-à-dire qu'une voiture qui était à 22 000 euros, elle va passer à 19 000."
+  },
+  {
+    "video_id": "00105",
+    "start": 1584.13,
+    "end": 1586.03,
+    "transcript": "Et ce n'est pas du tout marginal."
+  },
+  {
+    "video_id": "00105",
+    "start": 1586.13,
+    "end": 1587.73,
+    "transcript": "C'est quelque chose de fondamental."
+  },
+  {
+    "video_id": "00105",
+    "start": 1587.83,
+    "end": 1590.53,
+    "transcript": "Là où elle consommait 4,8 litres, elle va passer à 3,6 litres."
+  },
+  {
+    "video_id": "00105",
+    "start": 1590.63,
+    "end": 1591.83,
+    "transcript": "Elle va avoir 100 kilos de moins."
+  },
+  {
+    "video_id": "00105",
+    "start": 1591.93,
+    "end": 1595.43,
+    "transcript": "C'est-à-dire qu'on va toucher plus de gens dans cette gamme-là,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1595.53,
+    "end": 1596.63,
+    "transcript": "et puis aussi vers le bas."
+  },
+  {
+    "video_id": "00105",
+    "start": 1596.73,
+    "end": 1598.73,
+    "transcript": "Là, on est dans l'ultra low-cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1598.83,
+    "end": 1602.63,
+    "transcript": "avec des prix qui peuvent être dramatiquement plus bas."
+  },
+  {
+    "video_id": "00105",
+    "start": 1602.73,
+    "end": 1603.83,
+    "transcript": "C'est-à-dire, en fait,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1603.83,
+    "end": 1604.83,
+    "transcript": "100 fois moins cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 1604.93,
+    "end": 1608.83,
+    "transcript": "Je vous remets des tableaux extraits de l'étude sur Inde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1608.93,
+    "end": 1612.83,
+    "transcript": "Là, un dixième, moitié du prix, deux tiers du prix, moitié du prix,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1612.93,
+    "end": 1614.83,
+    "transcript": "un dixième, un centième du prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 1614.93,
+    "end": 1616.83,
+    "transcript": "C'est là où ça cartonne."
+  },
+  {
+    "video_id": "00105",
+    "start": 1616.93,
+    "end": 1619.13,
+    "transcript": "Et comme il y a 1,2 milliard de consommateurs,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1619.23,
+    "end": 1621.83,
+    "transcript": "nous, notre grand marché à 300 millions,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1621.93,
+    "end": 1625.33,
+    "transcript": "il ne pèse pas grand-chose quand on compare avec le marché indien,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1625.43,
+    "end": 1627.03,
+    "transcript": "ou avec le marché chinois."
+  },
+  {
+    "video_id": "00105",
+    "start": 1627.13,
+    "end": 1628.53,
+    "transcript": "Donc, je vous renvoie là-dessus."
+  },
+  {
+    "video_id": "00105",
+    "start": 1628.63,
+    "end": 1629.63,
+    "transcript": "Je ne vais pas le refaire ici."
+  },
+  {
+    "video_id": "00105",
+    "start": 1629.73,
+    "end": 1631.43,
+    "transcript": "Mais vous allez voir qu'on va avoir des connexions."
+  },
+  {
+    "video_id": "00105",
+    "start": 1631.53,
+    "end": 1633.43,
+    "transcript": "Volkswagen dit, je vais proposer en 2014,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1633.43,
+    "end": 1636.43,
+    "transcript": "une offre low-cost, plus low-cost que celle que j'avais."
+  },
+  {
+    "video_id": "00105",
+    "start": 1636.53,
+    "end": 1638.93,
+    "transcript": "En fait, c'est une low-cost connectée avec pays émergents,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1639.03,
+    "end": 1640.43,
+    "transcript": "fabriquée en Inde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1640.53,
+    "end": 1644.33,
+    "transcript": "Un peu comme Renault a fait une connexion avec la Roumanie sur Daciaz."
+  },
+  {
+    "video_id": "00105",
+    "start": 1644.43,
+    "end": 1646.33,
+    "transcript": "Alors, pour l'instant, il fait du low-cost allemand,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1646.43,
+    "end": 1647.93,
+    "transcript": "ce qui amène déjà des prix très bas."
+  },
+  {
+    "video_id": "00105",
+    "start": 1648.03,
+    "end": 1651.73,
+    "transcript": "Et là, on va à une connexion avec des fournisseurs de pays émergents"
+  },
+  {
+    "video_id": "00105",
+    "start": 1651.83,
+    "end": 1652.73,
+    "transcript": "qui sont importants."
+  },
+  {
+    "video_id": "00105",
+    "start": 1652.83,
+    "end": 1654.73,
+    "transcript": "Ça mène à des produits, vous avez mis,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1654.83,
+    "end": 1657.43,
+    "transcript": "vaccin contre l'hépatite, 40 centimes."
+  },
+  {
+    "video_id": "00105",
+    "start": 1657.53,
+    "end": 1659.23,
+    "transcript": "Vous voyez, si on n'est pas dans les domaines,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1659.33,
+    "end": 1660.93,
+    "transcript": "je ne reviendrai pas là-dessus."
+  },
+  {
+    "video_id": "00105",
+    "start": 1661.03,
+    "end": 1663.13,
+    "transcript": "Ou redonner la vue à des gens"
+  },
+  {
+    "video_id": "00105",
+    "start": 1663.13,
+    "end": 1667.03,
+    "transcript": "pour 7 dollars, pour 12 millions de personnes qui étaient aveugles."
+  },
+  {
+    "video_id": "00105",
+    "start": 1667.13,
+    "end": 1668.73,
+    "transcript": "Et il y en a encore 12 millions dans les tuyaux."
+  },
+  {
+    "video_id": "00105",
+    "start": 1668.83,
+    "end": 1671.83,
+    "transcript": "Mais comme pratiquement deux tiers des aveugles du monde sont en Inde,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1671.93,
+    "end": 1673.43,
+    "transcript": "c'est aux Indiens à le faire."
+  },
+  {
+    "video_id": "00105",
+    "start": 1673.53,
+    "end": 1674.73,
+    "transcript": "Mais du coup, ils deviennent leaders mondiales"
+  },
+  {
+    "video_id": "00105",
+    "start": 1674.83,
+    "end": 1677.83,
+    "transcript": "sur la chirurgie des yeux, avec une qualité exceptionnelle."
+  },
+  {
+    "video_id": "00105",
+    "start": 1677.93,
+    "end": 1681.13,
+    "transcript": "Mais je vais laisser de côté cet aspect Inde,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1681.23,
+    "end": 1683.13,
+    "transcript": "ou pays seulement émergents."
+  },
+  {
+    "video_id": "00105",
+    "start": 1683.23,
+    "end": 1684.43,
+    "transcript": "Et puis, la connexion des deux."
+  },
+  {
+    "video_id": "00105",
+    "start": 1684.53,
+    "end": 1685.93,
+    "transcript": "L'avenir, il a la connexion des deux."
+  },
+  {
+    "video_id": "00105",
+    "start": 1686.03,
+    "end": 1689.23,
+    "transcript": "Typiquement au 3B, connexion Internet et téléphone,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1689.33,
+    "end": 1693.03,
+    "transcript": "50 centimes pour tout le monde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1693.13,
+    "end": 1696.53,
+    "transcript": "Connexion entre Google, SES, Ariane Espace,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1696.63,
+    "end": 1700.53,
+    "transcript": "l'entreprise leader en Afrique du Sud, en Inde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1700.63,
+    "end": 1703.23,
+    "transcript": "C'est-à-dire, connexion entre pays développés et pays émergents,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1703.33,
+    "end": 1705.93,
+    "transcript": "au niveau de services universels, à très bas coût,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1706.03,
+    "end": 1707.03,
+    "transcript": "touchant beaucoup de gens."
+  },
+  {
+    "video_id": "00105",
+    "start": 1707.13,
+    "end": 1708.83,
+    "transcript": "Je vous parlais de 3 milliards de personnes."
+  },
+  {
+    "video_id": "00105",
+    "start": 1708.93,
+    "end": 1711.93,
+    "transcript": "Là, vous voyez, eux, ça s'appelle au 3B,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1712.03,
+    "end": 1715.13,
+    "transcript": "« other 3 billion », les autres 3 milliards."
+  },
+  {
+    "video_id": "00105",
+    "start": 1715.23,
+    "end": 1718.53,
+    "transcript": "Que ceux qui ont déjà le téléphone et l'Internet."
+  },
+  {
+    "video_id": "00105",
+    "start": 1718.63,
+    "end": 1721.63,
+    "transcript": "On estime que 4 milliards de personnes ont accès au téléphone et à l'Internet,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1721.73,
+    "end": 1722.93,
+    "transcript": "même si ce n'est pas dans des bonnes conditions."
+  },
+  {
+    "video_id": "00105",
+    "start": 1723.13,
+    "end": 1724.93,
+    "transcript": "Ou qu'ils doivent bouger, ou aller à la poste,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1725.03,
+    "end": 1726.23,
+    "transcript": "ou aller à un Internet café."
+  },
+  {
+    "video_id": "00105",
+    "start": 1726.33,
+    "end": 1728.13,
+    "transcript": "Il y en a 3 milliards, ils n'ont connexion à rien."
+  },
+  {
+    "video_id": "00105",
+    "start": 1728.23,
+    "end": 1730.93,
+    "transcript": "Et donc là, l'objectif, c'est de fournir à ces gens-là."
+  },
+  {
+    "video_id": "00105",
+    "start": 1731.03,
+    "end": 1733.73,
+    "transcript": "Donc le low-cost, c'est quelque chose, c'est un impératif."
+  },
+  {
+    "video_id": "00105",
+    "start": 1733.83,
+    "end": 1735.53,
+    "transcript": "Sinon, on n'est pas démocratique."
+  },
+  {
+    "video_id": "00105",
+    "start": 1735.63,
+    "end": 1739.63,
+    "transcript": "« Attendez, en dessous de 500 dollars, franchement, un smartphone ? »"
+  },
+  {
+    "video_id": "00105",
+    "start": 1739.73,
+    "end": 1740.93,
+    "transcript": "Moi, je ne le sens pas, quoi."
+  },
+  {
+    "video_id": "00105",
+    "start": 1741.03,
+    "end": 1742.63,
+    "transcript": "On ne peut pas se la jouer à ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 1742.73,
+    "end": 1746.83,
+    "transcript": "C'est avoir une vision maîtrisante de ceux qui ont des moyens moindres"
+  },
+  {
+    "video_id": "00105",
+    "start": 1746.93,
+    "end": 1747.93,
+    "transcript": "pour s'acheter des produits."
+  },
+  {
+    "video_id": "00105",
+    "start": 1748.03,
+    "end": 1750.13,
+    "transcript": "Alors, les composantes du low-cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1750.23,
+    "end": 1753.03,
+    "transcript": "Et on va les illustrer, je ne vais pas faire de la théorie longtemps."
+  },
+  {
+    "video_id": "00105",
+    "start": 1753.13,
+    "end": 1754.13,
+    "transcript": "Les fonctions essentielles."
+  },
+  {
+    "video_id": "00105",
+    "start": 1754.23,
+    "end": 1759.23,
+    "transcript": "Principe de base du low-cost, je vais sur ce qui est demandé par les gens."
+  },
+  {
+    "video_id": "00105",
+    "start": 1759.33,
+    "end": 1759.83,
+    "transcript": "D'abord."
+  },
+  {
+    "video_id": "00105",
+    "start": 1759.93,
+    "end": 1762.43,
+    "transcript": "Et j'élimine ce qui coûte cher pour pas grand monde."
+  },
+  {
+    "video_id": "00105",
+    "start": 1762.53,
+    "end": 1763.43,
+    "transcript": "Exemple."
+  },
+  {
+    "video_id": "00105",
+    "start": 1763.53,
+    "end": 1767.53,
+    "transcript": "Ce que nous dit Air France dans sa nouvelle offre à 59 euros sur toute l'Europe."
+  },
+  {
+    "video_id": "00105",
+    "start": 1767.63,
+    "end": 1770.43,
+    "transcript": "Il dit « Moi, il n'y a pas le bagage en soute inclus. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 1770.53,
+    "end": 1771.33,
+    "transcript": "Pourquoi ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 1771.43,
+    "end": 1775.23,
+    "transcript": "Je ne sais plus, 62% des gens en courrier,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1775.33,
+    "end": 1777.33,
+    "transcript": "moyen courrier, voyagent uniquement avec un voyage de cabine."
+  },
+  {
+    "video_id": "00105",
+    "start": 1777.43,
+    "end": 1779.43,
+    "transcript": "Ils n'ont pas envie d'attendre une demi-heure un bagage."
+  },
+  {
+    "video_id": "00105",
+    "start": 1779.53,
+    "end": 1782.13,
+    "transcript": "Ils voyagent léger, ils reviennent le soir ou le lendemain."
+  },
+  {
+    "video_id": "00105",
+    "start": 1782.23,
+    "end": 1782.63,
+    "transcript": "Donc."
+  },
+  {
+    "video_id": "00105",
+    "start": 1782.73,
+    "end": 1783.03,
+    "transcript": "Or."
+  },
+  {
+    "video_id": "00105",
+    "start": 1783.23,
+    "end": 1784.53,
+    "transcript": "Ça coûte horriblement cher les bagages."
+  },
+  {
+    "video_id": "00105",
+    "start": 1784.63,
+    "end": 1785.33,
+    "transcript": "C'est un flux différent."
+  },
+  {
+    "video_id": "00105",
+    "start": 1785.43,
+    "end": 1787.93,
+    "transcript": "Ça coûte aussi cher d'emmener 50 kilos de bagages."
+  },
+  {
+    "video_id": "00105",
+    "start": 1788.03,
+    "end": 1789.93,
+    "transcript": "Plus cher que 50 kilos de personnes."
+  },
+  {
+    "video_id": "00105",
+    "start": 1790.03,
+    "end": 1790.93,
+    "transcript": "C'est un cycle différent."
+  },
+  {
+    "video_id": "00105",
+    "start": 1791.03,
+    "end": 1792.53,
+    "transcript": "Il faut les enregistrer."
+  },
+  {
+    "video_id": "00105",
+    "start": 1792.63,
+    "end": 1793.53,
+    "transcript": "Il faut les fournir."
+  },
+  {
+    "video_id": "00105",
+    "start": 1793.63,
+    "end": 1795.03,
+    "transcript": "Il faut des sociétés de service."
+  },
+  {
+    "video_id": "00105",
+    "start": 1795.13,
+    "end": 1797.73,
+    "transcript": "Donc, il dit « Moi, je vois que l'essentiel des gens n'ont pas besoin de bagages."
+  },
+  {
+    "video_id": "00105",
+    "start": 1797.83,
+    "end": 1798.83,
+    "transcript": "Si quelqu'un veut, il le paiera. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 1798.93,
+    "end": 1800.33,
+    "transcript": "Du coup, il va le payer plus cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 1800.43,
+    "end": 1802.13,
+    "transcript": "Puisqu'eux, ils vont le payer au coût réel."
+  },
+  {
+    "video_id": "00105",
+    "start": 1802.23,
+    "end": 1804.33,
+    "transcript": "Alors qu'avant, c'était fourni à un coût marginal."
+  },
+  {
+    "video_id": "00105",
+    "start": 1804.43,
+    "end": 1805.53,
+    "transcript": "Alors que c'était un coût."
+  },
+  {
+    "video_id": "00105",
+    "start": 1805.63,
+    "end": 1806.93,
+    "transcript": "Et ainsi de suite."
+  },
+  {
+    "video_id": "00105",
+    "start": 1807.03,
+    "end": 1810.33,
+    "transcript": "De dire « Je vais avoir des horaires plus larges parce que c'est des étudiants."
+  },
+  {
+    "video_id": "00105",
+    "start": 1810.33,
+    "end": 1812.33,
+    "transcript": "Ils veulent voyager à 50 euros."
+  },
+  {
+    "video_id": "00105",
+    "start": 1812.43,
+    "end": 1814.23,
+    "transcript": "Ça ne les dérange pas de partir à 6 heures du mat."
+  },
+  {
+    "video_id": "00105",
+    "start": 1814.33,
+    "end": 1815.63,
+    "transcript": "À ce moment-là, je vais faire des vols. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 1815.73,
+    "end": 1817.53,
+    "transcript": "Donc, je pars de la demande réelle."
+  },
+  {
+    "video_id": "00105",
+    "start": 1817.63,
+    "end": 1820.63,
+    "transcript": "J'élimine les services."
+  },
+  {
+    "video_id": "00105",
+    "start": 1820.73,
+    "end": 1821.93,
+    "transcript": "L'overdesign."
+  },
+  {
+    "video_id": "00105",
+    "start": 1822.03,
+    "end": 1823.53,
+    "transcript": "Tout ce qui est overdesign est éliminé."
+  },
+  {
+    "video_id": "00105",
+    "start": 1823.63,
+    "end": 1825.73,
+    "transcript": "Alors, il n'est pas éliminé définitivement."
+  },
+  {
+    "video_id": "00105",
+    "start": 1825.83,
+    "end": 1827.93,
+    "transcript": "Il est enlevé et il va être rajouté en prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 1828.03,
+    "end": 1829.53,
+    "transcript": "Ce qui fait que vous pouvez, par exemple."
+  },
+  {
+    "video_id": "00105",
+    "start": 1829.63,
+    "end": 1831.03,
+    "transcript": "Il y a des comparaisons qui ont été faites."
+  },
+  {
+    "video_id": "00105",
+    "start": 1831.13,
+    "end": 1832.43,
+    "transcript": "Vous pouvez les trouver dans les journaux."
+  },
+  {
+    "video_id": "00105",
+    "start": 1832.53,
+    "end": 1837.13,
+    "transcript": "Sur le TGV low-cost de la SNCF."
+  },
+  {
+    "video_id": "00105",
+    "start": 1837.23,
+    "end": 1840.23,
+    "transcript": "Ou sur des vols low-cost en France."
+  },
+  {
+    "video_id": "00105",
+    "start": 1840.33,
+    "end": 1843.13,
+    "transcript": "En disant « Moi, en fait, je vais payer plus cher que sur un vol. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 1843.23,
+    "end": 1846.23,
+    "transcript": "Ben oui, mais s'ils accumulent des services complémentaires."
+  },
+  {
+    "video_id": "00105",
+    "start": 1846.33,
+    "end": 1847.23,
+    "transcript": "Effectivement, ils les paient plus cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 1847.33,
+    "end": 1849.53,
+    "transcript": "À ce moment-là, il vaut mieux qu'ils restent sur le pack générique."
+  },
+  {
+    "video_id": "00105",
+    "start": 1849.63,
+    "end": 1850.63,
+    "transcript": "Donc, principe de base."
+  },
+  {
+    "video_id": "00105",
+    "start": 1850.73,
+    "end": 1852.13,
+    "transcript": "Je vais vers l'essentiel."
+  },
+  {
+    "video_id": "00105",
+    "start": 1852.23,
+    "end": 1853.53,
+    "transcript": "Si vous voulez plus, vous le paierez."
+  },
+  {
+    "video_id": "00105",
+    "start": 1853.63,
+    "end": 1854.93,
+    "transcript": "On l'illustrera avec la Logan."
+  },
+  {
+    "video_id": "00105",
+    "start": 1855.03,
+    "end": 1857.93,
+    "transcript": "Oui, notamment la Duster."
+  },
+  {
+    "video_id": "00105",
+    "start": 1858.03,
+    "end": 1858.93,
+    "transcript": "Modularité."
+  },
+  {
+    "video_id": "00105",
+    "start": 1859.03,
+    "end": 1861.23,
+    "transcript": "Modularité, ça permet d'avoir des éléments standards."
+  },
+  {
+    "video_id": "00105",
+    "start": 1861.33,
+    "end": 1862.33,
+    "transcript": "En très grande série."
+  },
+  {
+    "video_id": "00105",
+    "start": 1862.43,
+    "end": 1863.53,
+    "transcript": "Que l'on va retrouver."
+  },
+  {
+    "video_id": "00105",
+    "start": 1863.63,
+    "end": 1866.23,
+    "transcript": "Modularité s'étend partout."
+  },
+  {
+    "video_id": "00105",
+    "start": 1866.33,
+    "end": 1868.03,
+    "transcript": "C'est assez technique, la modularité."
+  },
+  {
+    "video_id": "00105",
+    "start": 1868.13,
+    "end": 1870.23,
+    "transcript": "C'est-à-dire qu'il faut bien définir son module standard."
+  },
+  {
+    "video_id": "00105",
+    "start": 1870.33,
+    "end": 1872.23,
+    "transcript": "Il faut le fabriquer en très grande série."
+  },
+  {
+    "video_id": "00105",
+    "start": 1872.33,
+    "end": 1874.23,
+    "transcript": "Il faut qu'il soit techniquement impeccable."
+  },
+  {
+    "video_id": "00105",
+    "start": 1874.33,
+    "end": 1877.23,
+    "transcript": "Et à ce moment-là, on peut recomposer l'offre avec des modules."
+  },
+  {
+    "video_id": "00105",
+    "start": 1877.33,
+    "end": 1878.23,
+    "transcript": "On va le voir pour Volkswagen."
+  },
+  {
+    "video_id": "00105",
+    "start": 1878.33,
+    "end": 1879.23,
+    "transcript": "Haute technologie."
+  },
+  {
+    "video_id": "00105",
+    "start": 1879.33,
+    "end": 1881.23,
+    "transcript": "Généralement, faire cela."
+  },
+  {
+    "video_id": "00105",
+    "start": 1881.33,
+    "end": 1882.23,
+    "transcript": "Quand vous dites à une entreprise."
+  },
+  {
+    "video_id": "00105",
+    "start": 1882.33,
+    "end": 1884.23,
+    "transcript": "Alors, il faut taper à combien moins coûteux ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 1884.33,
+    "end": 1887.23,
+    "transcript": "On aurait tendance à dire moins 30, moins 40."
+  },
+  {
+    "video_id": "00105",
+    "start": 1887.33,
+    "end": 1890.23,
+    "transcript": "En dessous, ce n'est pas vraiment du local."
+  },
+  {
+    "video_id": "00105",
+    "start": 1890.33,
+    "end": 1892.23,
+    "transcript": "On dit, attendez, moins 30, moins 40 %."
+  },
+  {
+    "video_id": "00105",
+    "start": 1892.33,
+    "end": 1895.23,
+    "transcript": "Nous, déjà, chacun, on sait de moi faire moins 2."
+  },
+  {
+    "video_id": "00105",
+    "start": 1895.33,
+    "end": 1896.23,
+    "transcript": "À ce moment-là, on parle d'autre chose."
+  },
+  {
+    "video_id": "00105",
+    "start": 1896.33,
+    "end": 1897.23,
+    "transcript": "Ce n'est plus la même chose."
+  },
+  {
+    "video_id": "00105",
+    "start": 1897.33,
+    "end": 1898.23,
+    "transcript": "Mais c'est exactement ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 1898.33,
+    "end": 1899.23,
+    "transcript": "On parle d'autre chose."
+  },
+  {
+    "video_id": "00105",
+    "start": 1899.33,
+    "end": 1900.23,
+    "transcript": "Et refaire ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 1900.33,
+    "end": 1902.23,
+    "transcript": "La France a eu beaucoup de mal à produire une offre low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1902.33,
+    "end": 1904.23,
+    "transcript": "À ce moment-là, on parle complètement d'autre chose."
+  },
+  {
+    "video_id": "00105",
+    "start": 1904.33,
+    "end": 1906.23,
+    "transcript": "À ce moment-là, ça veut dire que les avions sont localisés."
+  },
+  {
+    "video_id": "00105",
+    "start": 1906.33,
+    "end": 1908.23,
+    "transcript": "Certaines provinces ne partent pas de Paris."
+  },
+  {
+    "video_id": "00105",
+    "start": 1908.33,
+    "end": 1910.23,
+    "transcript": "On les utilise plus tard."
+  },
+  {
+    "video_id": "00105",
+    "start": 1910.33,
+    "end": 1911.23,
+    "transcript": "On commence plus tôt."
+  },
+  {
+    "video_id": "00105",
+    "start": 1911.33,
+    "end": 1912.23,
+    "transcript": "On ne met pas les..."
+  },
+  {
+    "video_id": "00105",
+    "start": 1912.33,
+    "end": 1913.23,
+    "transcript": "Enfin, c'est autre chose."
+  },
+  {
+    "video_id": "00105",
+    "start": 1913.33,
+    "end": 1915.23,
+    "transcript": "Effectivement, c'est autre chose."
+  },
+  {
+    "video_id": "00105",
+    "start": 1915.33,
+    "end": 1917.23,
+    "transcript": "C'est-à-dire que là, il y a..."
+  },
+  {
+    "video_id": "00105",
+    "start": 1917.33,
+    "end": 1920.23,
+    "transcript": "Et on va dire, à ce moment-là, les réservations ne se font que par Internet."
+  },
+  {
+    "video_id": "00105",
+    "start": 1920.33,
+    "end": 1921.23,
+    "transcript": "Ça, ce n'est pas cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 1921.33,
+    "end": 1924.23,
+    "transcript": "Donc, je n'ai pas un service de réservation qui va me coûter la poule des fesses."
+  },
+  {
+    "video_id": "00105",
+    "start": 1924.33,
+    "end": 1926.23,
+    "transcript": "Je vais faire zéro maintenance."
+  },
+  {
+    "video_id": "00105",
+    "start": 1926.33,
+    "end": 1929.23,
+    "transcript": "Par exemple, vous verrez l'offre low cost, notamment aérienne."
+  },
+  {
+    "video_id": "00105",
+    "start": 1929.23,
+    "end": 1932.13,
+    "transcript": "Elle est faite avec les avions les plus modernes qu'il y ait."
+  },
+  {
+    "video_id": "00105",
+    "start": 1932.23,
+    "end": 1934.13,
+    "transcript": "Systématiquement, on reprend les avions les plus modernes."
+  },
+  {
+    "video_id": "00105",
+    "start": 1934.23,
+    "end": 1936.13,
+    "transcript": "On élimine ceux qui ont 5 à 10 ans."
+  },
+  {
+    "video_id": "00105",
+    "start": 1936.23,
+    "end": 1937.13,
+    "transcript": "Pourquoi ? Ils consomment moins."
+  },
+  {
+    "video_id": "00105",
+    "start": 1937.23,
+    "end": 1939.13,
+    "transcript": "Et on se bat sur le coût d'exploitation."
+  },
+  {
+    "video_id": "00105",
+    "start": 1939.23,
+    "end": 1942.13,
+    "transcript": "Et on repasse les autres à des compagnies nationales qui, elles,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1942.23,
+    "end": 1944.13,
+    "transcript": "dans certains pays, ont du monopole."
+  },
+  {
+    "video_id": "00105",
+    "start": 1944.23,
+    "end": 1946.13,
+    "transcript": "Elles ne sont pas aussi serrées qu'une compagnie low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1946.23,
+    "end": 1949.13,
+    "transcript": "Donc, low cost ne veut pas dire basse technologie du tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 1949.23,
+    "end": 1952.13,
+    "transcript": "Souvent, on dit, à ce moment-là, il faut faire une mutation clé."
+  },
+  {
+    "video_id": "00105",
+    "start": 1952.23,
+    "end": 1956.13,
+    "transcript": "C'est-à-dire qu'on va passer à un nouveau système avec zéro maintenance,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1956.23,
+    "end": 1959.13,
+    "transcript": "avec une pièce qui a une durée de vie supérieure à la vie."
+  },
+  {
+    "video_id": "00105",
+    "start": 1959.23,
+    "end": 1961.13,
+    "transcript": "Ça repose la question de la technologie."
+  },
+  {
+    "video_id": "00105",
+    "start": 1961.23,
+    "end": 1963.13,
+    "transcript": "Là, j'ai vu qu'il manquait un S."
+  },
+  {
+    "video_id": "00105",
+    "start": 1963.23,
+    "end": 1966.13,
+    "transcript": "Soit il est en trop à haute, soit il manque la technologie."
+  },
+  {
+    "video_id": "00105",
+    "start": 1966.23,
+    "end": 1970.13,
+    "transcript": "Et donc, c'est un choix technologique clé qui fait qu'on va aller voir"
+  },
+  {
+    "video_id": "00105",
+    "start": 1970.23,
+    "end": 1974.13,
+    "transcript": "qui a la technologie qui permettrait de faire ça beaucoup moins coûteux."
+  },
+  {
+    "video_id": "00105",
+    "start": 1974.23,
+    "end": 1977.13,
+    "transcript": "Ça entraîne des investissements importants."
+  },
+  {
+    "video_id": "00105",
+    "start": 1977.23,
+    "end": 1979.13,
+    "transcript": "Certains d'ailleurs vous disent, vous savez, faire moins cher,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1979.23,
+    "end": 1980.13,
+    "transcript": "ça va coûter de l'argent."
+  },
+  {
+    "video_id": "00105",
+    "start": 1980.23,
+    "end": 1982.13,
+    "transcript": "Effectivement, ça va coûter de l'argent au niveau du fournisseur."
+  },
+  {
+    "video_id": "00105",
+    "start": 1982.23,
+    "end": 1986.13,
+    "transcript": "Parce qu'il va faire le pari d'avoir une offre beaucoup plus importante,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1986.23,
+    "end": 1988.13,
+    "transcript": "des volumes plus importants,"
+  },
+  {
+    "video_id": "00105",
+    "start": 1988.23,
+    "end": 1989.13,
+    "transcript": "rattrapés sur les volets."
+  },
+  {
+    "video_id": "00105",
+    "start": 1989.23,
+    "end": 1992.13,
+    "transcript": "Des volumes qui perdent en prix de vente."
+  },
+  {
+    "video_id": "00105",
+    "start": 1992.23,
+    "end": 1997.13,
+    "transcript": "On le verra tout à l'heure pour Total, avec ses stations low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 1997.23,
+    "end": 2000.13,
+    "transcript": "Ça veut dire qu'elles doivent fournir trois fois plus de carburant"
+  },
+  {
+    "video_id": "00105",
+    "start": 2000.23,
+    "end": 2001.13,
+    "transcript": "qu'une station habituelle."
+  },
+  {
+    "video_id": "00105",
+    "start": 2001.23,
+    "end": 2003.13,
+    "transcript": "C'est un sacré pari."
+  },
+  {
+    "video_id": "00105",
+    "start": 2003.23,
+    "end": 2006.13,
+    "transcript": "Grand volume, donc, et design to cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2006.23,
+    "end": 2009.13,
+    "transcript": "C'est-à-dire, dès le départ, on vous dit, vous avez un prix affiché."
+  },
+  {
+    "video_id": "00105",
+    "start": 2009.23,
+    "end": 2012.13,
+    "transcript": "C'est un objectif exactement comme la performance."
+  },
+  {
+    "video_id": "00105",
+    "start": 2012.23,
+    "end": 2014.13,
+    "transcript": "Il faut que ce soit à moins de 200 dollars."
+  },
+  {
+    "video_id": "00105",
+    "start": 2014.23,
+    "end": 2015.13,
+    "transcript": "Point barre."
+  },
+  {
+    "video_id": "00105",
+    "start": 2015.23,
+    "end": 2016.13,
+    "transcript": "On est sur un smartphone."
+  },
+  {
+    "video_id": "00105",
+    "start": 2016.23,
+    "end": 2018.13,
+    "transcript": "Si vous êtes au-dessus, on est en dehors du marché chinois,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2018.13,
+    "end": 2019.03,
+    "transcript": "machin."
+  },
+  {
+    "video_id": "00105",
+    "start": 2019.13,
+    "end": 2020.03,
+    "transcript": "Donc, c'est un objectif."
+  },
+  {
+    "video_id": "00105",
+    "start": 2020.13,
+    "end": 2022.03,
+    "transcript": "Et donc, il est intégré comme tel."
+  },
+  {
+    "video_id": "00105",
+    "start": 2022.13,
+    "end": 2023.03,
+    "transcript": "Ce n'est pas un choix prêt."
+  },
+  {
+    "video_id": "00105",
+    "start": 2023.13,
+    "end": 2024.03,
+    "transcript": "Ce n'est pas un choix de bas de gamme."
+  },
+  {
+    "video_id": "00105",
+    "start": 2024.13,
+    "end": 2026.03,
+    "transcript": "C'est une donnée fondamentale."
+  },
+  {
+    "video_id": "00105",
+    "start": 2026.13,
+    "end": 2031.03,
+    "transcript": "Alors, les mythes sur le low cost, en disant bas de gamme et tout, non."
+  },
+  {
+    "video_id": "00105",
+    "start": 2031.13,
+    "end": 2034.03,
+    "transcript": "Par exemple, compagnie aérienne, personne ne peut dire,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2034.13,
+    "end": 2036.03,
+    "transcript": "et les chiffres vont plutôt dans l'autre sens,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2036.13,
+    "end": 2038.03,
+    "transcript": "que les compagnies low cost seraient dangereuses."
+  },
+  {
+    "video_id": "00105",
+    "start": 2038.13,
+    "end": 2041.03,
+    "transcript": "Je vous définis la ligne Alzheimer là-dessus."
+  },
+  {
+    "video_id": "00105",
+    "start": 2041.13,
+    "end": 2043.03,
+    "transcript": "Alors, au début, on dit, attendez, pour faire moins cher,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2043.13,
+    "end": 2045.03,
+    "transcript": "on doit travailler avec je ne sais pas qui."
+  },
+  {
+    "video_id": "00105",
+    "start": 2045.13,
+    "end": 2047.03,
+    "transcript": "Les pilotes qui buvaient à l'armée, qui ont été virés et tout ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 2047.03,
+    "end": 2047.93,
+    "transcript": "Non, pas du tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 2048.03,
+    "end": 2049.93,
+    "transcript": "Ce sont des avions ultra modernes."
+  },
+  {
+    "video_id": "00105",
+    "start": 2050.03,
+    "end": 2051.93,
+    "transcript": "Ce sont des pilotes qui ont fait leur école de pilotes."
+  },
+  {
+    "video_id": "00105",
+    "start": 2052.03,
+    "end": 2053.93,
+    "transcript": "Ça a des parts de Roissy."
+  },
+  {
+    "video_id": "00105",
+    "start": 2054.03,
+    "end": 2055.93,
+    "transcript": "C'est du carburant comme on le trouve ailleurs."
+  },
+  {
+    "video_id": "00105",
+    "start": 2056.03,
+    "end": 2058.93,
+    "transcript": "Ce ne sont pas des pièces de rechange achetées en douce."
+  },
+  {
+    "video_id": "00105",
+    "start": 2059.03,
+    "end": 2061.93,
+    "transcript": "Non, on est dans quelque chose qui est beaucoup plus technique que ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 2062.03,
+    "end": 2064.93,
+    "transcript": "Aujourd'hui, c'est les plus gros clients de Boeing et d'Airbus,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2065.03,
+    "end": 2065.93,
+    "transcript": "c'est les compagnies low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2066.03,
+    "end": 2068.93,
+    "transcript": "Et les plus exigeants, ils achètent par 200 appareils."
+  },
+  {
+    "video_id": "00105",
+    "start": 2069.03,
+    "end": 2070.93,
+    "transcript": "En plus, il faut un avion low cost pour faire le truc."
+  },
+  {
+    "video_id": "00105",
+    "start": 2071.03,
+    "end": 2072.93,
+    "transcript": "L'A320neo, c'est un avion low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2073.03,
+    "end": 2075.93,
+    "transcript": "Le Boeing nouvelle génération, c'est un avion low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2076.03,
+    "end": 2076.93,
+    "transcript": "Pour faire des avions low cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2077.03,
+    "end": 2077.93,
+    "transcript": "il faut des moteurs low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2078.03,
+    "end": 2079.93,
+    "transcript": "Safran fait des moteurs low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2080.03,
+    "end": 2080.93,
+    "transcript": "Très performant qui vous dit"
+  },
+  {
+    "video_id": "00105",
+    "start": 2081.03,
+    "end": 2082.93,
+    "transcript": "je consomme 18% de moins de carburant."
+  },
+  {
+    "video_id": "00105",
+    "start": 2083.03,
+    "end": 2084.93,
+    "transcript": "C'est une chaîne, le low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2085.03,
+    "end": 2086.93,
+    "transcript": "C'est-à-dire que pour délivrer à la fin moins coûteux,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2087.03,
+    "end": 2089.93,
+    "transcript": "il faut que chacun monte au meilleur niveau de ce qu'il peut faire."
+  },
+  {
+    "video_id": "00105",
+    "start": 2090.03,
+    "end": 2091.93,
+    "transcript": "Donc, c'est un vrai défi."
+  },
+  {
+    "video_id": "00105",
+    "start": 2092.03,
+    "end": 2095.93,
+    "transcript": "Ça fait le ménage entre le grand industriel et celui qui bricolait."
+  },
+  {
+    "video_id": "00105",
+    "start": 2096.03,
+    "end": 2096.93,
+    "transcript": "Parce que l'autre, il dit,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2097.03,
+    "end": 2099.93,
+    "transcript": "est-ce que je vais trouver 3 millions d'utilisateurs"
+  },
+  {
+    "video_id": "00105",
+    "start": 2100.03,
+    "end": 2102.93,
+    "transcript": "pour mon service téléphonie mobile low cost ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 2103.03,
+    "end": 2105.93,
+    "transcript": "Et puis, ce n'est pas des petits trucs ridicules,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2106.03,
+    "end": 2106.93,
+    "transcript": "si vous voulez."
+  },
+  {
+    "video_id": "00105",
+    "start": 2107.03,
+    "end": 2107.93,
+    "transcript": "On va rentrer dedans."
+  },
+  {
+    "video_id": "00105",
+    "start": 2108.03,
+    "end": 2110.93,
+    "transcript": "Alors, vous voyez, on rentre dans le low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2111.03,
+    "end": 2111.93,
+    "transcript": "Possibilité, vous dites, j'ai un coût."
+  },
+  {
+    "video_id": "00105",
+    "start": 2112.03,
+    "end": 2113.93,
+    "transcript": "Je vais essayer d'augmenter ma marge."
+  },
+  {
+    "video_id": "00105",
+    "start": 2114.03,
+    "end": 2114.93,
+    "transcript": "Comment ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 2115.03,
+    "end": 2117.93,
+    "transcript": "Avec du branding, avec du service, avec de la proximité,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2118.03,
+    "end": 2118.93,
+    "transcript": "avec de la marque."
+  },
+  {
+    "video_id": "00105",
+    "start": 2119.03,
+    "end": 2119.93,
+    "transcript": "Voilà."
+  },
+  {
+    "video_id": "00105",
+    "start": 2120.03,
+    "end": 2120.93,
+    "transcript": "Des choses qui vont dire,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2121.03,
+    "end": 2122.93,
+    "transcript": "face à l'augmentation du revenu,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2123.03,
+    "end": 2123.93,
+    "transcript": "j'ai des choses plus élaborées,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2124.03,
+    "end": 2127.93,
+    "transcript": "plus early adopter, plus branchouille."
+  },
+  {
+    "video_id": "00105",
+    "start": 2128.03,
+    "end": 2131.93,
+    "transcript": "C'est-à-dire, au lieu d'avoir une marge,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2132.03,
+    "end": 2133.93,
+    "transcript": "comme les distributeurs, 5-6%,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2134.03,
+    "end": 2135.93,
+    "transcript": "j'allais dans les 12 ou 10."
+  },
+  {
+    "video_id": "00105",
+    "start": 2135.93,
+    "end": 2138.83,
+    "transcript": "Là, dans la logique low cost, on est dans une logique différente."
+  },
+  {
+    "video_id": "00105",
+    "start": 2138.93,
+    "end": 2140.83,
+    "transcript": "On dit, le prix, je ne veux pas y toucher."
+  },
+  {
+    "video_id": "00105",
+    "start": 2140.93,
+    "end": 2142.83,
+    "transcript": "De toute façon, il est imposé."
+  },
+  {
+    "video_id": "00105",
+    "start": 2142.93,
+    "end": 2144.83,
+    "transcript": "On peut calculer par secteur"
+  },
+  {
+    "video_id": "00105",
+    "start": 2144.93,
+    "end": 2146.83,
+    "transcript": "le prix auquel vous faites le break"
+  },
+  {
+    "video_id": "00105",
+    "start": 2146.93,
+    "end": 2148.83,
+    "transcript": "sur l'automobile aujourd'hui en Europe, par exemple."
+  },
+  {
+    "video_id": "00105",
+    "start": 2148.93,
+    "end": 2150.83,
+    "transcript": "Et sur les différents marchés."
+  },
+  {
+    "video_id": "00105",
+    "start": 2150.93,
+    "end": 2152.83,
+    "transcript": "À partir du moment de ce prix-là,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2152.93,
+    "end": 2154.83,
+    "transcript": "si je veux refaire de la marge,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2154.93,
+    "end": 2156.83,
+    "transcript": "je suis obligé de réduire le coût."
+  },
+  {
+    "video_id": "00105",
+    "start": 2156.93,
+    "end": 2158.83,
+    "transcript": "Donc, je pars en diminution du coût"
+  },
+  {
+    "video_id": "00105",
+    "start": 2158.93,
+    "end": 2160.83,
+    "transcript": "comme objectif principal."
+  },
+  {
+    "video_id": "00105",
+    "start": 2160.93,
+    "end": 2162.83,
+    "transcript": "Il y a de la marge de manœuvre, je peux vous dire."
+  },
+  {
+    "video_id": "00105",
+    "start": 2162.93,
+    "end": 2164.83,
+    "transcript": "Parce qu'avec le temps,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2164.83,
+    "end": 2166.73,
+    "transcript": "tout le monde se complique."
+  },
+  {
+    "video_id": "00105",
+    "start": 2166.83,
+    "end": 2168.73,
+    "transcript": "On s'est habitué à des lourdeurs."
+  },
+  {
+    "video_id": "00105",
+    "start": 2168.83,
+    "end": 2170.73,
+    "transcript": "On s'est habitué à tout un tas de choses."
+  },
+  {
+    "video_id": "00105",
+    "start": 2170.83,
+    "end": 2172.73,
+    "transcript": "Là, tout repasse à la moulinette."
+  },
+  {
+    "video_id": "00105",
+    "start": 2172.83,
+    "end": 2174.73,
+    "transcript": "Mais c'est en fait un tout petit peu plus compliqué que ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 2174.83,
+    "end": 2176.73,
+    "transcript": "Parce qu'on a aujourd'hui,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2176.83,
+    "end": 2178.73,
+    "transcript": "quand vous regardez les vraiment"
+  },
+  {
+    "video_id": "00105",
+    "start": 2178.83,
+    "end": 2180.73,
+    "transcript": "pure players low cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2180.83,
+    "end": 2182.73,
+    "transcript": "ils ont des marges nettement plus importantes"
+  },
+  {
+    "video_id": "00105",
+    "start": 2182.83,
+    "end": 2184.73,
+    "transcript": "que les autres."
+  },
+  {
+    "video_id": "00105",
+    "start": 2184.83,
+    "end": 2186.73,
+    "transcript": "C'est-à-dire, low cost high profit."
+  },
+  {
+    "video_id": "00105",
+    "start": 2186.83,
+    "end": 2188.73,
+    "transcript": "Comment on peut faire du prix bas"
+  },
+  {
+    "video_id": "00105",
+    "start": 2188.83,
+    "end": 2190.73,
+    "transcript": "et des profits plus élevés que les autres ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 2190.83,
+    "end": 2192.73,
+    "transcript": "Et si vous voyez par rapport à un prix de marge,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2192.83,
+    "end": 2194.63,
+    "transcript": "vous pouvez dire,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2194.63,
+    "end": 2196.53,
+    "transcript": "par rapport à faire très cher,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2196.63,
+    "end": 2198.53,
+    "transcript": "Singapour Airlines par exemple,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2198.63,
+    "end": 2200.53,
+    "transcript": "par rapport aux compagnies aériennes,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2200.63,
+    "end": 2202.53,
+    "transcript": "un service exceptionnel de rêve."
+  },
+  {
+    "video_id": "00105",
+    "start": 2202.63,
+    "end": 2204.53,
+    "transcript": "Un jour, je me paierai ça,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2204.63,
+    "end": 2206.53,
+    "transcript": "quand vous paieriez un 4 étoiles"
+  },
+  {
+    "video_id": "00105",
+    "start": 2206.63,
+    "end": 2208.53,
+    "transcript": "ou quelque chose de ce genre."
+  },
+  {
+    "video_id": "00105",
+    "start": 2208.63,
+    "end": 2210.53,
+    "transcript": "Ou une Porsche Cayenne,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2210.63,
+    "end": 2212.53,
+    "transcript": "si vous avez des voisins."
+  },
+  {
+    "video_id": "00105",
+    "start": 2212.63,
+    "end": 2214.53,
+    "transcript": "Vous pouvez dire, moi j'achète du style,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2214.63,
+    "end": 2216.53,
+    "transcript": "tout un tas de trucs, des radars extérieurs,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2216.63,
+    "end": 2218.53,
+    "transcript": "des vidéos, tout le bordel."
+  },
+  {
+    "video_id": "00105",
+    "start": 2218.63,
+    "end": 2220.53,
+    "transcript": "Là, vous allez faire de la marge"
+  },
+  {
+    "video_id": "00105",
+    "start": 2220.63,
+    "end": 2222.53,
+    "transcript": "parce que vous avez un coût plus élevé,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2222.53,
+    "end": 2224.43,
+    "transcript": "parce que vous allez chercher"
+  },
+  {
+    "video_id": "00105",
+    "start": 2224.53,
+    "end": 2226.43,
+    "transcript": "des niveaux de prix grands."
+  },
+  {
+    "video_id": "00105",
+    "start": 2226.53,
+    "end": 2228.43,
+    "transcript": "C'est souvent une illusion de dire,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2228.53,
+    "end": 2230.43,
+    "transcript": "si je fais du luxe, je vais gagner plus."
+  },
+  {
+    "video_id": "00105",
+    "start": 2230.53,
+    "end": 2232.43,
+    "transcript": "Or, les boîtes de luxe, on sait"
+  },
+  {
+    "video_id": "00105",
+    "start": 2232.53,
+    "end": 2234.43,
+    "transcript": "qu'est-ce qu'il y a de sa figure en premier"
+  },
+  {
+    "video_id": "00105",
+    "start": 2234.53,
+    "end": 2236.43,
+    "transcript": "quand il y a crise, parce qu'elles ont du mal"
+  },
+  {
+    "video_id": "00105",
+    "start": 2236.53,
+    "end": 2238.43,
+    "transcript": "à vendre au prix qu'elles voudraient."
+  },
+  {
+    "video_id": "00105",
+    "start": 2238.53,
+    "end": 2240.43,
+    "transcript": "On va revenir sur luxe et low cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2240.53,
+    "end": 2242.43,
+    "transcript": "parce qu'on a une relation entre luxe et low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2242.53,
+    "end": 2244.43,
+    "transcript": "Il faut aussi du low cost dans le luxe,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2244.53,
+    "end": 2246.43,
+    "transcript": "mais pas au même niveau de prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2246.53,
+    "end": 2248.43,
+    "transcript": "Donc ici, on va faire une différenciation"
+  },
+  {
+    "video_id": "00105",
+    "start": 2248.53,
+    "end": 2250.43,
+    "transcript": "par la qualité,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2250.43,
+    "end": 2252.33,
+    "transcript": "on va garder des principes,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2252.43,
+    "end": 2254.33,
+    "transcript": "par exemple dans l'auto,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2254.43,
+    "end": 2256.33,
+    "transcript": "c'est le plaisir de la conduite,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2256.43,
+    "end": 2258.33,
+    "transcript": "c'est des choses comme ça qui justifient"
+  },
+  {
+    "video_id": "00105",
+    "start": 2258.43,
+    "end": 2260.33,
+    "transcript": "des prix élevés, qui fait que c'est"
+  },
+  {
+    "video_id": "00105",
+    "start": 2260.43,
+    "end": 2262.33,
+    "transcript": "quand même autre chose de conduire une BMW"
+  },
+  {
+    "video_id": "00105",
+    "start": 2262.43,
+    "end": 2264.33,
+    "transcript": "que de conduire une autre voiture."
+  },
+  {
+    "video_id": "00105",
+    "start": 2264.43,
+    "end": 2266.33,
+    "transcript": "Là, on est dans une logique différente."
+  },
+  {
+    "video_id": "00105",
+    "start": 2266.43,
+    "end": 2268.33,
+    "transcript": "On dit, j'acte le fait que la société"
+  },
+  {
+    "video_id": "00105",
+    "start": 2268.43,
+    "end": 2270.33,
+    "transcript": "a perdu du pouvoir d'achat,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2270.43,
+    "end": 2272.33,
+    "transcript": "et on va redémarrer en allant la chercher,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2272.43,
+    "end": 2274.33,
+    "transcript": "lui tendant la main,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2274.43,
+    "end": 2276.33,
+    "transcript": "avec des produits qui vont être moins chers."
+  },
+  {
+    "video_id": "00105",
+    "start": 2276.43,
+    "end": 2278.33,
+    "transcript": "Donc, si je veux refaire ma marge,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2278.43,
+    "end": 2280.33,
+    "transcript": "je diminue le coût."
+  },
+  {
+    "video_id": "00105",
+    "start": 2280.33,
+    "end": 2282.23,
+    "transcript": "Dans une concurrence violente,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2282.33,
+    "end": 2284.23,
+    "transcript": "je vais devoir en plus débattre sur le prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2284.33,
+    "end": 2286.23,
+    "transcript": "Mais on a des gens qui font du low cost,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2286.33,
+    "end": 2288.23,
+    "transcript": "et qui, malgré tout,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2288.33,
+    "end": 2290.23,
+    "transcript": "arrivent à maintenir leur prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2290.33,
+    "end": 2292.23,
+    "transcript": "Alors, low cost plus medium price égale high profit."
+  },
+  {
+    "video_id": "00105",
+    "start": 2292.33,
+    "end": 2294.23,
+    "transcript": "C'est le cas, par exemple,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2294.33,
+    "end": 2296.23,
+    "transcript": "de Volkswagen, c'est le cas aussi"
+  },
+  {
+    "video_id": "00105",
+    "start": 2296.33,
+    "end": 2298.23,
+    "transcript": "de Dacia surtout, où vous dites,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2298.33,
+    "end": 2300.23,
+    "transcript": "oui, mais vous avez vu,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2300.33,
+    "end": 2302.23,
+    "transcript": "parce que comme on repense complètement le produit,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2302.33,
+    "end": 2304.23,
+    "transcript": "on fait un beau produit."
+  },
+  {
+    "video_id": "00105",
+    "start": 2304.33,
+    "end": 2306.23,
+    "transcript": "On fait un produit en phase avec les attentes"
+  },
+  {
+    "video_id": "00105",
+    "start": 2306.33,
+    "end": 2308.23,
+    "transcript": "de la société, performant, etc."
+  },
+  {
+    "video_id": "00105",
+    "start": 2308.33,
+    "end": 2310.23,
+    "transcript": "Et on s'aperçoit qu'on n'est pas obligé"
+  },
+  {
+    "video_id": "00105",
+    "start": 2310.23,
+    "end": 2312.13,
+    "transcript": "d'avoir un prix de moins de 35%."
+  },
+  {
+    "video_id": "00105",
+    "start": 2312.23,
+    "end": 2314.13,
+    "transcript": "Et nous, on a une expression, on dit,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2314.23,
+    "end": 2316.13,
+    "transcript": "en période comme ça, d'innovation radicale,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2316.23,
+    "end": 2318.13,
+    "transcript": "les coûts descendent par l'ascenseur"
+  },
+  {
+    "video_id": "00105",
+    "start": 2318.23,
+    "end": 2320.13,
+    "transcript": "et les prix descendent par l'escalier."
+  },
+  {
+    "video_id": "00105",
+    "start": 2320.23,
+    "end": 2322.13,
+    "transcript": "Pourquoi ? Mais parce qu'on a encore"
+  },
+  {
+    "video_id": "00105",
+    "start": 2322.23,
+    "end": 2324.13,
+    "transcript": "l'offre existante qui vous sert"
+  },
+  {
+    "video_id": "00105",
+    "start": 2324.23,
+    "end": 2326.13,
+    "transcript": "de benchmark tout le temps."
+  },
+  {
+    "video_id": "00105",
+    "start": 2326.23,
+    "end": 2328.13,
+    "transcript": "Et vous dites 40% de moins cher qu'Air France."
+  },
+  {
+    "video_id": "00105",
+    "start": 2328.23,
+    "end": 2330.13,
+    "transcript": "Peut-être que 30%, ça serait suffisant,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2330.23,
+    "end": 2332.13,
+    "transcript": "après tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 2332.23,
+    "end": 2334.13,
+    "transcript": "On aura quand même le marché,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2334.23,
+    "end": 2336.13,
+    "transcript": "si vous voulez, si personne ne vient"
+  },
+  {
+    "video_id": "00105",
+    "start": 2336.23,
+    "end": 2338.13,
+    "transcript": "vous chercher à moins 35%."
+  },
+  {
+    "video_id": "00105",
+    "start": 2338.13,
+    "end": 2340.03,
+    "transcript": "C'est-à-dire qu'il n'y a pas de prix"
+  },
+  {
+    "video_id": "00105",
+    "start": 2340.13,
+    "end": 2342.03,
+    "transcript": "sur le coût et qu'ils font des marges considérables."
+  },
+  {
+    "video_id": "00105",
+    "start": 2342.13,
+    "end": 2344.03,
+    "transcript": "Parce qu'ils sont protégés par leurs concurrents médiocres."
+  },
+  {
+    "video_id": "00105",
+    "start": 2344.13,
+    "end": 2346.03,
+    "transcript": "Et vous avez ça, si vous avez lu"
+  },
+  {
+    "video_id": "00105",
+    "start": 2346.13,
+    "end": 2348.03,
+    "transcript": "le bouquin de Michael Dell,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2348.13,
+    "end": 2350.03,
+    "transcript": "quand il a créé Dell, il disait"
+  },
+  {
+    "video_id": "00105",
+    "start": 2350.13,
+    "end": 2352.03,
+    "transcript": "« Moi, j'étais protégé par IBM. IBM avait des coûts"
+  },
+  {
+    "video_id": "00105",
+    "start": 2352.13,
+    "end": 2354.03,
+    "transcript": "monstrueux. Moi, j'étais beaucoup moins coûteux. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 2354.13,
+    "end": 2356.03,
+    "transcript": "Et donc, il dit,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2356.13,
+    "end": 2358.03,
+    "transcript": "« Je devrais faire porter une gerbe de fleurs"
+  },
+  {
+    "video_id": "00105",
+    "start": 2358.13,
+    "end": 2360.03,
+    "transcript": "tous les jours au siège d'IBM"
+  },
+  {
+    "video_id": "00105",
+    "start": 2360.13,
+    "end": 2362.03,
+    "transcript": "pour le remercier des profits qu'il m'a fait faire. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 2362.13,
+    "end": 2364.03,
+    "transcript": "Puisque lui, travaillant à l'ancienne,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2364.13,
+    "end": 2366.03,
+    "transcript": "moi ayant une structure de coûts plus bas,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2366.13,
+    "end": 2368.03,
+    "transcript": "je m'étais préparé une guerre des prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2368.03,
+    "end": 2369.93,
+    "transcript": "Quand Volkswagen s'était préparé une guerre des prix,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2370.03,
+    "end": 2371.93,
+    "transcript": "beaucoup plus violente que celle qu'il y a."
+  },
+  {
+    "video_id": "00105",
+    "start": 2372.03,
+    "end": 2373.93,
+    "transcript": "Et il garde une marge qui est importante."
+  },
+  {
+    "video_id": "00105",
+    "start": 2374.03,
+    "end": 2375.93,
+    "transcript": "Là où il a diminué de 27% ses coûts de production,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2376.03,
+    "end": 2377.93,
+    "transcript": "il n'a pas diminué les prix de 27%."
+  },
+  {
+    "video_id": "00105",
+    "start": 2378.03,
+    "end": 2379.93,
+    "transcript": "Et donc, il est low cost et forte marge."
+  },
+  {
+    "video_id": "00105",
+    "start": 2380.03,
+    "end": 2381.93,
+    "transcript": "Et on va retrouver ça"
+  },
+  {
+    "video_id": "00105",
+    "start": 2382.03,
+    "end": 2383.93,
+    "transcript": "avec la Duster."
+  },
+  {
+    "video_id": "00105",
+    "start": 2384.03,
+    "end": 2385.93,
+    "transcript": "Autre point, le low cost, c'est sur toute la gamme."
+  },
+  {
+    "video_id": "00105",
+    "start": 2386.03,
+    "end": 2387.93,
+    "transcript": "Souvent, on se dit, « Ah oui, mais il y a un produit"
+  },
+  {
+    "video_id": "00105",
+    "start": 2388.03,
+    "end": 2389.93,
+    "transcript": "bas de gamme ici qui n'est pas cher. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 2390.03,
+    "end": 2391.93,
+    "transcript": "Parce que les gens voient le moins cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 2392.03,
+    "end": 2393.93,
+    "transcript": "On dit, « Ah, une voiture à 6 000 $. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 2394.03,
+    "end": 2395.93,
+    "transcript": "Aujourd'hui, en France, une voiture faite en Allemagne"
+  },
+  {
+    "video_id": "00105",
+    "start": 2396.03,
+    "end": 2397.93,
+    "transcript": "à 6 900 $."
+  },
+  {
+    "video_id": "00105",
+    "start": 2398.03,
+    "end": 2399.93,
+    "transcript": "Les pubs à la télé, il faut avoir fait allemand"
+  },
+  {
+    "video_id": "00105",
+    "start": 2400.03,
+    "end": 2401.93,
+    "transcript": "en première langue, mais si vous l'avez fait,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2402.03,
+    "end": 2403.93,
+    "transcript": "vous comprendrez les pubs pour l'auto."
+  },
+  {
+    "video_id": "00105",
+    "start": 2404.03,
+    "end": 2405.93,
+    "transcript": "Et vous voyez marqué 7 900 €"
+  },
+  {
+    "video_id": "00105",
+    "start": 2406.03,
+    "end": 2407.93,
+    "transcript": "pour une voiture faite en Allemagne."
+  },
+  {
+    "video_id": "00105",
+    "start": 2408.03,
+    "end": 2409.93,
+    "transcript": "Ce qui est vraiment beaucoup plus bas."
+  },
+  {
+    "video_id": "00105",
+    "start": 2410.03,
+    "end": 2411.93,
+    "transcript": "C'est 2 000 € de moins qu'il y a 8 ans."
+  },
+  {
+    "video_id": "00105",
+    "start": 2412.03,
+    "end": 2413.93,
+    "transcript": "Pour vous donner une idée."
+  },
+  {
+    "video_id": "00105",
+    "start": 2414.03,
+    "end": 2415.93,
+    "transcript": "C'est en rang de série. On n'est pas encore"
+  },
+  {
+    "video_id": "00105",
+    "start": 2416.03,
+    "end": 2417.93,
+    "transcript": "dans un produit qui soit germano-indien."
+  },
+  {
+    "video_id": "00105",
+    "start": 2419.03,
+    "end": 2422.93,
+    "transcript": "Ou Renault indien, pour ce qu'il en est."
+  },
+  {
+    "video_id": "00105",
+    "start": 2423.03,
+    "end": 2424.93,
+    "transcript": "Mais ça touche toute la gamme."
+  },
+  {
+    "video_id": "00105",
+    "start": 2425.03,
+    "end": 2426.93,
+    "transcript": "Par exemple, je ne vous ai pas mis tellement de cas là"
+  },
+  {
+    "video_id": "00105",
+    "start": 2427.03,
+    "end": 2427.93,
+    "transcript": "parce que ça vous paraît exotique,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2428.03,
+    "end": 2430.93,
+    "transcript": "mais dans les bateaux de plaisance,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2431.03,
+    "end": 2434.93,
+    "transcript": "dans les yachts, dans les produits très haut de gamme,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2435.03,
+    "end": 2438.93,
+    "transcript": "on ne parle que de réduction des coûts, de low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2439.03,
+    "end": 2440.93,
+    "transcript": "Vous allez dire, « Oui, mais c'était un yacht"
+  },
+  {
+    "video_id": "00105",
+    "start": 2441.03,
+    "end": 2442.93,
+    "transcript": "qui valait 18 millions. Maintenant, il est à 12. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 2443.03,
+    "end": 2444.93,
+    "transcript": "Oui, la belle affaire. Mais oui, mais comme l'autre,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2445.03,
+    "end": 2446.93,
+    "transcript": "il a 4 millions de plus d'impôts."
+  },
+  {
+    "video_id": "00105",
+    "start": 2447.03,
+    "end": 2448.93,
+    "transcript": "Il veut garder son yacht."
+  },
+  {
+    "video_id": "00105",
+    "start": 2449.03,
+    "end": 2450.93,
+    "transcript": "Et il est très sensible à l'évolution des prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2451.03,
+    "end": 2452.93,
+    "transcript": "Le secteur, par exemple, dans l'automobile,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2453.03,
+    "end": 2454.93,
+    "transcript": "il y a un secteur qui croit beaucoup dans le luxe."
+  },
+  {
+    "video_id": "00105",
+    "start": 2455.03,
+    "end": 2456.93,
+    "transcript": "Le luxe, c'est 12 %."
+  },
+  {
+    "video_id": "00105",
+    "start": 2456.93,
+    "end": 2459.83,
+    "transcript": "Low cost, luxury, car."
+  },
+  {
+    "video_id": "00105",
+    "start": 2459.93,
+    "end": 2462.83,
+    "transcript": "Le voiture, de luxe, low cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2462.93,
+    "end": 2464.83,
+    "transcript": "Alors, low cost pour du luxe, entendons-nous."
+  },
+  {
+    "video_id": "00105",
+    "start": 2464.93,
+    "end": 2466.83,
+    "transcript": "Mais ils sont dans le même cas de figure."
+  },
+  {
+    "video_id": "00105",
+    "start": 2466.93,
+    "end": 2468.83,
+    "transcript": "40 % de moins. Et je veux garder,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2468.93,
+    "end": 2470.83,
+    "transcript": "continuer à consommer comme un riche."
+  },
+  {
+    "video_id": "00105",
+    "start": 2470.93,
+    "end": 2472.83,
+    "transcript": "C'est-à-dire un yacht, une voiture,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2472.93,
+    "end": 2474.83,
+    "transcript": "tout en payant et en taxant à 75 %."
+  },
+  {
+    "video_id": "00105",
+    "start": 2474.93,
+    "end": 2476.83,
+    "transcript": "Donc, ils sont très exigeants sur les prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2476.93,
+    "end": 2478.83,
+    "transcript": "Extrêmement exigeants sur les prix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2478.93,
+    "end": 2480.83,
+    "transcript": "Et les gens qui font du yacht à Monaco disent,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2480.93,
+    "end": 2482.83,
+    "transcript": "« En ce moment, sur les prix, c'est raide."
+  },
+  {
+    "video_id": "00105",
+    "start": 2482.93,
+    "end": 2484.83,
+    "transcript": "Ça n'a jamais été aussi raide."
+  },
+  {
+    "video_id": "00105",
+    "start": 2484.93,
+    "end": 2486.83,
+    "transcript": "Je viens de vendre un bateau de 18 millions. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 2486.93,
+    "end": 2488.83,
+    "transcript": "Et on se dit, « C'est beaucoup. »"
+  },
+  {
+    "video_id": "00105",
+    "start": 2488.93,
+    "end": 2490.83,
+    "transcript": "Non, ce n'est pas beaucoup."
+  },
+  {
+    "video_id": "00105",
+    "start": 2490.93,
+    "end": 2492.83,
+    "transcript": "Parce que là, on a une marge complètement rapide."
+  },
+  {
+    "video_id": "00105",
+    "start": 2492.93,
+    "end": 2494.83,
+    "transcript": "J'exige de mes fournisseurs une approche low cost"
+  },
+  {
+    "video_id": "00105",
+    "start": 2494.93,
+    "end": 2496.83,
+    "transcript": "au niveau des équipements."
+  },
+  {
+    "video_id": "00105",
+    "start": 2496.93,
+    "end": 2498.83,
+    "transcript": "Sachez que ça touche tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 2498.93,
+    "end": 2500.83,
+    "transcript": "Si ça touchait qu'en bas, ça serait exotique."
+  },
+  {
+    "video_id": "00105",
+    "start": 2500.93,
+    "end": 2502.83,
+    "transcript": "C'est-à-dire, il y a un truc pas cher."
+  },
+  {
+    "video_id": "00105",
+    "start": 2502.93,
+    "end": 2504.83,
+    "transcript": "Non, non, non, ça touche toute la gamme."
+  },
+  {
+    "video_id": "00105",
+    "start": 2504.93,
+    "end": 2506.83,
+    "transcript": "Ça touche toute la gamme parce que tout le monde"
+  },
+  {
+    "video_id": "00105",
+    "start": 2506.93,
+    "end": 2508.83,
+    "transcript": "est touché par la réduction de revenus."
+  },
+  {
+    "video_id": "00105",
+    "start": 2508.93,
+    "end": 2510.83,
+    "transcript": "Et puis, par ailleurs, je vous montre,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2510.93,
+    "end": 2512.83,
+    "transcript": "je repris quelques images des crises passées,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2512.93,
+    "end": 2514.83,
+    "transcript": "l'arrivée du prix comme facteur fondamental."
+  },
+  {
+    "video_id": "00105",
+    "start": 2514.93,
+    "end": 2516.83,
+    "transcript": "Vous voyez, par exemple, dans la distribution,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2516.93,
+    "end": 2518.83,
+    "transcript": "quand il y a eu la crise de 1929,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2518.93,
+    "end": 2520.83,
+    "transcript": "on avait les magasins les plus beaux du monde"
+  },
+  {
+    "video_id": "00105",
+    "start": 2520.93,
+    "end": 2522.83,
+    "transcript": "et les plus riches du monde"
+  },
+  {
+    "video_id": "00105",
+    "start": 2522.93,
+    "end": 2524.83,
+    "transcript": "et les premiers magasins départemental au monde."
+  },
+  {
+    "video_id": "00105",
+    "start": 2524.93,
+    "end": 2528.83,
+    "transcript": "Bon Marché, Le Printemps et les Galeries Lafayette,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2528.93,
+    "end": 2530.83,
+    "transcript": "qui restent encore les plus grands magasins du monde."
+  },
+  {
+    "video_id": "00105",
+    "start": 2530.93,
+    "end": 2532.83,
+    "transcript": "Galeries Lafayette, c'est le plus grand magasin"
+  },
+  {
+    "video_id": "00105",
+    "start": 2532.93,
+    "end": 2534.83,
+    "transcript": "au monde en ville."
+  },
+  {
+    "video_id": "00105",
+    "start": 2534.93,
+    "end": 2536.83,
+    "transcript": "Il arrive la crise, le front populaire."
+  },
+  {
+    "video_id": "00105",
+    "start": 2536.93,
+    "end": 2538.83,
+    "transcript": "Pendant 10 ans, le salaire des instituteurs"
+  },
+  {
+    "video_id": "00105",
+    "start": 2538.93,
+    "end": 2540.83,
+    "transcript": "est baissé 12 fois."
+  },
+  {
+    "video_id": "00105",
+    "start": 2540.93,
+    "end": 2542.83,
+    "transcript": "Une fois tous les ans, tout le monde perd du revenu."
+  },
+  {
+    "video_id": "00105",
+    "start": 2542.93,
+    "end": 2544.83,
+    "transcript": "Et donc là, les trois magasins,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2544.93,
+    "end": 2546.83,
+    "transcript": "les plus riches, Galeries Lafayette,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2546.93,
+    "end": 2552.83,
+    "transcript": "Le Printemps et Le Bon Marché,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2552.93,
+    "end": 2554.83,
+    "transcript": "lancent Monoprix, Prise Unique, Uniprix."
+  },
+  {
+    "video_id": "00105",
+    "start": 2554.93,
+    "end": 2556.83,
+    "transcript": "C'est-à-dire offre low cost immédiate"
+  },
+  {
+    "video_id": "00105",
+    "start": 2556.93,
+    "end": 2558.83,
+    "transcript": "pour fournir les éléments."
+  },
+  {
+    "video_id": "00105",
+    "start": 2558.93,
+    "end": 2560.83,
+    "transcript": "Vous voyez, il y a prix dans chaque."
+  },
+  {
+    "video_id": "00105",
+    "start": 2560.93,
+    "end": 2562.83,
+    "transcript": "Ça montre bien que le prix est devenu"
+  },
+  {
+    "video_id": "00105",
+    "start": 2562.93,
+    "end": 2564.83,
+    "transcript": "le critère absolu."
+  },
+  {
+    "video_id": "00105",
+    "start": 2564.93,
+    "end": 2566.83,
+    "transcript": "Et ils y finissent, 3000 produits,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2566.93,
+    "end": 2568.83,
+    "transcript": "une marge garantie 6%,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2568.93,
+    "end": 2570.83,
+    "transcript": "pour vraiment mettre les produits"
+  },
+  {
+    "video_id": "00105",
+    "start": 2570.93,
+    "end": 2572.83,
+    "transcript": "de première consommation."
+  },
+  {
+    "video_id": "00105",
+    "start": 2572.93,
+    "end": 2574.83,
+    "transcript": "Et ça a très bien marché."
+  },
+  {
+    "video_id": "00105",
+    "start": 2574.93,
+    "end": 2576.83,
+    "transcript": "Ça a tellement bien marché."
+  },
+  {
+    "video_id": "00105",
+    "start": 2576.93,
+    "end": 2578.83,
+    "transcript": "Et ça a été fort étudié aujourd'hui"
+  },
+  {
+    "video_id": "00105",
+    "start": 2578.93,
+    "end": 2580.83,
+    "transcript": "par des pays émergents en disant"
+  },
+  {
+    "video_id": "00105",
+    "start": 2580.93,
+    "end": 2582.83,
+    "transcript": "mais là, il y avait une stratégie très intéressante des groupes."
+  },
+  {
+    "video_id": "00105",
+    "start": 2582.93,
+    "end": 2584.83,
+    "transcript": "Ça n'a pas été des magasins nationaux."
+  },
+  {
+    "video_id": "00105",
+    "start": 2584.93,
+    "end": 2586.83,
+    "transcript": "C'est des groupes qui ont dit"
+  },
+  {
+    "video_id": "00105",
+    "start": 2586.93,
+    "end": 2588.83,
+    "transcript": "il faut absolument qu'on offre celle-là."
+  },
+  {
+    "video_id": "00105",
+    "start": 2588.93,
+    "end": 2590.83,
+    "transcript": "Et depuis, après passer la crise,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2590.93,
+    "end": 2592.83,
+    "transcript": "Monoprix, vous ne pouvez pas trouver plus cher aujourd'hui."
+  },
+  {
+    "video_id": "00105",
+    "start": 2592.93,
+    "end": 2594.83,
+    "transcript": "C'est le plus cher. Monop, c'est le pire de tout."
+  },
+  {
+    "video_id": "00105",
+    "start": 2594.93,
+    "end": 2596.83,
+    "transcript": "Enfin, pire en plus, service client"
+  },
+  {
+    "video_id": "00105",
+    "start": 2596.93,
+    "end": 2598.83,
+    "transcript": "beaucoup baissé, c'est plus du tout ce que c'était."
+  },
+  {
+    "video_id": "00105",
+    "start": 2598.93,
+    "end": 2600.83,
+    "transcript": "C'est-à-dire que là, ça permet"
+  },
+  {
+    "video_id": "00105",
+    "start": 2600.93,
+    "end": 2602.83,
+    "transcript": "d'occuper le terrain pendant la crise."
+  },
+  {
+    "video_id": "00105",
+    "start": 2602.93,
+    "end": 2604.83,
+    "transcript": "Je mets une offre correspondant aux attentes."
+  },
+  {
+    "video_id": "00105",
+    "start": 2604.93,
+    "end": 2606.83,
+    "transcript": "Après, avec le retour après la guerre,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2606.83,
+    "end": 2608.73,
+    "transcript": "autour de la croissance, vous êtes en centre-ville,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2608.83,
+    "end": 2610.73,
+    "transcript": "le truc a monté, il est reparti."
+  },
+  {
+    "video_id": "00105",
+    "start": 2610.83,
+    "end": 2612.73,
+    "transcript": "Mais vous voyez, immédiatement, il y a cela"
+  },
+  {
+    "video_id": "00105",
+    "start": 2612.83,
+    "end": 2614.73,
+    "transcript": "et on pourrait le prendre dans d'autres cas."
+  },
+  {
+    "video_id": "00105",
+    "start": 2614.83,
+    "end": 2616.73,
+    "transcript": "Et il y a des grands qui sont nés comme ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 2616.83,
+    "end": 2618.73,
+    "transcript": "McDo est né comme ça, en pleine crise de 29,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2618.83,
+    "end": 2620.73,
+    "transcript": "en laissant un hamburger à 15 cents,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2620.83,
+    "end": 2622.73,
+    "transcript": "15 centimes."
+  },
+  {
+    "video_id": "00105",
+    "start": 2622.83,
+    "end": 2624.73,
+    "transcript": "Et c'était défini par des médecins."
+  },
+  {
+    "video_id": "00105",
+    "start": 2624.83,
+    "end": 2626.73,
+    "transcript": "Aujourd'hui, vous dites des médecins, un McDo."
+  },
+  {
+    "video_id": "00105",
+    "start": 2626.83,
+    "end": 2628.73,
+    "transcript": "Mais c'est les frites et le coca qui font grossir."
+  },
+  {
+    "video_id": "00105",
+    "start": 2628.83,
+    "end": 2630.73,
+    "transcript": "Ce n'est pas le fait d'avoir du pain avec des graines,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2630.83,
+    "end": 2632.73,
+    "transcript": "avec de la salade, avec un peu de viande."
+  },
+  {
+    "video_id": "00105",
+    "start": 2632.83,
+    "end": 2634.73,
+    "transcript": "Ça, c'était défini comme étant le minimum."
+  },
+  {
+    "video_id": "00105",
+    "start": 2634.73,
+    "end": 2636.63,
+    "transcript": "Je reviens d'Italie, je suis allé une semaine en Italie du Sud."
+  },
+  {
+    "video_id": "00105",
+    "start": 2636.73,
+    "end": 2638.63,
+    "transcript": "La crise, mon laçon, d'une violence inouïe."
+  },
+  {
+    "video_id": "00105",
+    "start": 2638.73,
+    "end": 2640.63,
+    "transcript": "Vous voyez le nombre de restos en ville"
+  },
+  {
+    "video_id": "00105",
+    "start": 2640.73,
+    "end": 2644.63,
+    "transcript": "où j'en mange debout à 1 euro, 2 euros, 3 euros, 5 euros."
+  },
+  {
+    "video_id": "00105",
+    "start": 2644.73,
+    "end": 2646.63,
+    "transcript": "Et ça ressemble à ça."
+  },
+  {
+    "video_id": "00105",
+    "start": 2646.73,
+    "end": 2648.63,
+    "transcript": "C'est plus à l'italienne, avec de la salade,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2648.73,
+    "end": 2650.63,
+    "transcript": "des choses comme ça, qui fait dire"
+  },
+  {
+    "video_id": "00105",
+    "start": 2650.73,
+    "end": 2652.63,
+    "transcript": "je fais un repas sur un truc."
+  },
+  {
+    "video_id": "00105",
+    "start": 2652.73,
+    "end": 2654.63,
+    "transcript": "C'est comme ça qu'il y a des McDo."
+  },
+  {
+    "video_id": "00105",
+    "start": 2654.73,
+    "end": 2656.63,
+    "transcript": "Et à partir de là, il y a imposé dans le monde entier"
+  },
+  {
+    "video_id": "00105",
+    "start": 2656.73,
+    "end": 2658.63,
+    "transcript": "un truc pas cher qui s'est développé,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2658.73,
+    "end": 2660.63,
+    "transcript": "qui est resté où sont nés les stations-service,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2660.73,
+    "end": 2662.63,
+    "transcript": "épiceries, parce qu'il n'y avait plus assez"
+  },
+  {
+    "video_id": "00105",
+    "start": 2662.73,
+    "end": 2664.63,
+    "transcript": "de ventes de carburant, donc on leur autorisait"
+  },
+  {
+    "video_id": "00105",
+    "start": 2664.63,
+    "end": 2666.53,
+    "transcript": "de l'alimentaire aujourd'hui."
+  },
+  {
+    "video_id": "00105",
+    "start": 2666.63,
+    "end": 2668.53,
+    "transcript": "Une station-service gagne plus d'argent"
+  },
+  {
+    "video_id": "00105",
+    "start": 2668.63,
+    "end": 2670.53,
+    "transcript": "avec ce qu'elle vend en alimentaire."
+  },
+  {
+    "video_id": "00105",
+    "start": 2670.63,
+    "end": 2672.53,
+    "transcript": "Les supermarchés libres au service,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2672.63,
+    "end": 2674.53,
+    "transcript": "on réduisait le coût parce qu'il n'y avait plus de vendeurs."
+  },
+  {
+    "video_id": "00105",
+    "start": 2674.63,
+    "end": 2676.53,
+    "transcript": "Les gens servaient eux-mêmes."
+  },
+  {
+    "video_id": "00105",
+    "start": 2676.63,
+    "end": 2678.53,
+    "transcript": "Ils venaient à la maison."
+  },
+  {
+    "video_id": "00105",
+    "start": 2678.63,
+    "end": 2680.53,
+    "transcript": "C'est pendant ce moment-là qu'arrivent les modèles nouveaux."
+  },
+  {
+    "video_id": "00105",
+    "start": 2680.63,
+    "end": 2682.53,
+    "transcript": "Par exemple, 6 des leaders mondiaux"
+  },
+  {
+    "video_id": "00105",
+    "start": 2682.63,
+    "end": 2684.53,
+    "transcript": "sont nés en cœur de la crise avec une offre low-cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2684.63,
+    "end": 2686.53,
+    "transcript": "Coca-Cola, Apple,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2686.63,
+    "end": 2688.53,
+    "transcript": "vous voyez les premiers Apple."
+  },
+  {
+    "video_id": "00105",
+    "start": 2688.63,
+    "end": 2690.53,
+    "transcript": "IBM, pareil, Google aussi, Microsoft,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2690.63,
+    "end": 2692.53,
+    "transcript": "McDo."
+  },
+  {
+    "video_id": "00105",
+    "start": 2692.63,
+    "end": 2694.53,
+    "transcript": "Microsoft, c'est sauf pour les micros."
+  },
+  {
+    "video_id": "00105",
+    "start": 2694.63,
+    "end": 2696.53,
+    "transcript": "Microsoft est en crise violentissime"
+  },
+  {
+    "video_id": "00105",
+    "start": 2696.63,
+    "end": 2698.53,
+    "transcript": "de l'informatique."
+  },
+  {
+    "video_id": "00105",
+    "start": 2698.63,
+    "end": 2700.53,
+    "transcript": "Les systèmes ont dérivé. C'est d'énormes systèmes,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2700.63,
+    "end": 2702.53,
+    "transcript": "des stations de travail. Il faut plus de 100 personnes"
+  },
+  {
+    "video_id": "00105",
+    "start": 2702.63,
+    "end": 2704.53,
+    "transcript": "pour programmer la paye"
+  },
+  {
+    "video_id": "00105",
+    "start": 2704.63,
+    "end": 2706.53,
+    "transcript": "dans une grande entreprise. D'ailleurs, la Défense"
+  },
+  {
+    "video_id": "00105",
+    "start": 2706.63,
+    "end": 2708.53,
+    "transcript": "vient d'en faire l'expérience, quand on veut"
+  },
+  {
+    "video_id": "00105",
+    "start": 2708.63,
+    "end": 2710.53,
+    "transcript": "reprendre ça tout seul."
+  },
+  {
+    "video_id": "00105",
+    "start": 2710.63,
+    "end": 2712.53,
+    "transcript": "Là, ils arrivent sur un micro."
+  },
+  {
+    "video_id": "00105",
+    "start": 2712.63,
+    "end": 2714.53,
+    "transcript": "C'est un soft standard fait avec les meilleurs"
+  },
+  {
+    "video_id": "00105",
+    "start": 2714.63,
+    "end": 2716.53,
+    "transcript": "programmeurs de la Terre."
+  },
+  {
+    "video_id": "00105",
+    "start": 2716.63,
+    "end": 2718.53,
+    "transcript": "Et là, tout le monde s'aligne."
+  },
+  {
+    "video_id": "00105",
+    "start": 2718.63,
+    "end": 2720.53,
+    "transcript": "Soft standard sur les micros."
+  },
+  {
+    "video_id": "00105",
+    "start": 2720.63,
+    "end": 2722.53,
+    "transcript": "Chute violentissime des coûts."
+  },
+  {
+    "video_id": "00105",
+    "start": 2722.63,
+    "end": 2724.53,
+    "transcript": "On avait formé des milliers"
+  },
+  {
+    "video_id": "00105",
+    "start": 2724.63,
+    "end": 2726.53,
+    "transcript": "de programmeurs Bac plus 2,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2726.63,
+    "end": 2728.53,
+    "transcript": "qui n'ont jamais trouvé le boulot,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2728.63,
+    "end": 2730.53,
+    "transcript": "parce que soit vous étiez Bac plus 8,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2730.63,
+    "end": 2732.53,
+    "transcript": "soit vous n'étiez rien du tout"
+  },
+  {
+    "video_id": "00105",
+    "start": 2732.63,
+    "end": 2734.53,
+    "transcript": "et vous utilisiez le software."
+  },
+  {
+    "video_id": "00105",
+    "start": 2734.63,
+    "end": 2736.53,
+    "transcript": "Et Microsoft a tout balayé en partant par le bas."
+  },
+  {
+    "video_id": "00105",
+    "start": 2736.63,
+    "end": 2738.53,
+    "transcript": "Au début, tout le monde se moquait d'eux."
+  },
+  {
+    "video_id": "00105",
+    "start": 2738.63,
+    "end": 2740.53,
+    "transcript": "On disait micro-marché, micro-ordinateur,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2740.63,
+    "end": 2742.53,
+    "transcript": "Microsoft, bien gentil."
+  },
+  {
+    "video_id": "00105",
+    "start": 2742.63,
+    "end": 2744.53,
+    "transcript": "Airbus, pareil. Airbus est rentré"
+  },
+  {
+    "video_id": "00105",
+    "start": 2744.63,
+    "end": 2746.53,
+    "transcript": "après 8 ans de crise du transport aérien."
+  },
+  {
+    "video_id": "00105",
+    "start": 2746.63,
+    "end": 2748.53,
+    "transcript": "C'est un bus qui vole 40% moins cher"
+  },
+  {
+    "video_id": "00105",
+    "start": 2748.63,
+    "end": 2750.53,
+    "transcript": "que les autres avions moyen courrier."
+  },
+  {
+    "video_id": "00105",
+    "start": 2750.63,
+    "end": 2752.53,
+    "transcript": "Vous voyez, on est dans cette zone"
+  },
+  {
+    "video_id": "00105",
+    "start": 2752.53,
+    "end": 2754.43,
+    "transcript": "de 30-40%."
+  },
+  {
+    "video_id": "00105",
+    "start": 2754.53,
+    "end": 2756.43,
+    "transcript": "Et il est arrivé par départ de marché 0."
+  },
+  {
+    "video_id": "00105",
+    "start": 2756.53,
+    "end": 2758.43,
+    "transcript": "Aujourd'hui, moitié du marché mondial"
+  },
+  {
+    "video_id": "00105",
+    "start": 2758.53,
+    "end": 2760.43,
+    "transcript": "dans sa dynamique d'Airbus."
+  },
+  {
+    "video_id": "00105",
+    "start": 2760.53,
+    "end": 2762.43,
+    "transcript": "Vous êtes serré et tout, mais c'est un bus."
+  },
+  {
+    "video_id": "00105",
+    "start": 2762.53,
+    "end": 2764.43,
+    "transcript": "C'est marqué bus dessus."
+  },
+  {
+    "video_id": "00105",
+    "start": 2764.53,
+    "end": 2766.43,
+    "transcript": "Ce n'est pas survendu."
+  },
+  {
+    "video_id": "00105",
+    "start": 2766.53,
+    "end": 2768.43,
+    "transcript": "C'est la fin de la jet society,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2768.53,
+    "end": 2770.43,
+    "transcript": "les gens qui allaient à New York pour le week-end,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2770.53,
+    "end": 2772.43,
+    "transcript": "qui payaient très cher sur des trucs."
+  },
+  {
+    "video_id": "00105",
+    "start": 2772.53,
+    "end": 2774.43,
+    "transcript": "Là, vous actez que ça va toucher toute la population"
+  },
+  {
+    "video_id": "00105",
+    "start": 2774.53,
+    "end": 2776.43,
+    "transcript": "et ça change la donne."
+  },
+  {
+    "video_id": "00105",
+    "start": 2776.53,
+    "end": 2778.43,
+    "transcript": "Ils ont vendu 10 000 avions depuis."
+  },
+  {
+    "video_id": "00105",
+    "start": 2778.53,
+    "end": 2780.43,
+    "transcript": "C'est devenu un des leaders."
+  },
+  {
+    "video_id": "00105",
+    "start": 2780.53,
+    "end": 2782.43,
+    "transcript": "Est-ce que ça touche aussi le luxe ?"
+  },
+  {
+    "video_id": "00105",
+    "start": 2782.53,
+    "end": 2784.43,
+    "transcript": "Ça m'a frappé."
+  },
+  {
+    "video_id": "00105",
+    "start": 2784.53,
+    "end": 2786.43,
+    "transcript": "Là, c'est des produits très chers,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2786.53,
+    "end": 2788.43,
+    "transcript": "600 euros, machin, je ne sais pas."
+  },
+  {
+    "video_id": "00105",
+    "start": 2788.53,
+    "end": 2790.43,
+    "transcript": "Ça s'appelle Winter Low Cost, la ligne."
+  },
+  {
+    "video_id": "00105",
+    "start": 2790.53,
+    "end": 2792.43,
+    "transcript": "Quand même, pour dire que c'est cher,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2792.53,
+    "end": 2794.43,
+    "transcript": "mais un peu moins cher que d'habitude."
+  },
+  {
+    "video_id": "00105",
+    "start": 2794.53,
+    "end": 2796.43,
+    "transcript": "Et la dame qui se dit,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2796.53,
+    "end": 2798.43,
+    "transcript": "ça serait de la folie un sac à 800 euros en ce moment,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2798.53,
+    "end": 2800.43,
+    "transcript": "mais un 600."
+  },
+  {
+    "video_id": "00105",
+    "start": 2800.53,
+    "end": 2802.43,
+    "transcript": "Pas tout bien réfléchir."
+  },
+  {
+    "video_id": "00105",
+    "start": 2802.53,
+    "end": 2804.43,
+    "transcript": "Et on dit, tiens, je t'ai fait faire une affaire,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2804.53,
+    "end": 2806.43,
+    "transcript": "d'ailleurs, par le coup."
+  },
+  {
+    "video_id": "00105",
+    "start": 2806.53,
+    "end": 2808.43,
+    "transcript": "Et donc, ça m'a frappé."
+  },
+  {
+    "video_id": "00105",
+    "start": 2808.53,
+    "end": 2810.43,
+    "transcript": "Je me dis, mais le luxe italien"
+  },
+  {
+    "video_id": "00105",
+    "start": 2810.53,
+    "end": 2812.43,
+    "transcript": "qui a ses grandes gueules sur les bords,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2812.43,
+    "end": 2814.33,
+    "transcript": "c'est-à-dire qu'il se dit, là,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2814.43,
+    "end": 2816.33,
+    "transcript": "je vais toucher beaucoup plus de gens,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2816.43,
+    "end": 2818.33,
+    "transcript": "parce que je dois avoir des gens moyennement riches,"
+  },
+  {
+    "video_id": "00105",
+    "start": 2818.43,
+    "end": 2820.33,
+    "transcript": "des pays émergents aussi."
+  },
+  {
+    "video_id": "00105",
+    "start": 2820.43,
+    "end": 2822.33,
+    "transcript": "Et donc, on ne l'appelle pas Low Cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2822.43,
+    "end": 2824.33,
+    "transcript": "C'est rare qu'on met Low Cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2824.43,
+    "end": 2826.33,
+    "transcript": "Dans le luxe, on ne met pas Low Cost."
+  },
+  {
+    "video_id": "00105",
+    "start": 2826.43,
+    "end": 2828.33,
+    "transcript": "Mais là, ils l'ont mis, parce que c'est tendance."
+  },
+  {
+    "video_id": "00105",
+    "start": 2828.43,
+    "end": 2830.33,
+    "transcript": "Winter Low Cost, la ligne."
+  }
+]
