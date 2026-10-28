@@ -45,6 +45,19 @@ def _normalized(text: str) -> str:
     return re.sub(r"[^\w]+", " ", text.casefold()).strip()
 
 
+def _speed_prefix(caption: str) -> str:
+    match = re.match(r"^The\s+(timelapse|slow-motion)\s+video\s+segment\b", caption, re.I)
+    return match.group(1).lower() if match else "normal"
+
+
+def apply_speed_prefix(caption: str, label: str) -> str:
+    """Apply the classifier decision exactly once; repair a missing VLM prefix."""
+    text = re.sub(r"^The\s+(?:(?:timelapse|slow-motion)\s+)?video\s+segment\b\s*",
+                  "", caption.strip(), count=1, flags=re.I)
+    prefix = f"The {label} video segment" if label in {"timelapse", "slow-motion"} else "The video segment"
+    return f"{prefix} {text}".strip()
+
+
 def merge_duplicate_captions(records: list[dict], max_gap: float, similarity: float) -> list[dict]:
     """Merge near-identical, consecutive captions; preserve distinct actions."""
     merged: list[dict] = []
@@ -56,7 +69,8 @@ def merge_duplicate_captions(records: list[dict], max_gap: float, similarity: fl
             score = SequenceMatcher(
                 None, _normalized(previous["caption"]), _normalized(current["caption"])
             ).ratio()
-            if -0.001 <= gap <= max_gap and score >= similarity:
+            if (-0.001 <= gap <= max_gap and score >= similarity
+                    and _speed_prefix(previous["caption"]) == _speed_prefix(current["caption"])):
                 previous["end"] = max(previous["end"], current["end"])
                 continue
         merged.append(current)
@@ -82,6 +96,7 @@ class ExtractCaptionPipeline:
         self.duplicate_gap = float(self.cfg["duplicate_max_gap"])
         self.duplicate_similarity = float(self.cfg["duplicate_similarity"])
         self.prompt = self.cfg["prompt"].format(language=self.cfg["language"])
+        self.speed_config = self.cfg["speed_predictor"]
         if not (0 < self.min_seconds <= self.max_seconds <= 10 and self.sample_fps > 0):
             raise ValueError("Caption duration/FPS config is invalid")
         if not self.profiles or any(p["max_frames"] < 1 or p["short_side"] < 1 for p in self.profiles):
@@ -112,14 +127,20 @@ class ExtractCaptionPipeline:
     def _detect_scenes(self, video: Path, detector) -> np.ndarray:
         # The public clean_shot mode returns the ranges we need directly.
         # Default-mode intra labels vary in representation across wrappers.
-        ranges = detector.inference(str(video), mode="clean_shot")
+        from src.utils.omni_progress import inference_with_progress
+        fps, duration = _probe_video(video)
+        self.logger.info("[OMNI] %s START source_fps=%.8f duration=%.3fs", video.name, fps, duration)
+        ranges = inference_with_progress(detector, video, mode="clean_shot", fps=fps, logger=self.logger)
         scenes = np.asarray([
             [int(start), int(end) - 1] for start, end in ranges
             if int(end) > int(start)
         ], dtype=np.int64).reshape(-1, 2)
         if len(scenes) == 0:
             raise RuntimeError(f"OmniShotCut clean_shot returned no shots: {video}")
-        fps, _ = _probe_video(video)
+        for index, (first_frame, last_frame) in enumerate(scenes, 1):
+            self.logger.info("[OMNI-SHOT] %s shot=%d/%d frames=[%d,%d] time=[%.3f,%.3f)s",
+                             video.name, index, len(scenes), first_frame, last_frame,
+                             first_frame / fps, (last_frame + 1) / fps)
         timeline = np.arange(int(scenes[-1, 1]) + 1, dtype=np.float64) / fps
         # Reuse the keyframe short-shot merger only inside touching general runs.
         # Bridging a gap here would put an excluded transition back into a caption.
@@ -137,7 +158,8 @@ class ExtractCaptionPipeline:
         """Detect the whole batch before the caption model occupies GPU memory."""
         detector = None
         try:
-            for video in videos:
+            for video_index, video in enumerate(videos, 1):
+                self.logger.info("[OMNI] Batch video=%d/%d %s", video_index, len(videos), video.name)
                 scene_path = self.scene_path(video)
                 if scene_path.is_file() and not overwrite:
                     self.logger.info("Reuse shots: %s", scene_path)
@@ -193,12 +215,15 @@ class ExtractCaptionPipeline:
         from transformers import AutoModelForCausalLM, AutoProcessor
         if not torch.cuda.is_available():
             raise RuntimeError("VideoLLaMA3 requires CUDA for this pipeline")
+        self.logger.info("[CAPTION] Loading %s on CUDA", self.caption_model_name)
+        self.caption_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
         self.model = AutoModelForCausalLM.from_pretrained(
             self.caption_model_name, trust_remote_code=True,
-            device_map={"": "cuda:0"}, torch_dtype=torch.bfloat16,
+            device_map={"": "cuda:0"}, torch_dtype=self.caption_dtype,
         )
         self.model.eval()
         self.processor = AutoProcessor.from_pretrained(self.caption_model_name, trust_remote_code=True)
+        self.logger.info("[CAPTION] Model ready")
 
     def _sample_frames(self, reader, start: float, end: float, profile: dict):
         import cv2
@@ -227,6 +252,8 @@ class ExtractCaptionPipeline:
             inputs = ids = frames = None
             try:
                 frames, timestamps = self._sample_frames(reader, start, end, profile)
+                self.logger.info("[CAPTION] [%.3f,%.3f)s profile=%d/%d frames=%d short_side=%d",
+                                 start, end, attempt, len(self.profiles), len(frames), profile["short_side"])
                 conversation = [
                     {"role": "system", "content": "You are a precise video captioner."},
                     {"role": "user", "content": [
@@ -242,7 +269,7 @@ class ExtractCaptionPipeline:
                 inputs = {key: value.to("cuda:0") if isinstance(value, torch.Tensor) else value
                           for key, value in inputs.items()}
                 if "pixel_values" in inputs:
-                    inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
+                    inputs["pixel_values"] = inputs["pixel_values"].to(self.caption_dtype)
                 with torch.inference_mode():
                     ids = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens,
                                               do_sample=False)
@@ -262,6 +289,31 @@ class ExtractCaptionPipeline:
 
     def caption_videos(self, videos: list[Path], overwrite: bool = False) -> None:
         from decord import VideoReader, cpu
+        import torch
+        from .speed import ShotSpeedPredictor
+
+        # Finish labeling the whole pending batch before VideoLLaMA3 occupies VRAM.
+        pending = [v for v in videos if overwrite or not (self.output_dir / f"{v.stem}.json").is_file()]
+        labels_by_video = {}
+        self.model = self.processor = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        predictor = None
+        try:
+            if pending:
+                predictor = ShotSpeedPredictor(self.speed_config, self.logger)
+            for video in pending:
+                windows = self._windows(video)
+                labels_by_video[video] = predictor.predict(video, windows, _probe_video(video)[0])
+                self.logger.info("GPU speed labeling finished: %s (%d segments)", video.name, len(windows))
+        finally:
+            if predictor is not None:
+                predictor.close()
+            del predictor
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         for video in videos:
             output_path = self.output_dir / f"{video.stem}.json"
@@ -269,12 +321,14 @@ class ExtractCaptionPipeline:
                 self.logger.info("Skip existing caption JSON: %s", output_path)
                 continue
             windows = self._windows(video)
+            speed_labels = labels_by_video[video]
             partial_path = output_path.with_suffix(".partial.json")
             signature = {"video_size": video.stat().st_size,
                          "scene_ranges": self.scene_path(video).read_text(encoding="utf-8"),
                          "caption_model": self.caption_model_name, "prompt": self.prompt,
                          "profiles": self.profiles, "sample_fps": self.sample_fps,
-                         "max_new_tokens": self.max_new_tokens, "windows": windows}
+                         "max_new_tokens": self.max_new_tokens, "windows": windows,
+                         "speed_predictor": self.speed_config, "speed_prefix_version": 2}
             if partial_path.is_file() and not overwrite:
                 state = json.loads(partial_path.read_text(encoding="utf-8"))
                 if state.get("signature") != signature:
@@ -290,13 +344,18 @@ class ExtractCaptionPipeline:
             ):
                 raise RuntimeError(f"Invalid caption checkpoint: {partial_path}")
             self._load_caption_model()
+            self.logger.info("[CAPTION] %s START segments=%d resumed=%d remaining=%d",
+                             video.name, len(windows), done, len(windows) - done)
             reader = VideoReader(str(video), ctx=cpu(0), num_threads=2)
             try:
                 for index, window in enumerate(windows[done:], done + 1):
+                    self.logger.info("[CAPTION] %s shot=%d/%d [%.3f,%.3f)s START label=%s",
+                                     video.name, index, len(windows), window["start"], window["end"], speed_labels[index-1])
                     caption = self._caption(reader, window["start"], window["end"])
+                    caption = apply_speed_prefix(caption, speed_labels[index - 1])
                     state["records"].append({"video_id": video.stem, **window, "caption": caption})
                     _save_json(partial_path, state)
-                    self.logger.info("%s shot %d/%d [%.2f-%.2f]: %s", video.name,
+                    self.logger.info("[CAPTION-FINAL] %s shot %d/%d [%.2f-%.2f]: %s", video.name,
                                      index, len(windows), window["start"], window["end"], caption)
             finally:
                 del reader
@@ -304,6 +363,9 @@ class ExtractCaptionPipeline:
             records = merge_duplicate_captions(
                 state["records"], self.duplicate_gap, self.duplicate_similarity,
             )
+            for index, record in enumerate(records, 1):
+                self.logger.info("[JSON-CAPTION] %s segment=%d/%d [%.3f,%.3f)s %s", video.name,
+                                 index, len(records), record["start"], record["end"], record["caption"])
             _save_json(output_path, records)
             partial_path.unlink(missing_ok=True)
             self.logger.info("Saved %d caption segments -> %s", len(records), output_path)

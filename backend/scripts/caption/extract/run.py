@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 import yaml
@@ -38,7 +39,8 @@ def main() -> None:
     scenes_dir = args.scenes_dir or backend_path(dataset["root"]) / "scenes" / group
     output_dir = args.output_dir or backend_path(dataset["root"]) / "captions" / group
 
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout,
+                        format="%(asctime)s %(levelname)s %(message)s", force=True)
     pipeline = ExtractCaptionPipeline(cfg, input_dir, scenes_dir, output_dir)
     videos = pipeline.video_files(args.video_ids)
     if not videos:
