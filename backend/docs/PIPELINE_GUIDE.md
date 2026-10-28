@@ -95,6 +95,12 @@ Dùng `python -m` (không phải `python scripts/...`) để `src` nằm trong `
 
 Script in `Total documents: <n>` khi xong. Nếu in `0` trong khi vừa index thì đó là lỗi refresh, không phải thiếu data.
 
+Chạy lại lần hai sẽ **cộng dồn**, không thay thế: script chỉ tạo index nếu chưa có, nên document cũ vẫn nằm đó và số đếm tăng gấp đôi. Thêm `--recreate` để xoá index trước khi seed:
+
+```bash
+python -m scripts.ocr.index.run --dataset v3c --recreate
+```
+
 ### Kiểm tra đã seed đúng
 
 ```bash
