@@ -18,7 +18,10 @@ data/
 ├── keyframes/{V3C,LHE}/<video_id>/<frame>.jpg
 ├── videos/{V3C,LHE}/<video_id>.*
 ├── map_keyframes/{V3C,LHE}/<video_id>.csv
-├── embeddings/embeddings_qwen3_vl_embedding_2b_vllm/{V3C,LHE}/<video_id>/<frame>.npy
+├── embeddings/embeddings_qwen3_vl_embedding_2b_vllm/
+│   ├── {V3C,LHE}/<video_id>/<frame>.npy
+│   ├── asr/{V3C,LHE}/<video_id>/<segment_number>.npy
+│   └── caption/{V3C,LHE}/<video_id>/<segment_number>.npy
 └── database/
     ├── faiss_qwen3_vl_embedding_2b_vllm/       # V3C
     └── faiss_qwen3_vl_embedding_2b_lhe_vllm/   # LHE

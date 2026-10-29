@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=8)
     parser.add_argument('--sources', nargs='+', choices=['asr', 'caption'], default=['asr', 'caption'])
     parser.add_argument('--embeddings-root', type=Path,
-                        help='Optional Qwen root containing <source>/<DATASET>/<video_id>.npy files')
+                        help='Optional Qwen root containing <source>/<DATASET>/<video_id>/<segment_number>.npy files')
     parser.add_argument('--maps-only', action='store_true')
     parser.add_argument('--fallback-tau', type=float, default=5.)
     parser.add_argument('--fallback-right-weight', type=float, default=2.)
@@ -61,18 +61,30 @@ def main():
             records = []
             index = faiss.IndexFlatIP(2048)
             if embeddings_root is not None:
-                artifact_dir = embeddings_root / source / args.dataset.upper()
+                artifact_root = embeddings_root / source / args.dataset.upper()
                 for video_id, file_records in source_files:
                     if not file_records:
                         continue
-                    vector_path = artifact_dir / f'{video_id}.npy'
-                    if not vector_path.is_file():
-                        raise FileNotFoundError(f'Missing per-video {source} vectors: {vector_path}')
-                    file_vectors = np.load(vector_path, mmap_mode='r')
-                    if file_vectors.shape != (len(file_records), 2048):
-                        raise RuntimeError(f'Invalid {source} vectors for {video_id}: {file_vectors.shape}')
+                    video_vector_dir = artifact_root / video_id
+                    expected_names = {f"{int(record['segment_id'].rsplit(':', 1)[-1]):06d}.npy"
+                                      for record in file_records}
+                    actual_names = {path.name for path in video_vector_dir.glob('*.npy')} if video_vector_dir.is_dir() else set()
+                    if actual_names != expected_names:
+                        raise RuntimeError(
+                            f'Invalid {source} vector files for {video_id}: '
+                            f'missing={sorted(expected_names-actual_names)[:10]}, '
+                            f'extra={sorted(actual_names-expected_names)[:10]}')
                     for offset in range(0, len(file_records), args.batch_size):
-                        batch = np.asarray(file_vectors[offset:offset + args.batch_size], dtype=np.float32)
+                        batch_records = file_records[offset:offset + args.batch_size]
+                        batch_vectors = []
+                        for record in batch_records:
+                            segment_number = int(record['segment_id'].rsplit(':', 1)[-1])
+                            vector_path = video_vector_dir / f'{segment_number:06d}.npy'
+                            vector = np.load(vector_path, allow_pickle=False)
+                            if vector.shape != (2048,):
+                                raise RuntimeError(f'Invalid {source} vector shape: {vector_path}: {vector.shape}')
+                            batch_vectors.append(vector)
+                        batch = np.asarray(batch_vectors, dtype=np.float32)
                         if not np.isfinite(batch).all():
                             raise RuntimeError(f'Nonfinite {source} vectors for {video_id}')
                         if not np.allclose(np.linalg.norm(batch, axis=1), 1.0, atol=1e-3, rtol=0):

@@ -11,15 +11,15 @@ data/
 ├── map_keyframes/{V3C,LHE}/<video_id>.csv
 ├── embeddings/embeddings_qwen3_vl_embedding_2b_vllm/
 │   ├── {V3C,LHE}/<video_id>/<frame>.npy
-│   ├── asr/{V3C,LHE}/<video_id>.npy
-│   └── caption/{V3C,LHE}/<video_id>.npy
+│   ├── asr/{V3C,LHE}/<video_id>/<segment_number>.npy
+│   └── caption/{V3C,LHE}/<video_id>/<segment_number>.npy
 └── database/faiss_qwen3_vl_embedding_2b_vllm/
     ├── keyframe/{V3C,LHE}/keyframe.faiss
     ├── caption/{V3C,LHE}/caption.faiss
     └── asr/{V3C,LHE}/asr.faiss
 ```
 
-`vlm_keyframes.ipynb` tạo keyframe, map và scene của LHE. PKL PE-Core mà notebook tạo ra không thay cho file Qwen `.npy`. Dùng `extract_embedding.ipynb` để tạo vector Qwen vLLM cho từng ảnh keyframe, và `embed_asr_caption_kaggle.ipynb` để tạo ma trận từng video, tên trùng ID JSON: `asr/V3C/00001.npy` hoặc `caption/V3C/00001.npy`. Không trộn vector của V3C và LHE.
+`vlm_keyframes.ipynb` tạo keyframe, map và scene của LHE. PKL PE-Core mà notebook tạo ra không thay cho file Qwen `.npy`. Dùng `extract_embedding.ipynb` để tạo vector Qwen vLLM cho từng ảnh keyframe, và `embed_asr_caption_kaggle.ipynb` để tạo một file vector riêng cho mỗi segment, đánh số theo ordinal trong JSON: `asr/V3C/00001/000000.npy` hoặc `caption/V3C/00001/000000.npy`. Không trộn vector của V3C và LHE.
 
 ## Build FAISS và vector cache
 
