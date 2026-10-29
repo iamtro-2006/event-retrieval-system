@@ -10,7 +10,7 @@ datasets:
       root: ../data
       keyframes_root: ../data/keyframes
       videos_root: ../data/videos
-      map_keyframes_root: ../data/map_keyframes
+      map_keyframes_root: ../data/map_data/map_keyframes
       database_root: ../data/database
       color_index_path: ../data/database/color_5x5.npz
       ocr_index: ocr_v3c
@@ -23,7 +23,7 @@ datasets:
       root: ../data
       keyframes_root: ../data/keyframes
       videos_root: ../data/videos
-      map_keyframes_root: ../data/map_keyframes
+      map_keyframes_root: ../data/map_data/map_keyframes
       database_root: ../data/database
       color_index_path: ../data/database/color_5x5_lhe.npz
       ocr_index: ocr_lhe
@@ -56,8 +56,11 @@ semantic:
 
 ocr:
   config_path: configs/ocr_extraction.yaml
-asr:
-  config_path: configs/asr_extraction.yaml
+asr: null  # Legacy ES scripts remain; online ASR uses embeddings.
+
+segment_data:
+  data_root: ../data
+  device: cpu
 
 color:
   index_path: ../data/database/color_5x5.npz
@@ -65,7 +68,7 @@ color:
 paths:
   keyframes_root: ../data/keyframes
   videos_root: ../data/videos
-  map_keyframe_path: ../data/map_keyframes
+  map_keyframe_path: ../data/map_data/map_keyframes
 
 search:
   candidate_multiplier: 4

@@ -31,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import cProfile
 import io
+import logging
 import os
 import pstats
 import time
@@ -43,6 +44,8 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.legacy.paths import LegacyPaths, load_yaml
 from src.api.routers.dres import router as dres_router
@@ -104,7 +107,7 @@ def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[s
     }
     cfg["color"] = {"index_path": spec["color_index_path"]}
 
-    for feature in ("ocr", "asr"):
+    for feature in ("ocr",):
         feature_cfg = base.get(feature) or {}
         config_path = feature_cfg.get("config_path") if isinstance(feature_cfg, dict) else feature_cfg
         if not config_path:
@@ -115,6 +118,7 @@ def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[s
         loaded.setdefault("dataset", {})["root"] = str(Path(spec["root"]) / feature / dataset_key.upper())
         cfg[feature] = {"cfg": loaded}
 
+    cfg["asr"] = None
     cfg["dataset_key"] = dataset_key
     cfg.pop("datasets", None)
     return cfg
@@ -205,6 +209,14 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(StarletteHTTPException)
+async def log_http_failure(request: Request, exc: StarletteHTTPException):
+    if exc.status_code >= 400:
+        logging.getLogger('ers.api').warning('%s %s status=%s detail=%s',
+            request.method, request.url.path, exc.status_code, exc.detail)
+    return await http_exception_handler(request, exc)
+
+
 # Middleware profile + log bottleneck report cho mọi request /api/* — port
 # nguyên từ `main.py` cũ, chỉ khác chỗ đọc cờ bật/tắt từ `request.app.state`
 # (set 1 lần trong lifespan) thay vì biến module-level `SHOULD_PROFILE`.
@@ -255,6 +267,8 @@ app.add_middleware(
 
 # Nhánh search MỚI (`/api/search/semantic`, `/temporal`, `/ocr`, `/asr`,
 # `/auto`, `/advanced`, `/models`).
+from src.api.routers.plans import router as plans_router
+app.include_router(plans_router)
 app.include_router(search_router)
 
 # API GỐC — giữ nguyên path cũ (`/api/search`, `/api/health`, `/api/config`,

@@ -17,7 +17,7 @@ import numpy as np
 
 from src.utils.frame_sampling import merge_consecutive_short_scenes
 from src.utils.pipeline_progress import StageProgress, verbose_logging, write_caption
-from .internvl import (CAPTION_FRAME_FILTER_VERSION, InternVLCaptioner,
+from .internvl import (CAPTION_FRAME_FILTER_VERSION, CAPTION_PROFILES, InternVLCaptioner,
                        occupied_color_bins, prepared_batches, validate_settings)
 
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".mov", ".avi", ".webm"}
@@ -144,11 +144,19 @@ class ExtractCaptionPipeline:
         self.input_dir, self.scenes_dir, self.output_dir = input_dir, scenes_dir, output_dir
         self.cfg = cfg["extraction"]
         self.shot_model = self.cfg["shot_model"]
+        self.shot_source = self.cfg.get('shot_source', 'keyframes')
+        if self.shot_source not in ('keyframes', 'detect'):
+            raise ValueError('shot_source must be keyframes or detect')
         self.shot_revision = self.cfg["shot_revision"]
         self.caption_model_name = self.cfg["caption_model"]
         if "caption_profiles" in self.cfg or "internvl" in self.cfg:
             raise ValueError("Legacy caption config: rerun notebook cell 3; use caption_max_frames and vllm")
-        self.max_frames = self.cfg.get("caption_max_frames", 16)
+        self.profile = self.cfg.get('caption_profile', f"{self.cfg.get('caption_max_frames', 16)}x448")
+        if self.profile not in CAPTION_PROFILES:
+            raise ValueError(f'Unknown caption profile: {self.profile}; choose 24x448, 16x448, 12x448')
+        self.max_frames = CAPTION_PROFILES[self.profile]['max_frames']
+        if self.cfg.get('caption_max_frames', self.max_frames) != self.max_frames:
+            raise ValueError('caption_max_frames conflicts with caption_profile')
         self.batch_size = self.cfg.get("caption_batch_size", "auto")
         self.print_captions = self.cfg.get("print_captions", False)
         if type(self.print_captions) is not bool:
@@ -156,18 +164,20 @@ class ExtractCaptionPipeline:
         self.min_color_bins = self.cfg.get("caption_min_color_bins", 5)
         if type(self.min_color_bins) is not int or not 1 <= self.min_color_bins <= 512:
             raise ValueError("caption_min_color_bins must be an integer in [1, 512]")
+        settings = dict(self.cfg.get('vllm', {}))
+        settings['max_model_len'] = max(settings.get('max_model_len', 0), CAPTION_PROFILES[self.profile]['max_model_len'])
+        if type(settings.get('max_num_batched_tokens')) is int:
+            settings['max_num_batched_tokens'] = max(settings['max_num_batched_tokens'], self.max_frames*256)
         self.vllm_config = validate_settings(self.caption_model_name, self.max_frames,
-                                            self.batch_size, self.cfg.get("vllm", {}))
-        self.max_seconds = float(self.cfg["max_shot_seconds"])
-        self.min_seconds = float(self.cfg["min_caption_seconds"])
+                                            self.batch_size, settings)
+        self.min_seconds = float(self.cfg.get("min_caption_seconds", 1.))  # Legacy detection merger only.
         self.sample_fps = float(self.cfg["frame_sample_fps"])
         self.max_new_tokens = int(self.cfg["max_new_tokens"])
         self.duplicate_gap = float(self.cfg["duplicate_max_gap"])
         self.duplicate_similarity = float(self.cfg["duplicate_similarity"])
         self.prompt = self.cfg["prompt"].format(language=self.cfg["language"])
         self.speed_config = self.cfg["speed_predictor"]
-        if not (0 < self.min_seconds <= self.max_seconds <= 10
-                and math.isfinite(self.sample_fps) and self.sample_fps > 0):
+        if not (math.isfinite(self.sample_fps) and self.sample_fps > 0):
             raise ValueError("Caption duration/FPS config is invalid")
         if self.max_new_tokens < 1 or not self.prompt.strip():
             raise ValueError("Caption prompt and max_new_tokens must be nonempty/positive")
@@ -226,6 +236,14 @@ class ExtractCaptionPipeline:
 
     def prepare_shots(self, videos: list[Path], overwrite: bool = False) -> None:
         """Detect the whole batch before the caption model occupies GPU memory."""
+        if self.shot_source == 'keyframes':
+            missing = [str(self.scene_path(video)) for video in videos if not self.scene_path(video).is_file()]
+            if missing:
+                raise FileNotFoundError('Caption requires final keyframe scene files. Supply --scenes-dir; '
+                                        'OmniShotCut is not run a second time. Missing: ' + ', '.join(missing[:8]))
+            for video in videos:
+                self.logger.info('Reuse final keyframe scenes (read-only): %s', self.scene_path(video))
+            return  # --overwrite affects caption output, never the shared scene boundaries.
         detector = None
         try:
             for video_index, video in enumerate(videos, 1):
@@ -274,14 +292,9 @@ class ExtractCaptionPipeline:
             previous_last = last
             start = min(duration, first / fps)
             end = min(duration, (last + 1) / fps)
-            if end - start < self.min_seconds:
-                continue
-            parts = math.ceil((end - start) / self.max_seconds)
-            edges = np.linspace(start, end, parts + 1).tolist()
-            for part in range(parts):
-                left, right = edges[part], edges[part + 1]
-                # Keep frame-boundary precision for sampling; log formatting rounds display only.
-                windows.append({"start": left, "end": right})
+            if end <= start:
+                raise ValueError(f'Scene {scene_index} outside video duration: {self.scene_path(video)}')
+            windows.append({'start': start, 'end': end})
         if not windows:
             raise RuntimeError(f"No captionable shots: {video}")
         return windows
@@ -368,7 +381,7 @@ class ExtractCaptionPipeline:
             signature = {"video_size": video.stat().st_size,
                          "scene_ranges": self.scene_path(video).read_text(encoding="utf-8"),
                          "caption_model": self.caption_model_name, "prompt": self.prompt,
-                         "backend": "vllm-internvl-v1", "max_frames": self.max_frames,
+                         "backend": "vllm-internvl-whole-scene-v2", "max_frames": self.max_frames,
                          "sample_fps": self.sample_fps,
                          "frame_filter": {"version": CAPTION_FRAME_FILTER_VERSION,
                                           "min_color_bins": self.min_color_bins},
@@ -447,10 +460,9 @@ class ExtractCaptionPipeline:
             self.logger.info("[CAPTION-PERF] %s caption_wall=%.2fs inferred=%d skipped=%d shots/s=%.3f output_tokens/s=%.1f (excludes model load/speed/OMNI)",
                              video.name, elapsed, inferred_shots, len(windows) - done - inferred_shots, inferred_shots / elapsed,
                              generated_tokens / elapsed)
-            records = merge_duplicate_captions(
-                [record for record in state["records"] if record["caption"] is not None],
-                self.duplicate_gap, self.duplicate_similarity,
-            )
+            # Keep source scene boundaries even when adjacent captions look similar.
+            records = [{key: record[key] for key in ('video_id', 'start', 'end', 'caption')}
+                       for record in state['records'] if record['caption'] is not None]
             for index, record in enumerate(records, 1):
                 self.logger.info("[JSON-CAPTION] %s segment=%d/%d [%.3f,%.3f)s %s", video.name,
                                  index, len(records), record["start"], record["end"], record["caption"])

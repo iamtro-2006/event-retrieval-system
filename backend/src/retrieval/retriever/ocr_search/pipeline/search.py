@@ -21,7 +21,7 @@ class SearchPipeline:
     def __init__(self, repository: OCRRepository) -> None:
         self.repository = repository
 
-    def search(self, query: str, top_k: int = 10) -> list[OCRHit]:
+    def search(self, query: str, top_k: int = 10, match: str | None = None) -> list[OCRHit]:
         """Run a full-text OCR search and return normalized hits.
 
         Args:
@@ -35,7 +35,8 @@ class SearchPipeline:
         if not query:
             return []
 
-        raw_hits: list[dict[str, Any]] = self.repository.search(text=query, top_k=top_k)
+        raw_hits: list[dict[str, Any]] = self.repository.search(text=query, top_k=top_k,
+            **({'match': match} if match else {}))
 
         hits: list[OCRHit] = []
         for hit in raw_hits:

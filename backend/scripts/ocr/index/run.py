@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import yaml
@@ -21,7 +22,7 @@ def load_config(dataset: str) -> dict:
     config_path = BACKEND_DIR / "configs" / "ocr_extraction.yaml"
     with config_path.open("r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
-    with (BACKEND_DIR / "configs" / "app.yaml").open("r", encoding="utf-8") as f:
+    with Path(os.environ.get("CONFIG_PATH", BACKEND_DIR / "configs" / "app.yaml")).open("r", encoding="utf-8") as f:
         app_cfg = yaml.safe_load(f) or {}
     available = app_cfg.get("datasets", {}).get("available", {})
     if dataset not in available:

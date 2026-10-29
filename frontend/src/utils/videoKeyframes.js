@@ -33,6 +33,10 @@ export function centeredKeyframeOffset(index, viewportWidth, count) {
 }
 
 export function initialVideoMilliseconds(result) {
+  const playbackStart = result?.playback_start ?? result?.raw?.playback_start;
+  if (playbackStart != null && Number.isFinite(Number(playbackStart))) {
+    return Math.max(0, Math.round(Number(playbackStart) * 1000));
+  }
   const fps = Number(result?.fps ?? result?.raw?.fps);
   if (result?.is_preview_frame && fps > 0 && result?.frame_idx != null) {
     return Math.max(0, Math.round(Number(result.frame_idx) / fps * 1000));

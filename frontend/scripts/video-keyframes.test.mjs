@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import { centeredKeyframeOffset, findActiveKeyframe, initialVideoMilliseconds, normalizeVideoKeyframes } from "../src/utils/videoKeyframes.js";
 import { createMediaUrlResolver } from "../src/api/mediaUrls.js";
 
+test("ASR playback preserves speech start when the representative frame is later", () => {
+  assert.equal(initialVideoMilliseconds({ timestamp: 2397.72, playback_start: 2394.03 }), 2394030);
+  assert.equal(initialVideoMilliseconds({ timestamp: 2397.72, raw: { playback_start: 0 } }), 0);
+});
+
 test("playback selects the preceding keyframe, updates at boundaries and handles backward seeks", () => {
   const items = [{ timestamp: 1 }, { timestamp: 4 }, { timestamp: 9 }];
   for (const [seconds, expected] of [[0, 0], [1, 0], [3.99, 0], [4, 1], [8, 1], [9, 2], [100, 2], [2, 0]]) {

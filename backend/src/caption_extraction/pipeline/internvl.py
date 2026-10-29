@@ -30,6 +30,13 @@ VLLM_DEFAULTS = {
 }
 
 
+CAPTION_PROFILES = {
+    '24x448': {'max_frames': 24, 'image_size': 448, 'max_model_len': 8192},
+    '16x448': {'max_frames': 16, 'image_size': 448, 'max_model_len': 6144},
+    '12x448': {'max_frames': 12, 'image_size': 448, 'max_model_len': 6144},
+}
+
+
 def validate_settings(model: str, max_frames: int, batch_size: int | str, settings: dict) -> dict:
     if "internvl" not in model.lower() or model.lower().endswith("-hf"):
         raise ValueError("Caption requires GitHub-format InternVL, e.g. OpenGVLab/InternVL3_5-2B")
@@ -98,6 +105,7 @@ class InternVLCaptioner:
         if not torch.cuda.is_available():
             raise RuntimeError("InternVL caption inference requires an NVIDIA CUDA GPU")
         self.settings = settings = resolve_gpu_settings(torch.cuda.device_count(), settings)
+        settings['max_num_batched_tokens'] = max(settings['max_num_batched_tokens'], max_frames*256)
         dtype = "bfloat16" if torch.cuda.is_bf16_supported(including_emulation=False) else "float16"
         logger.info("[CAPTION] Loading %s with vLLM dtype=%s settings=%s", model, dtype, settings)
         self.engine = LLM(
@@ -113,6 +121,8 @@ class InternVLCaptioner:
         self.tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True)
         config = self.engine.llm_engine.model_config.hf_config
         self.image_size = int(getattr(config, "force_image_size", None) or config.vision_config.image_size)
+        if self.image_size != 448:
+            raise ValueError(f'Caption profiles require a native 448px model, got {self.image_size}')
         self.image_tokens = int((self.image_size // config.vision_config.patch_size) ** 2
                                 * config.downsample_ratio ** 2)
         self.max_model_len = settings["max_model_len"]

@@ -189,7 +189,7 @@ async def stream_codex(cwd, tools, message, history, model=None):
                         "Analyze attached image pixels when present and identify evidence by frame ID. "
                         "Do not delegate or present UI results. Random search scores and synthetic timing are not proof. "
                         "Use at most 4 retrieval tool calls and return a concise report in Vietnamese."
-                        if worker else INSTRUCTIONS)
+                        if worker else getattr(tools, "instructions", INSTRUCTIONS))
         params = {"cwd": str(cwd.resolve()), "ephemeral": True,
                   "approvalPolicy": "never", "sandbox": "read-only",
                   "baseInstructions": instructions, "dynamicTools": specs,
@@ -219,7 +219,7 @@ async def stream_codex(cwd, tools, message, history, model=None):
         completed_text = []
         delta_seen = False
         try:
-            async with asyncio.timeout(90 if worker else 240):
+            async with asyncio.timeout(90 if worker else getattr(tools, 'turn_timeout', 240)):
                 while True:
                     event = await client.receive()
                     method = event.get("method", "")
@@ -250,11 +250,15 @@ async def stream_codex(cwd, tools, message, history, model=None):
                             # Full data is available to the UI; model gets only known, bounded rows.
                             model_data = {**data, "results": [
                                 {key: value for key, value in row.items() if key not in {"keyframe_path", "raw"}}
-                                for row in data.get("results", [])]}
+                                for row in data.get("results", [])[:getattr(tools, 'model_result_limit', 100)]]}
                             success = data.get("successful_workers", 1) > 0
                             response = {"success": success, "contentItems": [
                                 {"type": "inputText", "text": json.dumps(model_data, ensure_ascii=False)}, *images]}
                             yield {"type": "tool_end", "name": name, "count": data.get("count"), "success": success}
+                            if name == "register_plans":
+                                yield {"type": "plans", "plans": data["plans"]}
+                            if name == "run_next_plan":
+                                yield {"type": "pool", **data}
                             if name in {"search", "similarity_search", "present_results", "parallel_tasks"}:
                                 yield {"type": "results", "results": data["results"], "query": message, "tool": name}
                         except Exception as exc:

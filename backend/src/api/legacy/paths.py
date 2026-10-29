@@ -59,3 +59,7 @@ class LegacyPaths:
         self.keyframes_root = resolve_backend_path(backend_dir, cfg["paths"]["keyframes_root"])
         self.videos_root = resolve_backend_path(backend_dir, cfg["paths"]["videos_root"])
         self.map_keyframe_root = resolve_backend_path(backend_dir, cfg["paths"]["map_keyframe_path"])
+        if not self.map_keyframe_root.exists():
+            legacy = self.map_keyframe_root.parent.parent / "map_keyframes"
+            if legacy.exists():
+                self.map_keyframe_root = legacy

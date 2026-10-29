@@ -49,13 +49,13 @@ class OCRRepository:
     # Search
     # ------------------------------------------------------------------
 
-    def search(self, text: str, top_k: int = 10) -> list[dict[str, Any]]:
+    def search(self, text: str, top_k: int = 10, match: str | None = None) -> list[dict[str, Any]]:
         """Run a full-text search against the `texts` field.
 
         Returns:
             Raw Elasticsearch hits (list of `{"_score": ..., "_source": {...}}`).
         """
-        return self.es.search(query=text, size=top_k)
+        return self.es.search(query=text, size=top_k, **({'match': match} if match else {}))
 
     # ------------------------------------------------------------------
     # Utils

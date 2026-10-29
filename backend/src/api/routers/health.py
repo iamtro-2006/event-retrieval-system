@@ -87,7 +87,7 @@ def get_public_config(
             "default_top_k": int(cfg["search"].get("default_top_k", 20)),
             "max_top_k": int(cfg["search"].get("max_top_k", 500)),
             "candidate_multiplier": int(cfg["search"].get("candidate_multiplier", 1)),
-            "available_modes": ["semantic", "temporal", "ocr", "asr", "auto"],
+            "available_modes": ["semantic", "temporal", "ocr", "asr", "caption", "hierarchical", "auto", "color", "similarity"],
             "default_search_mode": "semantic", "default_duration_limit": -1,
             "default_model_key": clip_index.model_key,
         },

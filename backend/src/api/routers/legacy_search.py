@@ -321,7 +321,7 @@ async def search_api(
     # matching, over on-screen text or Vietnamese speech transcripts), so
     # translation is skipped for those modes: translating the query would
     # work against literal signage/labels or the transcript language.
-    should_translate = use_translate and mode not in ("ocr", "asr")
+    should_translate = use_translate and mode not in ("ocr", "asr", "caption", "hierarchical")
 
     start = time.perf_counter()
 
@@ -386,7 +386,7 @@ async def search_api(
                 # OCR-specific columns (see FaissRetrievalSystem._enrich_ocr_hits)
                 "matched_texts", "ocr_score",
                 # ASR-specific columns (see FaissRetrievalSystem._enrich_asr_hits)
-                "asr_score", "segment_id",
+                "asr_score", "segment_id", "playback_start",
             ] if c in results_df.columns]
             records = results_df[cols_to_keep].to_dict(orient="records")
             return [dict_to_result_FAST(rec, paths.keyframes_root, paths.backend_dir, paths.dataset_key) for rec in records]

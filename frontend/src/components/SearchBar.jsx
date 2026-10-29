@@ -1,6 +1,5 @@
-import { Plus, Search, Mic, Zap, Settings2, X, ImagePlus, Palette, ChevronDown, Check, Square, ArrowUp } from "lucide-react";
+import { Plus, Search, Mic, Zap, X, ImagePlus, Palette, ChevronDown, Check, Square, ArrowUp } from "lucide-react";
 import { useEffect, useRef, useState, useCallback } from "react";
-import FusionSettingsModal from "./FusionSettingsModal";
 import AgentReasoningPicker from "./AgentReasoningPicker";
 import "./SearchBar.css";
 import { SEARCH_MODES, resolveSearchMode } from "../config/searchModes";
@@ -69,7 +68,6 @@ function SearchPicker({ kind, label, value, options, onChange, disabled = false 
 
 export default function SearchBar({
   query = "",
-  theme = "dark",
   model,
   mode,
   loading,
@@ -83,7 +81,6 @@ export default function SearchBar({
   onClearContext,
   onStop,
   availableModels = [],
-  semanticModelRoles,
   fusionConfig,
   queryClauses = [""],
   queryConnectors = [],
@@ -92,7 +89,6 @@ export default function SearchBar({
   onModeChange,
   onDurationLimitChange,
   onReasoningToggle,
-  onFusionConfigChange,
   onQueryChange,
   onInlineClauseChange,
   onInsertClauseImages,
@@ -101,7 +97,6 @@ export default function SearchBar({
   onSearch,
 }) {
   const [recording, setRecording] = useState(false);
-  const [fusionModalOpen, setFusionModalOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   // The backend is the only source of truth for loaded indexes. Never show
   // guessed/fallback model keys because selecting one produces an invalid
@@ -116,7 +111,6 @@ export default function SearchBar({
   const inlineInputRefs = useRef([]);
 
   const isTemporal = mode === "temporal";
-  const isFusion = mode === "fusion";
   const isColor = mode === "color";
   const activeModeLabel = SEARCH_MODES.find((item) => item.key === mode)?.label ?? "Semantic";
   const searchPlaceholder = reasoningEnabled ? "Ask the assistant or describe what to find…" : `${activeModeLabel} Search`;
@@ -441,7 +435,7 @@ export default function SearchBar({
                 <span>Reasoning</span>
               </button>
 
-              {!reasoningEnabled && !isFusion && modelOptions.length > 0 && (
+              {!reasoningEnabled && modelOptions.length > 0 && (
                 <SearchPicker kind="model" label="Model" value={model}
                   options={modelOptions.map((modelKey) => ({ value: modelKey, label: modelKey }))}
                   onChange={onModelChange} />
@@ -465,18 +459,6 @@ export default function SearchBar({
 
               {reasoningEnabled && agentConfig && <AgentReasoningPicker config={agentConfig} disabled={loading} />}
 
-              {!reasoningEnabled && isFusion && (
-                <button
-                  type="button"
-                  className={["search-icon-button", "fusion-settings-btn", fusionConfig?.hasConfig ? "has-config" : ""].filter(Boolean).join(" ")}
-                  aria-label="Configure Fusion search"
-                  title="Configure models, methods, and weights for Fusion search"
-                  onClick={() => setFusionModalOpen(true)}
-                  disabled={disabled}
-                >
-                  <Settings2 size={18} />
-                </button>
-              )}
 
             </div>
             <div className="composer-actions">
@@ -506,16 +488,6 @@ export default function SearchBar({
         </div>
       </div>
 
-      <FusionSettingsModal
-        key={fusionModalOpen ? "fusion-open" : "fusion-closed"}
-        open={fusionModalOpen}
-        theme={theme}
-        models={modelOptions}
-        modelRoles={semanticModelRoles}
-        value={fusionConfig}
-        onClose={() => setFusionModalOpen(false)}
-        onSave={(next) => onFusionConfigChange?.({ ...next, hasConfig: true })}
-      />
     </form>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Bot, Check, ChevronRight, LoaderCircle, Plus, Users, Wrench, X } from "lucide-react";
-import { getAgentStatus, streamAgentChat } from "../api/agentAPI";
+import { getAgentStatus, streamAgentChat, getSearchSession, stopSearchSession } from "../api/agentAPI";
 import AssistantMarkdown from "./AssistantMarkdown";
 import "./AgentChat.css";
 
@@ -26,6 +26,11 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
   const [phase, setPhase] = useState("");
   const [error, setError] = useState("");
   const session = useRef(null);
+  const [plans, setPlans] = useState([]);
+  const selectedPool = useRef(null);
+  const [poolSelection, setPoolSelection] = useState(null);
+  const [restoringActive, setRestoringActive] = useState(false);
+  const filterKey = JSON.stringify(videoIds || []);
   const active = useRef(null);
   const viewport = useRef(null);
   const follow = useRef(true);
@@ -66,8 +71,35 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
     }
   }
 
+  useEffect(() => {
+    if (provider !== "codex") return;
+    let cancelled = false;
+    session.current = null; selectedPool.current = null;
+    const id = localStorage.getItem(`ers-search-${dataset}`);
+    Promise.resolve(id ? getSearchSession(id) : null).catch(() => null).then((saved) => {
+      if (cancelled) return;
+      setPoolSelection(null);
+      if (!saved || JSON.stringify(saved.video_ids || []) !== filterKey) {
+        setPlans([]); setRestoringActive(false); return;
+      }
+      session.current = id; setPlans(saved.plans || []); setRestoringActive(Boolean(saved.running));
+    });
+    return () => { cancelled = true; };
+  }, [dataset, provider, filterKey]);
+
+  useEffect(() => {
+    if (busy || !session.current || (!restoringActive && !plans.some((p) => ["queued", "running"].includes(p.status)))) return;
+    let cancelled = false;
+    const timer = setInterval(() => getSearchSession(session.current).then((saved) => {
+      if (!cancelled) { setPlans(saved.plans || []); setRestoringActive(Boolean(saved.running)); }
+    }).catch(() => {}), 1500);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [busy, plans, restoringActive]);
+
   function clearChat() {
-    active.current?.abort(); active.current = null; session.current = null;
+    if (session.current) stopSearchSession(session.current).catch(() => {});
+    localStorage.removeItem(`ers-search-${dataset}`);
+    active.current?.abort(); active.current = null; session.current = null; selectedPool.current = null; setPoolSelection(null); setPlans([]);
     setMessages([]); setError(""); setPhase(""); setBusy(false);
     follow.current = true;
     onBusyChange(false); onNewChat();
@@ -93,13 +125,25 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
         { id, role: "assistant", text: "", tools: [], workers: [] }]);
       onAccepted();
       await streamAgentChat({ message, dataset, provider, model: provider === "codex" ? model || null : null,
-        session_id: session.current, top_k: Math.min(topK, 100), video_ids: videoIds,
+        session_id: session.current, parent_pool_id: selectedPool.current, top_k: Math.min(topK, 100), video_ids: videoIds,
         max_workers: workers, reasoning_effort: reasoningEffort || null,
         images, context_frame_ids: frameIds, search_mode: searchMode, color_cells: colorCells }, {
         signal: controller.signal,
         onEvent(event) {
           if (active.current !== controller || controller.signal.aborted || !mounted.current) return;
-          if (event.type === "session") session.current = event.session_id;
+          if (event.type === "session") {
+            session.current = event.session_id;
+            localStorage.setItem(`ers-search-${dataset}`, event.session_id);
+          }
+          else if (event.type === "plans") setPlans((old) => [...old, ...event.plans]);
+          else if (event.type === "pool") {
+            setPlans((old) => old.map((p) => p.id === event.id ? event : p));
+            if (!selectedPool.current && event.status === "completed") {
+              selectedPool.current = event.id;
+              setPoolSelection(event.id);
+              onResults(event.results, event.plan?.query || message);
+            }
+          }
           else if (event.type === "status") setPhase(event.message);
           else if (event.type === "delta") updateAssistant((item) => ({ ...item, text: item.text + event.text }));
           else if (event.type === "tool_start") {
@@ -140,11 +184,11 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
     }
   }
 
-  useImperativeHandle(ref, () => ({ send, stop: () => { active.current?.abort(); setPhase("Stopped"); }, refresh: refreshStatus }));
+  useImperativeHandle(ref, () => ({ send, stop: () => { if (session.current) stopSearchSession(session.current).catch(() => {}); active.current?.abort(); setPhase("Stopping after active inference…"); }, refresh: refreshStatus }));
 
   return <>
     {open && <section className="agent-panel" aria-label="AI search assistant">
-      <header className="agent-header"><div><Bot size={20} /><div><strong>Assistant activity</strong><small>{dataset.toUpperCase()} · {provider === "demo" ? "scripted demo" : "Codex"} · up to {workers} workers</small></div></div>
+      <header className="agent-header"><div><Bot size={20} /><div><strong>Assistant activity</strong><small>{dataset.toUpperCase()} · {provider === "demo" ? "scripted demo" : "Codex"} · sequential plans</small></div></div>
         <div><button type="button" title="New chat" aria-label="New chat" onClick={clearChat}><Plus size={17} /></button>
           <button type="button" aria-label="Close AI chat" onClick={() => onOpenChange(false)}><X size={17} /></button></div>
       </header>
@@ -154,8 +198,26 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
       }}>
         {!messages.length && <div className="agent-empty"><div className="agent-empty-icon"><Bot size={29} /></div>
           <h2>Bắt đầu từ thanh search</h2><p>Chọn gợi ý để điền vào thanh chính, sau đó nhấn gửi.</p>
-          {["Tìm một cảnh ngoài trời và xem thử các ảnh", "Lấy 12 ảnh rồi nhờ nhiều agent kiểm tra song song", "Chia thành các tác vụ tìm kiếm độc lập rồi tổng hợp"].map((text) =>
+          {["Tìm một cảnh ngoài trời và xem thử các ảnh", "Thử các chiến thuật caption và ASR rồi cho tôi chọn pool", "Tìm hình ảnh trước rồi xếp hạng theo bối cảnh"].map((text) =>
             <button key={text} type="button" onClick={() => onCompose(text)}>{text}<ChevronRight size={14} /></button>)}
+        </div>}
+        {plans.length > 0 && <div className="agent-tools">
+          <strong>Search plans / pools</strong>
+          {plans.map((plan) => <details key={plan.id} open={poolSelection === plan.id}>
+            <summary>{plan.plan?.label || plan.id.slice(0, 8)} · {plan.status}</summary>
+            <pre>{JSON.stringify(plan.plan, null, 2)}</pre>
+            {plan.error && <p role="alert">{plan.error}</p>}
+            {plan.status === "completed" && <>
+              <button type="button" onClick={() => {
+                selectedPool.current = plan.id; setPoolSelection(plan.id);
+                onResults(plan.results || [], plan.plan?.query);
+              }}>Xem pool ({plan.results?.length || 0})</button>
+              <button type="button" onClick={() => {
+                selectedPool.current = plan.id; setPoolSelection(plan.id);
+                onCompose(`Tinh chỉnh pool ${plan.plan?.label || plan.id}: `);
+              }}>Feedback / tạo nhánh</button>
+            </>}
+          </details>)}
         </div>}
         {messages.map((item) => <article key={item.id} className={`agent-message is-${item.role}`}>
           <span className="agent-message-label">{item.role === "user" ? "Bạn" : provider === "demo" ? "Demo assistant" : "Codex"}</span>

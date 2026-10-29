@@ -1,9 +1,10 @@
 # Offline shot caption extraction. Output JSON mirrors the ASR segment layout.
 extraction:
+  shot_source: keyframes  # Reuse the final scenes from keyframe extraction; never detect again.
   shot_model: uva-cv-lab/OmniShotCut_v1.5
   shot_revision: 1bc678977ad48c65d57d600296d95f97c1be293f
   caption_model: OpenGVLab/InternVL3_5-2B
-  caption_max_frames: 16
+  caption_profile: 16x448  # 24x448 | 16x448 | 12x448; maximum per scene input.
   caption_min_color_bins: 5  # Drop sampled frames with <5 occupied bins in the full RGB 8x8x8 histogram.
   caption_batch_size: auto  # 6 requests on one GPU, 12 on two GPUs.
   print_captions: false  # Progress bars by default; enable to print each final caption.
@@ -24,7 +25,6 @@ extraction:
     timelapse_threshold: 1.8
     slow_motion_threshold: 0.6
   language: English
-  max_shot_seconds: 10.0
   min_caption_seconds: 1.0
   frame_sample_fps: 1.5
   max_new_tokens: 220

@@ -4,7 +4,8 @@ export const SEARCH_MODES = Object.freeze([
   { key: "auto", searchMode: "auto", label: "Auto", description: "Detect query intent", shortcut: "Ctrl+3", code: "Digit3" },
   { key: "ocr", searchMode: "ocr", label: "OCR", description: "On-screen text", shortcut: "Ctrl+4", code: "Digit4" },
   { key: "asr", searchMode: "asr", label: "ASR", description: "Spoken content", shortcut: "Ctrl+5", code: "Digit5" },
-  { key: "fusion", searchMode: "fusion", label: "Fusion", description: "Combine sources", shortcut: "Ctrl+6", code: "Digit6" },
+  { key: "caption", searchMode: "caption", label: "Caption", description: "Scene descriptions", shortcut: "Ctrl+6", code: "Digit6" },
+  { key: "hierarchical", searchMode: "hierarchical", label: "Hierarchical", description: "Context and visual ranking", shortcut: "Ctrl+8", code: "Digit8" },
   { key: "color", searchMode: "color", label: "Color", description: "Dominant color grid", shortcut: "Ctrl+7", code: "Digit7" },
 ]);
 

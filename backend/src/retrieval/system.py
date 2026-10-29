@@ -263,7 +263,7 @@ class RetrievalSystem:
         tell "not configured" from "configured but empty" from "ES down".
         """
         report: dict[str, Any] = {}
-        for name in ("ocr", "asr"):
+        for name in ("ocr",):
             pipeline = getattr(self._orchestrator, f"{name}_search_pipeline", None)
             if pipeline is None:
                 report[name] = {
@@ -280,7 +280,15 @@ class RetrievalSystem:
             service = getattr(pipeline.repository, "es", None)
             detail = service.health() if service is not None else {}
             report[name] = {"configured": True, "available": True, **detail}
+        if hasattr(self._orchestrator, "mapped_search"):
+            report.update(self._orchestrator.mapped_search.health())
         return report
+
+    def search_hierarchical(self, **kwargs):
+        return self._orchestrator.mapped_search.search(**kwargs)
+
+    def search_caption(self, query, top_k=10):
+        return self._orchestrator.run_search(query, mode="caption", top_k=top_k)
 
     def search_advanced(
         self,
@@ -444,7 +452,7 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
     semantic_search = build_semantic_search_pipeline(index)
     temporal_search = build_temporal_search_pipeline(index)
     ocr_pipeline = _build_ocr_pipeline_or_none(config)
-    asr_pipeline = _build_asr_pipeline_or_none(config)
+    asr_pipeline = None  # Online ASR now uses mapped embeddings.
     translator = _build_translator_or_none(config)
 
     # Optional query-enrichment LLM (paraphrase/temporal-split/fusion
@@ -470,4 +478,10 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
         local_semantic_model=fusion_cfg.get("local_semantic_model"),
         global_semantic_model=fusion_cfg.get("global_semantic_model"),
     )
+    from src.retrieval.hierarchical import HierarchicalSearch
+    root = Path(config.get("segment_data", {}).get("data_root", BACKEND_DIR.parent / "data"))
+    if not root.is_absolute():
+        root = BACKEND_DIR / root
+    orchestrator.mapped_search = HierarchicalSearch(orchestrator, root,
+        config.get("dataset_key", "v3c"), config.get("segment_data", {}).get("device", "cpu"))
     return RetrievalSystem(orchestrator, translator=translator, translate_cfg=config.get("translate"))

@@ -175,9 +175,35 @@ class ElasticsearchService:
     # Search
     # ------------------------------------------------------------------
 
-    def search(self, query: str, size: int = 10) -> list[dict]:
+    def match_frame_keys(self, text: str, keys: list[tuple[str, str]], match: str = 'phrase') -> set:
+        """Filter only the supplied candidate pool; no global top-k truncation."""
+        matched = set()
+        for offset in range(0, len(keys), 200):
+            clauses = [{"bool": {"filter": [{"term": {"video_id": video}},
+                        {"terms": {"keyframe_id": list({frame, str(int(frame)), str(int(frame)).zfill(6)})}}]}} for video, frame in keys[offset:offset+200]]
+            if not clauses:
+                continue
+            predicate = ({"match_phrase": {"texts": {"query": text, "slop": 0}}}
+                         if match == 'phrase' else {"match": {"texts": {"query": text, "operator": "and"}}})
+            response = self.client.search(index=self.index_name, size=1000, query={"bool": {
+                "filter": [{"bool": {"should": clauses, "minimum_should_match": 1}}], "must": [predicate]}})
+            for hit in response['hits']['hits']:
+                row = hit['_source']
+                matched.add((str(row['video_id']), int(row['keyframe_id'])))
+        return matched
+
+    def search(self, query: str, size: int = 10, match: str | None = None) -> list[dict]:
         from src.retrieval.retriever.common.video_filter import video_ids_context
         video_ids = video_ids_context.get()
+        if match is not None:
+            if match not in ('terms', 'phrase'):
+                raise ValueError('Unsupported lexical match')
+            predicate = ({'match_phrase': {self.search_field: {'query': query, 'slop': 0}}}
+                         if match == 'phrase' else {'match': {self.search_field: {'query': query, 'operator': 'and'}}})
+            response = self.client.search(index=self.index_name, size=size, query={'bool': {
+                'filter': [{'terms': {'video_id': sorted(video_ids)}}] if video_ids else [],
+                'must': [predicate]}})
+            return response['hits']['hits']
         response = self.client.search(
             index=self.index_name,
             query={

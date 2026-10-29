@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from src.retrieval.retriever.asr_search.pipeline.search import SearchPipeline as ASRSearchPipeline
     from src.query_enrichment.llm_query_engine import LLMQueryEngine
 
-SearchMode = Literal["semantic", "temporal", "ocr", "asr", "auto"]
+SearchMode = Literal["semantic", "temporal", "ocr", "asr", "caption", "hierarchical", "auto"]
 
 
 def split_temporal_events(query: str) -> list[str]:
@@ -426,6 +426,11 @@ class Orchestrator:
                 model). Bỏ trống = model mặc định. Không ảnh hưởng OCR/ASR
                 (không dùng embedding model).
         """
+        if mode in ("asr", "caption", "hierarchical") and hasattr(self, "mapped_search"):
+            plan = QueryPlan(query=query, mode=mode, use_split=False, events=[[query]])
+            result = (self.mapped_search.search(query=query, top_k=top_k, model_key=model_key)
+                      if mode == "hierarchical" else self.mapped_search.segment_search(mode, query, top_k))
+            return result, plan
         plan = self.build_query_plan(query, mode, use_split, reasoning=reasoning)
         if not plan.events:
             return pd.DataFrame(), plan

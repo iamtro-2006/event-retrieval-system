@@ -2,7 +2,7 @@ const BASE = (import.meta.env?.VITE_API_BASE_URL || "http://127.0.0.1:8000").rep
 
 export async function getAgentStatus(signal) {
   const response = await fetch(`${BASE}/api/agent/status`, { signal });
-  if (!response.ok) throw new Error("Agent endpoint unavailable. Start the mock server on port 8001 and use npm run dev:mock.");
+  if (!response.ok) throw new Error("Agent endpoint unavailable. Start the backend and check /api/agent/status.");
   return response.json();
 }
 
@@ -44,4 +44,13 @@ export async function streamAgentChat(payload, { signal, onEvent }) {
     await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
+}
+
+export async function getSearchSession(id) {
+  const response = await fetch(`${BASE}/api/agent/sessions/${encodeURIComponent(id)}`);
+  if (!response.ok) throw new Error("Search session unavailable");
+  return response.json();
+}
+export async function stopSearchSession(id) {
+  return fetch(`${BASE}/api/agent/sessions/${encodeURIComponent(id)}/stop`, { method: "POST" });
 }
