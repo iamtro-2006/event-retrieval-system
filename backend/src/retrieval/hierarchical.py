@@ -4,17 +4,17 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from threading import RLock
 
 import numpy as np
 import pandas as pd
 
-from src.retrieval.segment_data import SegmentMaps, fingerprint, load_segments
+from src.retrieval.segment_data import (
+    SegmentMaps, build_maps, fingerprint, load_indexable_segments, load_segments,
+)
 from src.retrieval.retriever.common.video_filter import video_ids_context
 
 log = logging.getLogger(__name__)
-_ENCODERS = {}
-_ENCODER_LOCK = RLock()
+QWEN_MODEL_ID = 'Qwen/Qwen3-VL-Embedding-2B'
 
 
 def weighted_scores(matrix, weights=None, operation='weighted'):
@@ -31,31 +31,36 @@ def weighted_scores(matrix, weights=None, operation='weighted'):
 class SegmentIndex:
     def __init__(self, root, dataset, source):
         import faiss
-        base = root / 'database' / f'{source}_{dataset}'
-        version = (base / 'CURRENT').read_text().strip()
-        if not version.isalnum():
-            raise ValueError('Invalid segment index version')
-        folder = base / version
+        folder = (root / 'database' / 'faiss_qwen3_vl_embedding_2b_vllm'
+                  / source / dataset.upper())
         meta = json.loads((folder / 'metadata.json').read_text(encoding='utf-8'))
         self.records = meta['records']
-        if fingerprint(list(load_segments(root, dataset, source))) != meta['source_hash']:
+        source_records = list(load_segments(root, dataset, source))
+        indexable_records = load_indexable_segments(root, dataset, source)
+        if fingerprint(indexable_records) != meta['source_hash']:
             raise RuntimeError(f'Stale {source} index; rebuild segment data')
         self.model_name = meta['model']
-        self.index = faiss.read_index(str(folder / 'segments.faiss'))
-        self.vectors = np.load(folder / 'vectors.npy', mmap_mode='r')
+        if meta.get('engine') != 'vllm' or self.model_name != QWEN_MODEL_ID:
+            raise RuntimeError(f'{source} index must use {QWEN_MODEL_ID} via vLLM; rebuild segment data')
+        self.index = faiss.read_index(str(folder / f'{source}.faiss'))
+        self.vectors = np.load(folder / 'vectors_fp32.npy', mmap_mode='r')
         if len(self.records) != self.index.ntotal or self.vectors.shape != (len(self.records), self.index.d):
             raise RuntimeError('Segment index/metadata/vector mismatch')
-        self.maps = SegmentMaps(root, dataset, source, self.records)
+        self.maps = SegmentMaps(root, dataset, source, source_records)
         self.by_id = {r['segment_id']: i for i, r in enumerate(self.records)}
 
 
 class HierarchicalSearch:
-    def __init__(self, orchestrator, root, dataset, encoder_device='cpu'):
+    def __init__(self, orchestrator, root, dataset):
         self.orchestrator = orchestrator
         self.root, self.dataset = Path(root), dataset
-        self.sources, self.errors, self.encoders = {}, {}, _ENCODERS
-        self.device = encoder_device
-        self.lock = _ENCODER_LOCK
+        self.sources, self.errors = {}, {}
+        try:
+            counts = build_maps(self.root, self.dataset)
+            log.info('Built startup segment maps dataset=%s asr=%d caption=%d',
+                     self.dataset, counts['asr'], counts['caption'])
+        except Exception as exc:
+            log.warning('Could not build startup segment maps for %s: %s', self.dataset, exc)
         for source in ('asr', 'caption'):
             try:
                 self.sources[source] = SegmentIndex(self.root, dataset, source)
@@ -71,15 +76,20 @@ class HierarchicalSearch:
     def encode(self, source, queries):
         if source not in self.sources:
             raise RuntimeError(self.errors.get(source, f'{source} unavailable'))
-        name = self.sources[source].model_name
-        cache_key = (name, self.device)
-        with self.lock:
-            if cache_key not in self.encoders:
-                from sentence_transformers import SentenceTransformer
-                log.info('Loading shared text encoder %s on %s', name, self.device)
-                self.encoders[cache_key] = SentenceTransformer(name, device=self.device)
-                log.info('Text encoder ready: %s', name)
-            return np.asarray(self.encoders[cache_key].encode(queries, normalize_embeddings=True), dtype='float32')
+        # Segment documents and their search queries must share the same Qwen
+        # vLLM encoder and embedding space as visual semantic retrieval.
+        index = self.orchestrator.semantic_search._resolve()
+        model = index.model
+        if (index.model_name != QWEN_MODEL_ID or index.backend != 'qwen3_vl_embedding'
+                or getattr(model, 'engine', None) != 'vllm'):
+            raise RuntimeError('Caption/ASR search requires the Qwen3-VL vLLM visual index')
+        encoded = model.encode_text(list(queries))
+        vectors = np.asarray(encoded.detach().cpu().numpy(), dtype=np.float32)
+        if vectors.shape != (len(queries), self.sources[source].index.d):
+            raise RuntimeError(f'Qwen text embedding shape mismatch: {vectors.shape}')
+        if not np.isfinite(vectors).all():
+            raise RuntimeError('Qwen text embeddings contain NaN/Inf')
+        return np.ascontiguousarray(vectors)
 
     def hits(self, source, queries, top_k, weights=None, operation='weighted'):
         vectors = self.encode(source, queries)

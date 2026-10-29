@@ -9,13 +9,17 @@ data/
 ├── videos/{V3C,LHE}/<video_id>.*
 ├── keyframes/{V3C,LHE}/<video_id>/<frame>.jpg
 ├── map_keyframes/{V3C,LHE}/<video_id>.csv
-├── embeddings/embeddings_qwen3_vl_embedding_2b_vllm/{V3C,LHE}/<video_id>/<frame>.npy
-└── database/
-    ├── faiss_qwen3_vl_embedding_2b_vllm/       # V3C
-    └── faiss_qwen3_vl_embedding_2b_lhe_vllm/   # LHE
+├── embeddings/embeddings_qwen3_vl_embedding_2b_vllm/
+│   ├── {V3C,LHE}/<video_id>/<frame>.npy
+│   ├── asr/{V3C,LHE}/<video_id>.npy
+│   └── caption/{V3C,LHE}/<video_id>.npy
+└── database/faiss_qwen3_vl_embedding_2b_vllm/
+    ├── keyframe/{V3C,LHE}/keyframe.faiss
+    ├── caption/{V3C,LHE}/caption.faiss
+    └── asr/{V3C,LHE}/asr.faiss
 ```
 
-`vlm_keyframes.ipynb` tạo keyframe, map và scene của LHE. PKL PE-Core mà notebook tạo ra không thay cho file Qwen `.npy`. Dùng `extract_embedding.ipynb` để tạo vector Qwen vLLM cho từng ảnh keyframe; đặt output vào đúng thư mục dataset ở trên. Không trộn vector của V3C và LHE.
+`vlm_keyframes.ipynb` tạo keyframe, map và scene của LHE. PKL PE-Core mà notebook tạo ra không thay cho file Qwen `.npy`. Dùng `extract_embedding.ipynb` để tạo vector Qwen vLLM cho từng ảnh keyframe, và `embed_asr_caption_kaggle.ipynb` để tạo ma trận từng video, tên trùng ID JSON: `asr/V3C/00001.npy` hoặc `caption/V3C/00001.npy`. Không trộn vector của V3C và LHE.
 
 ## Build FAISS và vector cache
 
@@ -28,7 +32,7 @@ python -m scripts.retrieval.run --task build-index --dataset lhe
 python -m scripts.retrieval.run --task build-vector-cache --config configs/app.yaml --dataset lhe --dtype float32
 ```
 
-`configs/indexing.yaml` giới hạn input V3C ở source group `V3C`, LHE ở `LHE`. Nếu dataset chưa có vector, lệnh build báo lỗi thay vì tạo index trộn hoặc rỗng. `configs/app.yaml` khai báo `index_dir` chưa có hậu tố engine; API thêm `_vllm` và nạp đúng index riêng cho từng dataset. V3C vẫn là dataset mặc định.
+`configs/indexing.yaml` giới hạn input V3C ở source group `V3C`, LHE ở `LHE`. Nếu dataset chưa có vector, lệnh build báo lỗi thay vì tạo index trộn hoặc rỗng. API nạp index riêng từng dataset từ `faiss_qwen3_vl_embedding_2b_vllm/keyframe/<DATASET>/`; ASR/caption ở các thư mục cùng cấp tương ứng. V3C vẫn là dataset mặc định.
 
 ## Trích xuất ASR
 

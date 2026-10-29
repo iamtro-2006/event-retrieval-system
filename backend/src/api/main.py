@@ -78,8 +78,7 @@ def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[s
         merged = {**model, **overrides[model_key]}
         if not merged.get("enabled", True):
             continue
-        # A dataset only needs to declare its index directory. The filenames
-        # are shared by every index built with scripts/retrieval/run.py.
+        # Each dataset declares the final keyframe index directory explicitly.
         index_dir = merged.pop("index_dir", None)
         if merged.get("backend") == "qwen3_vl_embedding":
             from src.embedding_extraction.models.backends.qwen_vllm import resolve_engine
@@ -87,11 +86,9 @@ def _dataset_runtime_config(base: dict[str, Any], dataset_key: str, spec: dict[s
             extra = dict(merged.get("model_extra") or {})
             extra["engine"] = resolve_engine(extra.get("engine"), extra.get("vllm_url"))
             merged["model_extra"] = extra
-            if index_dir:
-                index_dir = str(index_dir).rstrip("/\\") + "_" + extra["engine"]
         if index_dir:
             index_dir = str(index_dir).rstrip("/\\")
-            merged["index_path"] = f"{index_dir}/keyframes.faiss"
+            merged["index_path"] = f"{index_dir}/keyframe.faiss"
             merged["metadata_path"] = f"{index_dir}/metadata.csv"
             merged["vector_cache_path"] = f"{index_dir}/vectors_fp32.npy"
         models.append(merged)

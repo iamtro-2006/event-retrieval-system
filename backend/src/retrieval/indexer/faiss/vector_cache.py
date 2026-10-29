@@ -92,6 +92,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build a contiguous FAISS vector cache .npy file.")
     parser.add_argument("--config", default="configs/app.yaml", help="Path to backend app.yaml")
     parser.add_argument("--output", default=None, help="Override output .npy path")
+    parser.add_argument("--index-path", default=None, help="Override the input FAISS index path")
     parser.add_argument("--dtype", default=None, help="float16 or float32")
     parser.add_argument("--batch-size", type=int, default=50_000)
     parser.add_argument("--no-normalize", action="store_true", help="Do not L2-normalize reconstructed vectors")
@@ -123,7 +124,7 @@ def main() -> None:
         faiss_cfg = cfg.get("faiss", {})
         model_cfg = cfg.get("model", {})
 
-    index_path = resolve_backend_path(backend_dir, faiss_cfg["index_path"])
+    index_path = resolve_backend_path(backend_dir, args.index_path or faiss_cfg["index_path"])
 
     output_path = (
         Path(args.output)

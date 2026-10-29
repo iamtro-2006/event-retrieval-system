@@ -73,9 +73,7 @@ def main() -> None:
                 raise ValueError(f"Unknown dataset '{dataset_key}'. Available datasets: {sorted(available)}")
             model_key = selected["model_key"]
             index_dir = available[dataset_key]["semantic_models"][model_key]["index_dir"]
-            engine = selected.get("model_extra", {}).get("engine", "vllm")
-            index_dir = str(index_dir).rstrip("/\\") + "_" + engine
-            index_path = f"{index_dir}/keyframes.faiss"
+            index_path = f"{str(index_dir).rstrip('/\\\\')}/keyframe.faiss"
             cache_path = f"{index_dir}/vectors_fp32.npy"
         faiss_cfg = {
             "index_path": index_path,
@@ -90,7 +88,7 @@ def main() -> None:
             if dataset_key not in available:
                 raise ValueError(f"Unknown dataset '{dataset_key}'. Available datasets: {sorted(available)}")
             index_dir = available[dataset_key]["index"]["output_dir"]
-            faiss_cfg = {"index_path": f"{index_dir}/keyframes.faiss",
+            faiss_cfg = {"index_path": f"{index_dir}/keyframe.faiss",
                          "vector_cache_path": f"{index_dir}/vectors_fp32.npy",
                          "vector_cache_dtype": "float32"}
         else:

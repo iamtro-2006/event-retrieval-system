@@ -23,7 +23,10 @@ def collect_embedding_files(embeddings_root: str | Path) -> list[Path]:
 	if not embeddings_root.exists():
 		raise FileNotFoundError(f"Embeddings root not found: {embeddings_root}")
 
-	return sorted(embeddings_root.rglob("*.npy"))
+	# Shared Qwen storage also contains source-specific ASR/caption trees.
+	# The visual index builder must only ingest dataset/video/frame vectors.
+	return sorted(path for path in embeddings_root.rglob("*.npy")
+	              if path.relative_to(embeddings_root).parts[0].casefold() not in {"asr", "caption"})
 
 
 def parse_keyframe_stem(stem: str) -> dict:

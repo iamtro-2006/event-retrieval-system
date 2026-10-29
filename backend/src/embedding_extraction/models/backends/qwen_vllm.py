@@ -110,7 +110,9 @@ class QwenVllmEncoder:
     def encode_text(self, texts: list[str]) -> torch.Tensor:
         if not texts:
             return torch.empty((0, EMBEDDING_DIM), dtype=torch.float32)
-        with ThreadPoolExecutor(max_workers=len(texts)) as pool:
+        # Bound in-flight requests for corpus indexing; large ASR/caption
+        # collections can contain many thousands of segments.
+        with ThreadPoolExecutor(max_workers=min(8, len(texts))) as pool:
             vectors = list(pool.map(
                 lambda text: self._embed([{"type": "text", "text": text}]), texts
             ))

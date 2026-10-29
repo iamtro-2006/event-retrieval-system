@@ -483,5 +483,5 @@ def build_system(config: dict[str, Any]) -> RetrievalSystem:
     if not root.is_absolute():
         root = BACKEND_DIR / root
     orchestrator.mapped_search = HierarchicalSearch(orchestrator, root,
-        config.get("dataset_key", "v3c"), config.get("segment_data", {}).get("device", "cpu"))
+        config.get("dataset_key", "v3c"))
     return RetrievalSystem(orchestrator, translator=translator, translate_cfg=config.get("translate"))

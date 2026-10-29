@@ -10,27 +10,27 @@ datasets:
       root: ../data
       keyframes_root: ../data/keyframes
       videos_root: ../data/videos
-      map_keyframes_root: ../data/map_data/map_keyframes
+      map_keyframes_root: ../data/map_keyframes
       database_root: ../data/database
       color_index_path: ../data/database/color_5x5.npz
       ocr_index: ocr_v3c
       asr_index: asr_v3c
       semantic_models:
         qwen3-vl-embedding-2b:
-          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b
+          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C
     lhe:
       label: LHE
       root: ../data
       keyframes_root: ../data/keyframes
       videos_root: ../data/videos
-      map_keyframes_root: ../data/map_data/map_keyframes
+      map_keyframes_root: ../data/map_keyframes
       database_root: ../data/database
       color_index_path: ../data/database/color_5x5_lhe.npz
       ocr_index: ocr_lhe
       asr_index: asr_lhe
       semantic_models:
         qwen3-vl-embedding-2b:
-          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_lhe
+          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/LHE
 
 # Shared model settings and fallback paths for direct tooling. The API replaces
 # index paths with each dataset's semantic_models.<model_key>.index_dir.
@@ -43,14 +43,15 @@ semantic:
       model_name: Qwen/Qwen3-VL-Embedding-2B
       model_extra:
         engine: vllm          # embeddings in data/embeddings were produced by vLLM
-      index_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframes.faiss
-      metadata_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/metadata.csv
+      index_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C/keyframe.faiss
+      metadata_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C/metadata.csv
+      vector_cache_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C/vectors_fp32.npy
       device: auto
       precision: fp16
       normalize: false  # The Qwen adapter returns L2-normalized vectors.
       ef_search: 399
       faiss_threads: 8
-      vector_cache_mode: ram
+      vector_cache_mode: memmap
       vector_cache_dtype: float32
       allow_npy_fallback: false
 
@@ -60,7 +61,6 @@ asr: null  # Legacy ES scripts remain; online ASR uses embeddings.
 
 segment_data:
   data_root: ../data
-  device: cpu
 
 color:
   index_path: ../data/database/color_5x5.npz
@@ -68,7 +68,7 @@ color:
 paths:
   keyframes_root: ../data/keyframes
   videos_root: ../data/videos
-  map_keyframe_path: ../data/map_data/map_keyframes
+  map_keyframe_path: ../data/map_keyframes
 
 search:
   candidate_multiplier: 4

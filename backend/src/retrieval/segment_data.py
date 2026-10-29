@@ -12,7 +12,7 @@ FIELDS = ['segment_id', 'start_time', 'end_time', 'keyframe_id', 'relation', 'of
 
 
 def choose_asr_fallback(times, values, start, end, tau=5., right_weight=2.):
-    """Continuous log distance; a missing candidate has cost +infinity. Ties prefer left."""
+    """Legacy single-frame asymmetric fallback retained for compatibility."""
     import bisect
     if not math.isfinite(tau) or tau <= 0 or not math.isfinite(right_weight) or right_weight < 1:
         raise ValueError('tau must be positive and right_weight must be at least one')
@@ -27,12 +27,27 @@ def choose_asr_fallback(times, values, start, end, tau=5., right_weight=2.):
     return (*values[right], 'next', right_cost)
 
 
-def load_segments(root: Path, dataset: str, source: str):
+def choose_asr_fallback_frames(times, values, start, end):
+    """Return nearest keyframes on both sides of an unmatched ASR segment."""
+    import bisect
+    left = bisect.bisect_right(times, start) - 1
+    right = bisect.bisect_left(times, end)
+    result = []
+    if left >= 0:
+        result.append((*values[left], 'previous', max(0., start - times[left])))
+    if right < len(times) and right != left:
+        result.append((*values[right], 'next', max(0., times[right] - end)))
+    return result
+
+
+def load_segment_files(root: Path, dataset: str, source: str):
+    """Load segment records grouped by source JSON filename (without suffix)."""
     folder = root / ('captions' if source == 'caption' else 'asr') / dataset.upper()
     for path in sorted(folder.glob('*.json')):
         records = json.loads(path.read_text(encoding='utf-8'))
         if isinstance(records, dict):
             records = records.get('segments', [])
+        file_records = []
         for number, record in enumerate(records):
             start = float(record.get('start', record.get('start_time', 0)))
             end = float(record.get('end', record.get('end_time', start)))
@@ -43,11 +58,26 @@ def load_segments(root: Path, dataset: str, source: str):
                 continue
             video = str(record.get('video_id', path.stem))
             identity = f'{dataset.lower()}:{video}:{source}:{number:06d}'
-            yield dict(segment_id=identity, video_id=video, source=source, text=text,
-                       start_time=start, end_time=end,
-                       speed=('timelapse' if 'timelapse' in text.lower() else
-                              'slow_motion' if 'slow-motion' in text.lower() else 'normal')
-                       if source == 'caption' else 'unknown')
+            file_records.append(dict(segment_id=identity, video_id=video, source=source, text=text,
+                                     start_time=start, end_time=end,
+                                     speed=('timelapse' if 'timelapse' in text.lower() else
+                                            'slow_motion' if 'slow-motion' in text.lower() else 'normal')
+                                     if source == 'caption' else 'unknown'))
+        yield path.stem, file_records
+
+
+def load_segments(root: Path, dataset: str, source: str):
+    for _, records in load_segment_files(root, dataset, source):
+        yield from records
+
+
+def load_indexable_segments(root: Path, dataset: str, source: str):
+    """Load index documents, omitting caption shots with no mapped keyframe."""
+    records = list(load_segments(root, dataset, source))
+    if source != 'caption' or not records:
+        return records
+    maps = SegmentMaps(root, dataset, source, records)
+    return [record for record in records if maps.forward.get(record['segment_id'])]
 
 
 def fingerprint(records):
@@ -55,62 +85,121 @@ def fingerprint(records):
 
 
 def build_maps(root: Path, dataset: str, tau=5., right_weight=2.):
-    """Use frames inside [start,end); ASR fallback minimizes asymmetric log distance."""
+    """Map captions to in-shot frames plus nearest unassigned boundary frames.
+
+    ASR segments map to one representative frame in every overlapping caption
+    shot. Segments outside all shots map to their nearest surrounding frames.
+    """
     if not math.isfinite(tau) or tau <= 0 or not math.isfinite(right_weight) or right_weight < 1:
         raise ValueError('Invalid fallback log parameters')
     import bisect
-    import shutil
     target = root / 'map_data'
-    frame_folder = target / 'map_keyframes' / dataset.upper()
-    frame_folder.mkdir(parents=True, exist_ok=True)
-    for old in (root / 'map_keyframes' / dataset.upper()).glob('*.csv'):
-        if not (frame_folder / old.name).exists():
-            shutil.copy2(old, frame_folder / old.name)
+    frame_folder = root / 'map_keyframes' / dataset.upper()
+    if not frame_folder.exists():
+        raise FileNotFoundError(f'Missing keyframe maps for {dataset}: {frame_folder}')
     frames = {}
     for path in sorted(frame_folder.glob('*.csv')):
         with path.open(encoding='utf-8-sig', newline='') as stream:
             rows = list(csv.DictReader(stream))
-        values = sorted((float(r['timestamp_sec']), r['keyframe_id']) for r in rows)
+        values = sorted((float(r['timestamp_sec']), str(r['keyframe_id'])) for r in rows)
         frames[path.stem] = ([v[0] for v in values], values)
-    report = {}
-    for source in ('asr', 'caption'):
-        records = list(load_segments(root, dataset, source))
-        groups = defaultdict(list)
-        for segment in records:
-            groups[segment['video_id']].append(segment)
+
+    caption_records = list(load_segments(root, dataset, 'caption'))
+    asr_records = list(load_segments(root, dataset, 'asr'))
+    caption_groups = defaultdict(list)
+    asr_groups = defaultdict(list)
+    for segment in caption_records:
+        caption_groups[segment['video_id']].append(segment)
+    for segment in asr_records:
+        asr_groups[segment['video_id']].append(segment)
+
+    def write_source(source, records, groups, rows_by_video, policy):
         folder = target / f'map_{source}' / dataset.upper()
         folder.mkdir(parents=True, exist_ok=True)
         for video, segments in groups.items():
             if video not in frames:
                 raise ValueError(f'Missing keyframe map for {dataset}/{video}')
-            times, values = frames[video]
             path = folder / f'{video}.csv'
             temporary = path.with_suffix('.csv.tmp')
             with temporary.open('w', encoding='utf-8', newline='') as stream:
                 writer = csv.DictWriter(stream, fieldnames=FIELDS)
                 writer.writeheader()
                 for segment in segments:
-                    lo = bisect.bisect_left(times, segment['start_time'])
-                    hi = bisect.bisect_left(times, segment['end_time'])
-                    matches = [(timestamp, key, 'inside', 0.) for timestamp, key in values[lo:hi]]
-                    if not matches and source == 'asr':
-                        fallback = choose_asr_fallback(times, values, segment['start_time'], segment['end_time'], tau, right_weight)
-                        if fallback is not None:
-                            matches = [fallback]
+                    matches = rows_by_video.get(segment['segment_id'], [])
                     if not matches:
-                        matches = [(None, '', 'unmapped', '')]
-                    for timestamp, key, relation, cost in matches:
+                        matches = [(None, '', 'unmapped', '', '')]
+                    for timestamp, key, relation, offset, cost in matches:
                         writer.writerow({k: segment[k] for k in ('segment_id', 'start_time', 'end_time')} |
                             {'keyframe_id': key, 'relation': relation,
-                             'offset_seconds': max(0., segment['start_time']-timestamp, timestamp-segment['end_time']) if timestamp is not None else '',
-                             'selection_cost': cost})
+                             'offset_seconds': offset, 'selection_cost': cost})
             temporary.replace(path)
-        # Commit manifest last; online loader rejects stale source data.
-        (folder / 'manifest.json').write_text(json.dumps({'source_hash': fingerprint(records),
-            'mapping_policy': 'inside_then_log_v1' if source == 'asr' else 'inside_v1',
-            'fallback_tau_seconds': tau, 'fallback_right_weight': right_weight}), encoding='utf-8')
-        report[source] = len(records)
-    return report
+        (folder / 'manifest.json').write_text(json.dumps({
+            'source_hash': fingerprint(records), 'mapping_policy': policy,
+        }), encoding='utf-8')
+        return len(records)
+
+    caption_rows = defaultdict(list)
+    for video, segments in caption_groups.items():
+        if video not in frames:
+            raise ValueError(f'Missing keyframe map for {dataset}/{video}')
+        times, values = frames[video]
+        covered = set()
+        for segment in segments:
+            lo = bisect.bisect_left(times, segment['start_time'])
+            hi = bisect.bisect_left(times, segment['end_time'])
+            for timestamp, key in values[lo:hi]:
+                caption_rows[segment['segment_id']].append((timestamp, key, 'inside', 0., 0.))
+                covered.add(key)
+        # Assign every frame outside all caption shots to the closest shot
+        # boundary, preserving frames at their nearest caption in a gap.
+        for timestamp, key in values:
+            if key in covered:
+                continue
+            segment = min(segments, key=lambda item: min(
+                abs(timestamp - item['start_time']), abs(timestamp - item['end_time'])))
+            offset = min(abs(timestamp - segment['start_time']), abs(timestamp - segment['end_time']))
+            relation = 'before' if timestamp < segment['start_time'] else 'after'
+            caption_rows[segment['segment_id']].append((timestamp, key, relation, offset, offset))
+
+    caption_count = write_source('caption', caption_records, caption_groups, caption_rows,
+                                 'inside_plus_nearest_boundary_v2')
+
+    # ASR shot representatives are selected from the frames already assigned
+    # to each caption shot. Use the frame nearest the overlap midpoint.
+    caption_frames_by_video = defaultdict(list)
+    for segment in caption_records:
+        for timestamp, key, *_ in caption_rows[segment['segment_id']]:
+            caption_frames_by_video[segment['video_id']].append((segment, timestamp, key))
+
+    asr_rows = defaultdict(list)
+    for video, segments in asr_groups.items():
+        if video not in frames:
+            raise ValueError(f'Missing keyframe map for {dataset}/{video}')
+        times, values = frames[video]
+        shots = caption_groups.get(video, [])
+        for segment in segments:
+            overlapping = [shot for shot in shots if
+                           segment['start_time'] < shot['end_time'] and
+                           segment['end_time'] > shot['start_time']]
+            if overlapping:
+                for shot in overlapping:
+                    left = max(segment['start_time'], shot['start_time'])
+                    right = min(segment['end_time'], shot['end_time'])
+                    midpoint = (left + right) / 2
+                    representatives = [item for item in caption_frames_by_video[video]
+                                       if item[0]['segment_id'] == shot['segment_id']]
+                    if representatives:
+                        _, timestamp, key = min(representatives, key=lambda item: abs(item[1] - midpoint))
+                        asr_rows[segment['segment_id']].append((timestamp, key, 'shot',
+                                                                abs(timestamp - midpoint), 0.))
+                continue
+            for timestamp, key, relation, offset in choose_asr_fallback_frames(
+                    times, values, segment['start_time'], segment['end_time']):
+                asr_rows[segment['segment_id']].append((timestamp, key, relation, offset, offset))
+
+    asr_count = write_source('asr', asr_records, asr_groups, asr_rows,
+                             'shot_representative_or_two_sided_v2')
+    return {'asr': asr_count, 'caption': caption_count}
 
 
 class SegmentMaps:
@@ -120,8 +209,10 @@ class SegmentMaps:
         self.relations = defaultdict(dict)
         folder = root / 'map_data' / f'map_{source}' / dataset.upper()
         manifest = json.loads((folder / 'manifest.json').read_text())
-        if source == 'asr' and manifest.get('mapping_policy') != 'inside_then_log_v1':
-            raise RuntimeError('ASR mapping policy changed; rebuild maps with scripts.build_segment_data --maps-only')
+        expected_policy = ('shot_representative_or_two_sided_v2' if source == 'asr'
+                           else 'inside_plus_nearest_boundary_v2')
+        if manifest.get('mapping_policy') != expected_policy:
+            raise RuntimeError(f'{source} mapping policy changed; rebuild maps with scripts.build_segment_data --maps-only')
         if manifest['source_hash'] != fingerprint(records):
             raise RuntimeError(f'Stale {source} mapping; rebuild maps and segment indexes')
         known = {r['segment_id'] for r in records}

@@ -26,6 +26,8 @@ async def serve(config):
         sys.path.insert(0, str(backend))
     os.environ.update(ES_HOST='127.0.0.1', ES_PORT='9200', ES_SCHEME='http',
                       CONFIG_PATH=str(config['app_config']), PYTHONUNBUFFERED='1')
+    if config.get('build_segment_indexes'):
+        os.environ['QWEN_EMBEDDING_ENGINE'] = 'vllm'
 
     def launch(label, command, env=None):
         process = subprocess.Popen(command, cwd=backend, env=env or os.environ.copy(),
@@ -71,6 +73,24 @@ async def serve(config):
         if config.get('vllm_command'):
             model = launch('visual-encoder', config['vllm_command'])
             await ready(config.get('vllm_ready_url', 'http://127.0.0.1:8002/v1/models'), model, 600)
+        if config.get('build_segment_indexes'):
+            for dataset in config['datasets']:
+                command = [
+                    sys.executable, '-u', '-m', 'scripts.build_segment_data',
+                    '--dataset', dataset,
+                    '--data-root', str(config['data_root']),
+                    '--model', config.get('segment_model', 'Qwen/Qwen3-VL-Embedding-2B'),
+                    '--batch-size', str(config.get('segment_batch_size', 8)),
+                    '--sources', *config.get('segment_sources', ['asr', 'caption']),
+                ]
+                if config.get('segment_embeddings_root'):
+                    command += ['--embeddings-root', str(config['segment_embeddings_root'])]
+                builder = launch(f'segment-index-{dataset}', command)
+                while builder.poll() is None:
+                    await asyncio.sleep(1)
+                children.remove((f'segment-index-{dataset}', builder))
+                if builder.returncode:
+                    raise RuntimeError(f'Segment index build failed for {dataset}, code={builder.returncode}')
         # This is a full local OCR seed, explicitly recreate to avoid duplicated documents.
         for dataset in config['datasets']:
             seed = launch(f'ocr-seed-{dataset}', [sys.executable, '-u', '-m', 'scripts.ocr.index.run', '--dataset', dataset, '--recreate'])
