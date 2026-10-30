@@ -8,14 +8,14 @@ datasets:
       map_keyframes_root: ../data/map_keyframes
       source_groups: [V3C]
       index:
-        output_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C
+        output_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C_vllm
     lhe:
       keyframes_root: ../data/keyframes
       embeddings_root: ../data/embeddings/embeddings_qwen3_vl_embedding_2b_vllm/keyframe
       map_keyframes_root: ../data/map_keyframes
       source_groups: [LHE]
       index:
-        output_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/LHE
+        output_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/LHE_vllm
 
 # Defaults for direct pipeline callers; the dataset entry above overrides them.
 keyframes_root: ../data/keyframes
@@ -23,7 +23,7 @@ embeddings_root: ../data/embeddings/embeddings_qwen3_vl_embedding_2b_vllm/keyfra
 map_keyframes_root: ../data/map_keyframes
 
 index:
-  output_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C
+  output_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C_vllm
   index_name: keyframe.faiss
   metadata_name: metadata.csv
   type: hnsw

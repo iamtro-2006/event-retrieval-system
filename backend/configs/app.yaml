@@ -17,7 +17,7 @@ datasets:
       asr_index: asr_v3c
       semantic_models:
         qwen3-vl-embedding-2b:
-          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C
+          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C_vllm
     lhe:
       label: LHE
       root: ../data
@@ -30,7 +30,7 @@ datasets:
       asr_index: asr_lhe
       semantic_models:
         qwen3-vl-embedding-2b:
-          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/LHE
+          index_dir: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/LHE_vllm
 
 # Shared model settings and fallback paths for direct tooling. The API replaces
 # index paths with each dataset's semantic_models.<model_key>.index_dir.
@@ -43,9 +43,9 @@ semantic:
       model_name: Qwen/Qwen3-VL-Embedding-2B
       model_extra:
         engine: vllm          # embeddings in data/embeddings were produced by vLLM
-      index_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C/keyframe.faiss
-      metadata_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C/metadata.csv
-      vector_cache_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C/vectors_fp32.npy
+      index_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C_vllm/keyframe.faiss
+      metadata_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C_vllm/metadata.csv
+      vector_cache_path: ../data/database/faiss_qwen3_vl_embedding_2b_vllm/keyframe/V3C_vllm/vectors_fp32.npy
       device: auto
       precision: fp16
       normalize: false  # The Qwen adapter returns L2-normalized vectors.
