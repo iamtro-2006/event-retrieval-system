@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from src.embedding_extraction.models.backends.qwen_vllm import MODEL_ID, QwenVllmEncoder
-from src.retrieval.segment_data import build_maps, load_segment_files, SegmentMaps
+from src.retrieval.segment_data import load_segment_files
 
 
 def main():
@@ -29,8 +29,6 @@ def main():
     if not output_root.is_absolute():
         output_root = (Path.cwd() / output_root).resolve()
 
-    counts = build_maps(data_root, args.dataset)
-    print(f"Maps ready: ASR={counts['asr']} caption={counts['caption']}", flush=True)
     source_files = list(load_segment_files(data_root, args.dataset, args.source))
     if args.video_ids:
         requested = set(args.video_ids)
@@ -40,14 +38,11 @@ def main():
             raise FileNotFoundError(f'Missing {args.source} JSON files for requested videos: {missing}')
         source_files = [(video_id, records) for video_id, records in source_files
                         if video_id in requested]
-    if args.source == 'caption':
-        all_records = [record for _, records in source_files for record in records]
-        maps = SegmentMaps(data_root, args.dataset, 'caption', all_records)
-        source_files = [(video_id, [record for record in records
-                                    if maps.forward.get(record['segment_id'])])
-                       for video_id, records in source_files]
     if not source_files:
-        raise RuntimeError(f'No indexable {args.source} segments found for {args.dataset}')
+        raise RuntimeError(f'No {args.source} JSON files found for {args.dataset}')
+    segment_count = sum(len(records) for _, records in source_files)
+    if not segment_count:
+        raise RuntimeError(f'No non-empty {args.source} segments found for {args.dataset}')
 
     encoder = QwenVllmEncoder()
     try:
