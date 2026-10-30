@@ -34,14 +34,22 @@ def main():
         requested = set(args.video_ids)
         available = {video_id for video_id, _ in source_files}
         missing = sorted(requested - available)
-        if missing:
+        if missing and args.source != 'asr':
             raise FileNotFoundError(f'Missing {args.source} JSON files for requested videos: {missing}')
+        if missing:
+            print(f'asr: skip {len(missing)} videos without JSON: {missing[:10]}', flush=True)
         source_files = [(video_id, records) for video_id, records in source_files
                         if video_id in requested]
     if not source_files:
+        if args.source == 'asr':
+            print(f'asr: no JSON files found for {args.dataset}; skip source', flush=True)
+            return
         raise RuntimeError(f'No {args.source} JSON files found for {args.dataset}')
     segment_count = sum(len(records) for _, records in source_files)
     if not segment_count:
+        if args.source == 'asr':
+            print(f'asr: no non-empty segments found for {args.dataset}; skip source', flush=True)
+            return
         raise RuntimeError(f'No non-empty {args.source} segments found for {args.dataset}')
 
     encoder = QwenVllmEncoder()
