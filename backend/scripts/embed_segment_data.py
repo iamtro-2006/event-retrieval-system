@@ -55,26 +55,30 @@ def main():
         total = sum(len(records) for _, records in source_files)
         completed = 0
         for video_id, records in source_files:
-            vectors = np.empty((len(records), encoder.embedding_dim), dtype=np.float32)
+            video_dir = target_root / video_id
+            if video_dir.exists():
+                import shutil
+                shutil.rmtree(video_dir)
+            video_dir.mkdir(parents=True, exist_ok=True)
             for offset in range(0, len(records), args.batch_size):
                 batch = records[offset:offset + args.batch_size]
                 encoded = encoder.encode_text([record['text'] for record in batch])
-                batch_vectors = encoded.detach().cpu().numpy().astype(np.float32, copy=False)
-                if batch_vectors.shape != (len(batch), encoder.embedding_dim):
-                    raise RuntimeError(f'Invalid embedding batch for {args.source}/{video_id}: {batch_vectors.shape}')
-                vectors[offset:offset + len(batch)] = batch_vectors
+                vectors = encoded.detach().cpu().numpy().astype(np.float32, copy=False)
+                if vectors.shape != (len(batch), encoder.embedding_dim):
+                    raise RuntimeError(f'Invalid embedding batch for {args.source}/{video_id}: {vectors.shape}')
+                for record, vector in zip(batch, vectors):
+                    segment_number = int(record['segment_id'].rsplit(':', 1)[-1])
+                    target = video_dir / f'{segment_number:06d}.npy'
+                    temporary_vectors = target.with_suffix('.npy.tmp')
+                    with temporary_vectors.open('wb') as stream:
+                        np.save(stream, vector, allow_pickle=False)
+                    temporary_vectors.replace(target)
                 completed += len(batch)
                 print(f'{args.source}/{video_id}: embedded {completed}/{total}', flush=True)
-            target = target_root / f'{video_id}.npy'
-            target.parent.mkdir(parents=True, exist_ok=True)
-            temporary_vectors = target.with_suffix('.npy.tmp')
-            with temporary_vectors.open('wb') as stream:
-                np.save(stream, vectors, allow_pickle=False)
-            temporary_vectors.replace(target)
     finally:
         encoder.close()
 
-    print(f'Saved per-video Qwen vLLM matrices under: {target_root}', flush=True)
+    print(f'Saved per-segment Qwen vLLM vectors under: {target_root}', flush=True)
 
 
 if __name__ == '__main__':

@@ -152,6 +152,8 @@ def build_maps(root: Path, dataset: str, tau=5., right_weight=2.):
                 covered.add(key)
         # Assign every frame outside all caption shots to the closest shot
         # boundary, preserving frames at their nearest caption in a gap.
+        if segments and not values:
+            raise ValueError(f'No keyframes available to represent caption shots for {dataset}/{video}')
         for timestamp, key in values:
             if key in covered:
                 continue
@@ -161,8 +163,33 @@ def build_maps(root: Path, dataset: str, tau=5., right_weight=2.):
             relation = 'before' if timestamp < segment['start_time'] else 'after'
             caption_rows[segment['segment_id']].append((timestamp, key, relation, offset, offset))
 
+        # Every shot must have a representative. First use the nearest frame
+        # before and after the shot; at a collection boundary, fill from the
+        # nearest remaining frame(s) so a shot is never left unmapped.
+        for segment in segments:
+            sid = segment['segment_id']
+            if caption_rows[sid]:
+                continue
+            left = bisect.bisect_right(times, segment['start_time']) - 1
+            right = bisect.bisect_left(times, segment['end_time'])
+            candidates = []
+            if left >= 0:
+                candidates.append((*values[left], 'before', segment['start_time'] - times[left]))
+            if right < len(values) and right != left:
+                candidates.append((*values[right], 'after', times[right] - segment['end_time']))
+            if len(candidates) < min(2, len(values)):
+                remaining = sorted((i for i in range(len(values)) if i not in {left, right}),
+                                  key=lambda i: min(abs(times[i]-segment['start_time']),
+                                                    abs(times[i]-segment['end_time'])))
+                for i in remaining[:min(2, len(values))-len(candidates)]:
+                    relation = 'before' if times[i] < segment['start_time'] else 'after'
+                    offset = min(abs(times[i]-segment['start_time']), abs(times[i]-segment['end_time']))
+                    candidates.append((*values[i], relation, offset))
+            for timestamp, key, relation, offset in candidates:
+                caption_rows[sid].append((timestamp, key, relation, offset, offset))
+
     caption_count = write_source('caption', caption_records, caption_groups, caption_rows,
-                                 'inside_plus_nearest_boundary_v2')
+                                 'inside_plus_nearest_boundary_and_empty_shot_two_sided_v3')
 
     # ASR shot representatives are selected from the frames already assigned
     # to each caption shot. Use the frame nearest the overlap midpoint.
@@ -210,7 +237,7 @@ class SegmentMaps:
         folder = root / 'map_data' / f'map_{source}' / dataset.upper()
         manifest = json.loads((folder / 'manifest.json').read_text())
         expected_policy = ('shot_representative_or_two_sided_v2' if source == 'asr'
-                           else 'inside_plus_nearest_boundary_v2')
+                           else 'inside_plus_nearest_boundary_and_empty_shot_two_sided_v3')
         if manifest.get('mapping_policy') != expected_policy:
             raise RuntimeError(f'{source} mapping policy changed; rebuild maps with scripts.build_segment_data --maps-only')
         if manifest['source_hash'] != fingerprint(records):

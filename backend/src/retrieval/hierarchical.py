@@ -39,6 +39,12 @@ class SegmentIndex:
         indexable_records = load_indexable_segments(root, dataset, source)
         if fingerprint(indexable_records) != meta['source_hash']:
             raise RuntimeError(f'Stale {source} index; rebuild segment data')
+        expected_by_id = {record['segment_id']: record for record in indexable_records}
+        indexed_ids = [record.get('segment_id') for record in self.records]
+        if (any(segment_id not in expected_by_id for segment_id in indexed_ids)
+                or self.records != [expected_by_id[segment_id] for segment_id in indexed_ids]
+                or len(indexed_ids) != len(set(indexed_ids))):
+            raise RuntimeError(f'{source} metadata contains invalid or duplicate segment records')
         self.model_name = meta['model']
         if meta.get('engine') != 'vllm' or self.model_name != QWEN_MODEL_ID:
             raise RuntimeError(f'{source} index must use {QWEN_MODEL_ID} via vLLM; rebuild segment data')

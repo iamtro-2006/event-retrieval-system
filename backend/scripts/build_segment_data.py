@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=8)
     parser.add_argument('--sources', nargs='+', choices=['asr', 'caption'], default=['asr', 'caption'])
     parser.add_argument('--embeddings-root', type=Path,
-                        help='Optional Qwen root containing <source>/<DATASET>/<video_id>.npy matrices')
+                        help='Optional Qwen root containing <source>/<DATASET>/<video_id>/<segment_number>.npy vectors')
     parser.add_argument('--maps-only', action='store_true')
     parser.add_argument('--fallback-tau', type=float, default=5.)
     parser.add_argument('--fallback-right-weight', type=float, default=2.)
@@ -58,6 +58,7 @@ def main():
                 print(f'{source}: no indexable documents; skipped', flush=True)
                 continue
 
+            all_indexable_records = [record for _, file_records in source_files for record in file_records]
             records = []
             index = faiss.IndexFlatIP(2048)
             if embeddings_root is not None:
@@ -65,32 +66,41 @@ def main():
                 for video_id, file_records in source_files:
                     if not file_records:
                         continue
-                    vector_path = artifact_root / f'{video_id}.npy'
-                    if not vector_path.is_file():
-                        raise FileNotFoundError(f'Missing per-video {source} vectors: {vector_path}')
-                    file_vectors = np.load(vector_path, mmap_mode='r', allow_pickle=False)
-                    if file_vectors.shape != (len(file_records), 2048):
-                        raise RuntimeError(f'Invalid {source} vectors for {video_id}: {file_vectors.shape}')
-                    for offset in range(0, len(file_records), args.batch_size):
-                        batch = np.asarray(file_vectors[offset:offset + args.batch_size], dtype=np.float32)
-                        if not np.isfinite(batch).all():
-                            raise RuntimeError(f'Nonfinite {source} vectors for {video_id}')
-                        if not np.allclose(np.linalg.norm(batch, axis=1), 1.0, atol=1e-3, rtol=0):
-                            raise RuntimeError(f'{source} vectors for {video_id} are not normalized Qwen embeddings')
-                        index.add(np.ascontiguousarray(batch))
-                    records.extend(file_records)
-                    print(f'{source}: added {video_id} ({len(file_records)} segments)', flush=True)
+                    video_vector_dir = artifact_root / video_id
+                    valid_records, batch_vectors = [], []
+                    for record in file_records:
+                        segment_number = int(record['segment_id'].rsplit(':', 1)[-1])
+                        vector_path = video_vector_dir / f'{segment_number:06d}.npy'
+                        try:
+                            vector = np.load(vector_path, allow_pickle=False)
+                            if vector.shape != (2048,) or not np.isfinite(vector).all():
+                                raise ValueError(f'invalid vector shape/content: {vector.shape}')
+                            if not np.isclose(np.linalg.norm(vector), 1.0, atol=1e-3, rtol=0):
+                                raise ValueError('vector is not normalized')
+                        except (OSError, ValueError, EOFError) as exc:
+                            print(f'{source}: skip segment {record["segment_id"]}: {exc}', flush=True)
+                            continue
+                        valid_records.append(record)
+                        batch_vectors.append(vector.astype(np.float32, copy=False))
+                        if len(batch_vectors) >= args.batch_size:
+                            index.add(np.ascontiguousarray(np.asarray(batch_vectors, dtype=np.float32)))
+                            records.extend(valid_records)
+                            valid_records, batch_vectors = [], []
+                    if batch_vectors:
+                        index.add(np.ascontiguousarray(np.asarray(batch_vectors, dtype=np.float32)))
+                        records.extend(valid_records)
+                    print(f'{source}: added {video_id} ({sum(r["video_id"] == video_id for r in records)} valid segments)', flush=True)
             else:
                 completed = 0
                 for video_id, file_records in source_files:
                     if not file_records:
                         continue
-                    records.extend(file_records)
                     for offset in range(0, len(file_records), args.batch_size):
                         batch = file_records[offset:offset + args.batch_size]
                         encoded = encoder.encode_text([record['text'] for record in batch])
                         vectors = np.asarray(encoded.detach().cpu().numpy(), dtype=np.float32)
                         index.add(np.ascontiguousarray(vectors))
+                        records.extend(batch)
                         completed += len(batch)
                         print(f'{source}: embedded/indexed {completed}', flush=True)
             if index.ntotal != len(records):
@@ -103,7 +113,7 @@ def main():
             faiss.write_index(index, str(temporary_index_path))
             temporary_index_path.replace(index_path)
             (folder / 'metadata.json.tmp').write_text(json.dumps({
-                'model': MODEL_ID, 'engine': 'vllm', 'source_hash': fingerprint(records),
+                'model': MODEL_ID, 'engine': 'vllm', 'source_hash': fingerprint(all_indexable_records),
                 'records': records,
             }, ensure_ascii=False), encoding='utf-8')
             (folder / 'metadata.json.tmp').replace(folder / 'metadata.json')
