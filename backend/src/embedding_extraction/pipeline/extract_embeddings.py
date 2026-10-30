@@ -35,7 +35,7 @@ class ExtractEmbeddingPipeline:
         # When several models share one config (cfg["models"]: [...]), each
         # model's embeddings are written under its own subfolder so they
         # never collide, keyed by "key" (falls back to the model name).
-        output_subdir = "embeddings_" + (model_cfg.get("key") or model_cfg["name"])
+        output_subdir = "embeddings_" + (model_cfg.get("key") or model_cfg["name"]) + ("_vllm" if model_cfg.get("engine") == "vllm" else "")
 
         self.batch_size = int(model_cfg["batch_size"])
         self.normalize = bool(model_cfg.get("normalize", True))
