@@ -88,11 +88,11 @@ class ExtractEmbeddingPipeline:
 
     def output_dir_for(self, video_dir: Path) -> Path:
         relative = video_dir.relative_to(self.input_root)
-        return self.output_root / relative
+        return self.output_root / "keyframe" / relative
 
     def output_path_for_image(self, image_path: Path) -> Path:
         relative = image_path.relative_to(self.input_root)
-        return (self.output_root / relative).with_suffix(self.output_ext)
+        return (self.output_root / "keyframe" / relative).with_suffix(self.output_ext)
 
     def process_video_dir(self, video_dir: Path) -> int:
         image_paths = list_image_paths(video_dir)
