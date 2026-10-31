@@ -866,7 +866,7 @@ img {
   position: relative;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
-  aspect-ratio: 16/9;
+  aspect-ratio: 16/10;
   background: #0b1220;
 }
 
@@ -3364,7 +3364,7 @@ img {
 .temporal-frame-thumb {
   position: relative !important;
   width: 100% !important;
-  height: clamp(76px, 7.2vw, 126px) !important;
+  height: clamp(84px, 7.8vw, 138px) !important;
   min-height: 72px;
   overflow: hidden;
   background: var(--bg-soft);
@@ -3516,7 +3516,7 @@ img {
 
   .temporal-flat-thumb,
   .temporal-frame-thumb {
-    height: clamp(64px, 7vw, 88px) !important;
+    height: clamp(70px, 7.5vw, 96px) !important;
   }
 
   .temporal-flat-footer,
@@ -5505,7 +5505,7 @@ img {
 .sequence-carousel-nav.is-left { left: 4px; }
 .sequence-carousel-nav.is-right { right: 4px; }
 .temporal-sequence-block {
-  --temporal-frame-width: clamp(100px, 8vw, 150px);
+  --temporal-frame-width: clamp(108px, 8.6vw, 162px);
   flex: 0 0 max-content !important;
   width: max-content !important;
   max-width: none !important;
@@ -5573,7 +5573,7 @@ img {
   min-width: 0 !important;
 }
 @media (max-width: 420px) {
-  .temporal-sequence-block { --temporal-frame-width: clamp(68px, 22vw, 92px); }
+  .temporal-sequence-block { --temporal-frame-width: clamp(74px, 24vw, 102px); }
 }
 
 

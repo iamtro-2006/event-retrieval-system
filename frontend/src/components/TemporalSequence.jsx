@@ -29,7 +29,6 @@ function makeFrameResult(result, frame, idx) {
 
 const TemporalSequence = memo(function TemporalSequence({
   result,
-  sequenceIndex = 0,
   index = 0,
   selectedId,
   onSelect,
@@ -58,13 +57,11 @@ const TemporalSequence = memo(function TemporalSequence({
     <section className={`temporal-sequence-block temporal-events-${Math.min(sequence.length, 6)}`} style={{ "--sequence-event-total": sequence.length, "--stagger-index": index }}>
       <div className="temporal-sequence-toolbar temporal-sequence-header">
         <div>
-          <strong>Sequence #{sequenceIndex + 1}</strong>
-          <span className="temporal-sequence-count">{sequence.length} events</span>
+          <strong>{result.video_id}</strong>
         </div>
         <span className="temporal-sequence-meta">
-          {result.video_id} · {Number(result.temporal?.start_time ?? result.timestamp ?? 0).toFixed(2)}s
+          {Number(result.temporal?.start_time ?? result.timestamp ?? 0).toFixed(2)}s
           → {Number(result.temporal?.end_time ?? result.timestamp ?? 0).toFixed(2)}s
-          · {Number(result.temporal?.duration_sec ?? 0).toFixed(2)}s duration
         </span>
         <div className="temporal-sequence-actions">
           <button type="button" className="temporal-pill-btn" onClick={() => onPlay?.(result)}>

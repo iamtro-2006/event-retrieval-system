@@ -63,7 +63,6 @@ export default function GroupedResults({
   onSearchVideo,
   topK = 20,
   searchingVideoIds,
-  localQueries = {},
   groupOrder = [],
   query,
 }) {
@@ -105,7 +104,6 @@ export default function GroupedResults({
         <section className="video-strip-group">
           <div className="video-strip-label"><span>RERANK</span></div>
           <div className="video-strip-main">
-            <div className="video-strip-topbar"><span>{verified.length} assets</span></div>
             <div className="video-group-viewport is-expanded">
               <div className="video-group-items" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
                 {verified.map((result) => <ResultCard key={result.id} result={result} selected={result.id === selectedId}
@@ -134,10 +132,6 @@ export default function GroupedResults({
 
             <div className="video-strip-main">
               <div className="video-strip-topbar">
-                <span>
-                  {items.length} {hasTemporal ? "temporal sequences" : "assets"}
-                  {localQueries[videoId] ? ` · ${localQueries[videoId]}` : ""}
-                </span>
                 <div className="video-strip-actions">
                   <VideoSearchControl videoId={videoId} topK={topK} onSearch={onSearchVideo} loading={Boolean(searchingVideoIds?.[videoId])} />
                 </div>
@@ -148,7 +142,7 @@ export default function GroupedResults({
                   <div className={`video-group-items ${hasTemporal ? "temporal-sequences-grid grouped-temporal-sequences-grid" : ""}`}
                     style={cardGridStyle}>
                     {visibleItems.map((result, index) => hasTemporal ? (
-                      <TemporalSequence key={result.id} result={result} sequenceIndex={index}
+                      <TemporalSequence key={result.id} result={result} index={index}
                         selectedId={selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay}
                         onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />
                     ) : (
