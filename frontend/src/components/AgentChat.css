@@ -28,9 +28,11 @@
 .agent-message.is-user .agent-message-text { border:1px solid var(--border-subtle); border-radius:12px 12px 3px 12px; background:var(--bg-input); padding:10px 12px; }
 .agent-tools { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
 .agent-tools details { border:1px solid var(--border-subtle); border-radius:8px; padding:7px 9px; font-size:11px; }
+.agent-tools details.agent-tool-pool.is-selected { border-color:var(--accent-border); background:var(--accent-light); outline:2px solid var(--accent-border); outline-offset:1px; }
 .agent-tools summary { display:flex; align-items:center; gap:7px; cursor:pointer; color:var(--text-secondary); }
 .agent-tools summary code { font-size:10px; flex:1; }
 .agent-tools summary span { font-size:10px; color:var(--text-muted); }
+.agent-tools summary.agent-tool-pool-summary { cursor:pointer; }
 .agent-tools pre { max-height:180px; overflow:auto; font-size:10px; color:var(--text-muted); padding-top:8px; white-space:pre-wrap; overflow-wrap:anywhere; }
 .agent-show-results { margin-top:10px; border:0; border-radius:8px; padding:8px 10px; background:var(--accent-light); color:var(--accent-text); font-size:11px; cursor:pointer; }
 .agent-phase { display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:10px; min-height:20px; margin:0 3px 5px; }

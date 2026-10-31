@@ -68,6 +68,7 @@ export function useRetrievalSearch() {
       setLastQuery(data.query ?? cleanQuery);
       setSearchMode(data.searchMode ?? requestedSearchMode);
       setDurationLimit(data.durationLimit ?? requestedDurationLimit);
+      return data;
     } catch (err) {
       if (err.name === "AbortError" || err.name === "StaleSearchError") {
         return;
@@ -169,6 +170,7 @@ export function useRetrievalSearch() {
       setLastQuery(data.query ?? "Image query");
       setSearchMode(data.searchMode ?? options.searchMode);
       setDurationLimit(data.durationLimit ?? options.durationLimit ?? -1);
+      return data;
     } catch (err) {
       if (err.name === "AbortError" || err.name === "StaleSearchError") return;
       if (requestId !== requestIdRef.current) return;

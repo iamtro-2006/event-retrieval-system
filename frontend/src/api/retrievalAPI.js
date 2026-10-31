@@ -338,7 +338,7 @@ export async function searchRetrieval({
       latencyMs: data.latency_ms ?? null,
       timing,
       count: data.count ?? 0,
-      searchMode: data.search_mode ?? searchMode,
+      searchMode: data.effective_search_mode ?? data.search_mode ?? searchMode,
       durationLimit: data.duration_limit ?? durationLimit,
       results: normalizedResults,
     };

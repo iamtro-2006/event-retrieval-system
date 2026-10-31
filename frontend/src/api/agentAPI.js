@@ -1,7 +1,8 @@
 const BASE = (import.meta.env?.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const NGROK_HEADER = { "ngrok-skip-browser-warning": "true" };
 
 export async function getAgentStatus(signal) {
-  const response = await fetch(`${BASE}/api/agent/status`, { signal });
+  const response = await fetch(`${BASE}/api/agent/status`, { signal, headers: NGROK_HEADER });
   if (!response.ok) throw new Error("Agent endpoint unavailable. Start the backend and check /api/agent/status.");
   return response.json();
 }
@@ -9,7 +10,7 @@ export async function getAgentStatus(signal) {
 // A POST stream permits structured inputs and cancellation without exposing auth.
 export async function streamAgentChat(payload, { signal, onEvent }) {
   const response = await fetch(`${BASE}/api/agent/chat`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json", ...NGROK_HEADER },
     body: JSON.stringify(payload), signal,
   });
   if (!response.ok) {
@@ -53,10 +54,10 @@ export async function streamAgentChat(payload, { signal, onEvent }) {
 }
 
 export async function getSearchSession(id) {
-  const response = await fetch(`${BASE}/api/agent/sessions/${encodeURIComponent(id)}`);
+  const response = await fetch(`${BASE}/api/agent/sessions/${encodeURIComponent(id)}`, { headers: NGROK_HEADER });
   if (!response.ok) throw new Error("Search session unavailable");
   return response.json();
 }
 export async function stopSearchSession(id) {
-  return fetch(`${BASE}/api/agent/sessions/${encodeURIComponent(id)}/stop`, { method: "POST" });
+  return fetch(`${BASE}/api/agent/sessions/${encodeURIComponent(id)}/stop`, { method: "POST", headers: NGROK_HEADER });
 }

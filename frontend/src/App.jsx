@@ -237,6 +237,7 @@ function RetrievalApp() {
     latency,
     count,
     lastQuery,
+    searchMode: resultSearchMode,
     loading: retrievalLoading,
     error,
     search,
@@ -248,14 +249,35 @@ function RetrievalApp() {
     reset,
   } = useRetrievalSearch();
   const loading = retrievalLoading || agentBusy;
+  const normalizedAgentPoolsRef = useRef(new Map());
 
-  const handleAgentResults = useCallback((rows, chatQuery, resultMode) => {
-    setSelected(null);
-    setRerankResultsData(null);
-    setGroupSearchOverrides({});
-    setGodModeResults([]);
-    setGrouped(["caption", "temporal", "asr"].includes(resultMode));
-    startTransition(() => applyExternalResults(normalizeResults(rows, settings.dataset), chatQuery));
+  const handleAgentResults = useCallback((rows, chatQuery, resultMode, poolId) => {
+    let normalizedRows;
+    if (poolId) {
+      const cached = normalizedAgentPoolsRef.current.get(poolId);
+      if (cached?.dataset === settings.dataset) {
+        normalizedRows = cached.results;
+        normalizedAgentPoolsRef.current.delete(poolId);
+        normalizedAgentPoolsRef.current.set(poolId, cached);
+      }
+    }
+    if (!normalizedRows) {
+      normalizedRows = normalizeResults(rows, settings.dataset);
+      if (poolId) {
+        normalizedAgentPoolsRef.current.set(poolId, { dataset: settings.dataset, results: normalizedRows });
+        while (normalizedAgentPoolsRef.current.size > 8) {
+          normalizedAgentPoolsRef.current.delete(normalizedAgentPoolsRef.current.keys().next().value);
+        }
+      }
+    }
+    startTransition(() => {
+      setSelected(null);
+      setRerankResultsData(null);
+      setGroupSearchOverrides({});
+      setGodModeResults([]);
+      setGrouped(["caption", "temporal", "asr"].includes(resultMode));
+      applyExternalResults(normalizedRows, chatQuery);
+    });
   }, [applyExternalResults, settings.dataset]);
 
   const handleAgentBusy = useCallback((value) => {
@@ -268,6 +290,7 @@ function RetrievalApp() {
   }, []);
 
   const handleNewAgentChat = useCallback(() => {
+    normalizedAgentPoolsRef.current.clear();
     setAgentContextIds([]);
     applyExternalResults([], "");
     setRerankResultsData(null);
@@ -313,8 +336,9 @@ function RetrievalApp() {
   }, [activeIds, resultsWithGroupOverrides]);
   const groupOrder = useMemo(() => [...new Set(results.map((item) => item.video_id).filter(Boolean))], [results]);
   const deferredResults = useDeferredValue(filteredResults);
+  const visibleResults = resultSearchMode === "agent" ? filteredResults : deferredResults;
   const hasResults = resultsWithGroupOverrides.length > 0;
-  const visibleResultCount = activeIds.length ? deferredResults.length : count;
+  const visibleResultCount = activeIds.length ? visibleResults.length : count;
   const selectedId = selected?.id ?? null;
 
   useEffect(() => {
@@ -692,6 +716,7 @@ function RetrievalApp() {
     scrollResultsToTop();
     setGodModeResults([]);
     setMode("color");
+    setGrouped(false);
     setSelected(null);
     setRerankResultsData(null);
     setGroupSearchOverrides({});
@@ -726,9 +751,7 @@ function RetrievalApp() {
   }, []);
 
   const handleGroupedChange = useCallback((value) => {
-    startNonUrgentUpdate(() => {
-      setGrouped(value);
-    });
+    setGrouped(value);
   }, []);
 
   const handleSelectResult = useCallback((result) => {
@@ -745,6 +768,7 @@ function RetrievalApp() {
 
   // ── Main actions ─────────────────────────────────────
   const handleReset = useCallback(() => {
+    normalizedAgentPoolsRef.current.clear();
     setAgentEpoch((value) => value + 1);
     setAgentBusy(false);
     setAgentContextIds([]);
@@ -850,7 +874,7 @@ function RetrievalApp() {
             pushToast("warning", "Images are not supported in this mode", "Use Semantic, Temporal, or Auto for image queries. OCR, ASR, and Fusion support text queries only.");
             return;
           }
-          await searchMultimodal({
+          const data = await searchMultimodal({
             dataset: settings.dataset,
             query: cleanQuery,
             clauses: queryClauses,
@@ -864,6 +888,9 @@ function RetrievalApp() {
             modelKey: model,
             durationLimit: nextDurationLimit,
           });
+          if (searchId === searchIdRef.current) {
+            setGrouped(["caption", "temporal", "asr"].includes(data?.searchMode || searchMode));
+          }
         } else if (searchMode === "fusion") {
           const cfg = (typeof payload === "object" && payload?.fusionConfig) || fusionConfig;
           if (!cfg?.hasConfig) {
@@ -881,7 +908,7 @@ function RetrievalApp() {
              reasoning: false,
           });
         } else {
-          await search({
+          const data = await search({
             dataset: settings.dataset,
             query: cleanQuery,
             topK: settings.topK,
@@ -894,6 +921,9 @@ function RetrievalApp() {
             durationLimit: nextDurationLimit,
              reasoning: false,
           });
+          if (searchId === searchIdRef.current) {
+            setGrouped(["caption", "temporal", "asr"].includes(data?.searchMode || searchMode));
+          }
         }
       } catch (err) {
         if (err?.name === "AbortError" || err?.name === "StaleSearchError") {
@@ -1379,11 +1409,11 @@ function RetrievalApp() {
 
                 <div className="result-body">
                   <div className="result-list" ref={resultListRef}>
-                    {deferredResults.length === 0 && activeIds.length > 0 ? (
+                    {visibleResults.length === 0 && activeIds.length > 0 ? (
                       <div className="filter-empty-state">No results in the cached video IDs.</div>
                     ) : grouped ? (
                       <GroupedResults
-                        results={deferredResults}
+                        results={visibleResults}
                         columns={columns}
                         selectedId={selectedId}
                         onSelect={handleSelectResult}
@@ -1400,7 +1430,7 @@ function RetrievalApp() {
                       />
                     ) : (
                       <ResultGrid
-                        results={deferredResults}
+                        results={visibleResults}
                         columns={columns}
                         selectedId={selectedId}
                         onSelect={handleSelectResult}
