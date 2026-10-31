@@ -307,6 +307,39 @@ class RealTools:
                     'top_k_limit': self.top_k_limit,
                     'plans': [{k: p.get(k) for k in ('id','plan','status','error')} for p in self.session['plans']]}, []
         if name == 'register_plans':
+            # Models occasionally emit an empty query for an unused modality.
+            # Drop that source before validation so valid sibling sources still run.
+            if isinstance(arguments, dict) and isinstance(arguments.get('plans'), list):
+                for raw_plan in arguments['plans']:
+                    if not isinstance(raw_plan, dict) or not isinstance(raw_plan.get('source_queries'), dict):
+                        continue
+                    original = raw_plan['source_queries']
+                    cleaned = {
+                        source: [query.strip() for query in queries if isinstance(query, str) and query.strip()]
+                        for source, queries in original.items()
+                        if isinstance(queries, list)
+                    }
+                    cleaned = {source: queries for source, queries in cleaned.items() if queries}
+                    if cleaned:
+                        raw_plan['source_queries'] = cleaned
+                    else:
+                        raw_plan.pop('source_queries', None)
+                    active_sources = set(cleaned)
+                    if isinstance(raw_plan.get('source_weights'), dict):
+                        weights = {key: value for key, value in raw_plan['source_weights'].items() if key in active_sources}
+                        if weights:
+                            raw_plan['source_weights'] = weights
+                        else:
+                            raw_plan.pop('source_weights', None)
+                    if isinstance(raw_plan.get('source_query_weights'), dict):
+                        focused_weights = {
+                            key: value for key, value in raw_plan['source_query_weights'].items()
+                            if key in active_sources and len(value) == len(cleaned[key])
+                        }
+                        if focused_weights:
+                            raw_plan['source_query_weights'] = focused_weights
+                        else:
+                            raw_plan.pop('source_query_weights', None)
             batch = PlanBatch.model_validate(arguments)
             if len(self.session['plans']) + len(batch.plans) > 60:
                 raise ValueError('Session plan limit reached; start a new session')
