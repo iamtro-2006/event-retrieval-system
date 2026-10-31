@@ -73,7 +73,7 @@ paths:
 search:
   candidate_multiplier: 4
   default_top_k: 20
-  max_top_k: 200
+  max_top_k: 500
 
 ui:
   surrounding_radius: 5

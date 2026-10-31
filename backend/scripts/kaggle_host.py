@@ -10,7 +10,6 @@ import signal
 import subprocess
 import sys
 import threading
-import time
 
 log = logging.getLogger('ers.host')
 
@@ -36,7 +35,9 @@ async def serve(config):
         children.append((label, process))
         def forward():
             for line in process.stdout:
-                log.info('[%s pid=%s] %s', label, process.pid, line.rstrip())
+                message = line.rstrip()
+                if message:
+                    log.info('[%s] %s', label, message)
         threading.Thread(target=forward, daemon=True).start()
         return process
 
@@ -48,6 +49,7 @@ async def serve(config):
                 try:
                     response = await client.get(url, timeout=2)
                     if response.is_success:
+                        log.info('%s is ready', url)
                         return
                 except httpx.HTTPError:
                     pass
@@ -114,9 +116,6 @@ async def serve(config):
                     server.should_exit = True
                     await task
                     raise RuntimeError(f'{label} exited unexpectedly, code={process.returncode}; see logs above')
-            # A visible heartbeat is diagnostics, not a way to bypass platform session limits.
-            log.info('heartbeat API=%s children=%s', 'ready' if server.started else 'starting',
-                     {label: process.pid for label, process in children})
             if server.started and not checked:
                 checked = True
                 async with httpx.AsyncClient() as client:
@@ -127,7 +126,7 @@ async def serve(config):
                             log.error('Dataset %s NOT READY: %s', dataset, response.text)
                         else:
                             log.info('Dataset %s models: %s', dataset, response.text)
-            await asyncio.sleep(15)
+            await asyncio.sleep(1)
         await task
     finally:
         if 'server' in locals():
@@ -142,7 +141,7 @@ async def serve(config):
             ngrok.disconnect(tunnel.public_url)
         for label, process in reversed(children):
             if process.poll() is None:
-                log.info('Stopping owned process %s pid=%s', label, process.pid)
+                log.info('Stopping %s', label)
                 os.killpg(process.pid, signal.SIGTERM)
                 try:
                     await asyncio.to_thread(process.wait, 15)

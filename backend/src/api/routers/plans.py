@@ -54,9 +54,10 @@ class SearchPlan(BaseModel):
     source_weights: dict[str, float] | None = None
     source_query_weights: dict[str, list[float]] | None = None
     visual_weight: float = Field(default=.7, ge=0, le=1)
-    sequence_top_k: int = Field(default=30, ge=1, le=200)
+    sequence_top_k: int = Field(default=30, ge=1, le=1000)
     pool_k: int = Field(default=300, ge=1, le=2000)
-    top_k: int = Field(default=20, ge=1, le=100)
+    top_k: int = Field(default=200, ge=1, le=500,
+        description='Requested result count. Semantic/visual plans usually target 200; segment-first plans target 50–100 based on query ambiguity.')
     model_key: str | None = None
     speed: Literal['normal', 'timelapse', 'slow_motion', 'unknown'] | None = None
     ocr_query: str | None = Field(default=None, max_length=1000)
@@ -136,6 +137,9 @@ def execute(plan, system, paths, video_ids=None, session=None, image_paths=None)
     from src.api.legacy.serializers import dict_to_result_FAST
     from src.api.routers.search import _records_from_df
     engine = system.orchestrator.mapped_search
+    if plan.mode == 'hierarchical' and plan.direction == 'top_down':
+        plan.sequence_top_k = max(plan.sequence_top_k, 2 * plan.top_k)
+        plan.pool_k = max(plan.pool_k, 2 * plan.top_k)
     initial = None
     if plan.parent_pool_id:
         parent = pool_by_id(session, plan.parent_pool_id) if session else None
@@ -251,6 +255,7 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     parent_pool_id: str | None = None
     video_ids: list[str] | None = None
+    top_k_limit: int = Field(default=500, ge=1, le=500)
     model: str | None = None
     provider: str = 'codex'
     reasoning_effort: str | None = None
@@ -281,6 +286,7 @@ class RealTools:
         self.session, self.system, self.paths = session, system, paths
         self.dataset, self.video_ids = session['dataset'], session['video_ids']
         self.image_paths, self.calls = image_paths, 0
+        self.top_k_limit = 500
 
     @staticmethod
     def specs():
@@ -298,12 +304,25 @@ class RealTools:
             return {'sources': self.system.text_search_health(), 'models': self.system.available_models(), 'modes': ['semantic', 'temporal', 'asr', 'caption', 'ocr', 'hierarchical', 'similarity', 'color'],
                     'images_attached': len(self.image_paths), 'selected_frame_references': getattr(self, 'frame_references', []),
                     'color_cells': getattr(self, 'color_cells', []), 'preferred_mode': getattr(self, 'preferred_search_mode', 'semantic'),
+                    'top_k_limit': self.top_k_limit,
                     'plans': [{k: p.get(k) for k in ('id','plan','status','error')} for p in self.session['plans']]}, []
         if name == 'register_plans':
             batch = PlanBatch.model_validate(arguments)
             if len(self.session['plans']) + len(batch.plans) > 60:
                 raise ValueError('Session plan limit reached; start a new session')
             for plan in batch.plans:
+                segment_first = plan.mode in ('asr', 'caption', 'ocr') or (
+                    plan.mode == 'hierarchical' and plan.direction == 'top_down')
+                if segment_first:
+                    upper = min(self.top_k_limit, 100)
+                    preferred = 70 if 'top_k' not in plan.model_fields_set else plan.top_k
+                    plan.top_k = min(upper, max(min(50, upper), preferred))
+                else:
+                    preferred = 200 if 'top_k' not in plan.model_fields_set else plan.top_k
+                    plan.top_k = min(preferred, self.top_k_limit)
+                if plan.mode == 'hierarchical' and plan.direction == 'top_down':
+                    plan.sequence_top_k = max(plan.sequence_top_k, 2 * plan.top_k)
+                    plan.pool_k = max(plan.pool_k, 2 * plan.top_k)
                 if not plan.parent_pool_id:
                     plan.parent_pool_id = self.session.get('parent_pool_id')
                 if plan.parent_pool_id:
@@ -425,6 +444,8 @@ async def chat(payload: ChatRequest, request: Request):
                     stored.write_bytes(image.read_bytes())
                     images.append(str(stored))
                 tools = RealTools(session, system, paths, images)
+                server_top_k_limit = int(config.get('search', {}).get('max_top_k', 500))
+                tools.top_k_limit = min(payload.top_k_limit, server_top_k_limit, 500)
                 tools.color_cells = payload.color_cells
                 tools.preferred_search_mode = payload.search_mode
                 tools.frame_references = []

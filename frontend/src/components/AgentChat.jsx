@@ -125,7 +125,7 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
         { id, role: "assistant", text: "", tools: [], workers: [] }]);
       onAccepted();
       await streamAgentChat({ message, dataset, provider, model: provider === "codex" ? model || null : null,
-        session_id: session.current, parent_pool_id: selectedPool.current, top_k: Math.min(topK, 100), video_ids: videoIds,
+        session_id: session.current, parent_pool_id: selectedPool.current, top_k: topK, top_k_limit: topK, video_ids: videoIds,
         max_workers: workers, reasoning_effort: reasoningEffort || null,
         images, context_frame_ids: frameIds, search_mode: searchMode, color_cells: colorCells }, {
         signal: controller.signal,
@@ -141,7 +141,7 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
             if (!selectedPool.current && event.status === "completed") {
               selectedPool.current = event.id;
               setPoolSelection(event.id);
-              onResults(event.results, event.plan?.query || message);
+              onResults(event.results, event.plan?.query || message, event.plan?.mode);
             }
           }
           else if (event.type === "status") setPhase(event.message);
@@ -164,7 +164,7 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
               ? { ...worker, text: worker.text + (event.text || ""), ...(event.type === "worker_end"
                 ? { running: false, success: event.success, error: event.error } : {}) } : worker) }));
           } else if (event.type === "results") {
-            onResults(event.results, event.query);
+            onResults(event.results, event.query, event.plan?.mode);
             updateAssistant((item) => ({ ...item, results: event.results }));
           } else if (event.type === "done") setPhase("Completed");
         },
@@ -210,7 +210,7 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
             {plan.status === "completed" && <>
               <button type="button" onClick={() => {
                 selectedPool.current = plan.id; setPoolSelection(plan.id);
-                onResults(plan.results || [], plan.plan?.query);
+                onResults(plan.results || [], plan.plan?.query, plan.plan?.mode);
               }}>Xem pool ({plan.results?.length || 0})</button>
               <button type="button" onClick={() => {
                 selectedPool.current = plan.id; setPoolSelection(plan.id);

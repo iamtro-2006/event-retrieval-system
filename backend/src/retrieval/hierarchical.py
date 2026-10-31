@@ -173,6 +173,11 @@ class HierarchicalSearch:
             raise ValueError('Invalid hierarchical direction')
         if not 0 <= visual_weight <= 1:
             raise ValueError('visual_weight must be between 0 and 1')
+        if direction == 'top_down':
+            # Retrieve a wider segment set and preserve a correspondingly broad
+            # mapped-frame pool before visual reranking to reduce missed scenes.
+            sequence_top_k = max(sequence_top_k, 2 * top_k)
+            pool_k = max(pool_k, 2 * top_k)
         source_queries = source_queries or {s: [query] for s in self.sources}
         if not source_queries:
             raise RuntimeError('No segment embedding sources available')

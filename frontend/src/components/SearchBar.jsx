@@ -97,6 +97,7 @@ export default function SearchBar({
   onSearch,
 }) {
   const [recording, setRecording] = useState(false);
+  const [hierarchicalDirection, setHierarchicalDirection] = useState("top_down");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   // The backend is the only source of truth for loaded indexes. Never show
   // guessed/fallback model keys because selecting one produces an invalid
@@ -140,6 +141,7 @@ export default function SearchBar({
     onSearch({
       query: cleanQuery,
       searchMode,
+      direction: hierarchicalDirection,
       durationLimit: searchMode === "temporal" ? Number(durationLimit) : -1,
       fusionConfig: searchMode === "fusion" ? fusionConfig : null,
       reasoning: reasoningEnabled,
@@ -444,6 +446,10 @@ export default function SearchBar({
               {!reasoningEnabled && <SearchPicker kind="mode" label="Search mode" value={mode}
                 options={SEARCH_MODES.map(({ key, label, shortcut }) => ({ value: key, label, shortcut }))}
                 onChange={onModeChange} />}
+
+              {!reasoningEnabled && mode === "hierarchical" && <SearchPicker kind="direction" label="Hierarchical direction" value={hierarchicalDirection}
+                options={[{ value: "top_down", label: "Top-down" }, { value: "bottom_up", label: "Bottom-up" }]}
+                onChange={setHierarchicalDirection} />}
 
               {!reasoningEnabled && isTemporal && (
                 <input

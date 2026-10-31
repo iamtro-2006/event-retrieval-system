@@ -53,6 +53,13 @@ export default function DetailPanel({ result, dataset, onClose, onSubmit }) {
   const { prev, current, next } = getNeighborFrames(keyframeId);
 
   const timestamp = Number(activeResult.timestamp ?? 0);
+  const isSegmentMode = ["asr", "caption"].includes(activeResult.search_mode);
+  const segmentText = Array.isArray(activeResult.matched_texts)
+    ? activeResult.matched_texts.join(" ")
+    : "";
+  const detailText = isSegmentMode
+    ? (segmentText || activeResult.caption)
+    : activeResult.caption;
 
   async function handleCopyPath() {
     try {
@@ -92,7 +99,11 @@ export default function DetailPanel({ result, dataset, onClose, onSubmit }) {
       setActiveResult({
         ...nextResult,
         similarity: activeResult.similarity,
-        caption: nextResult.caption || activeResult.caption || "",
+        search_mode: activeResult.search_mode,
+        matched_texts: activeResult.matched_texts,
+        caption: isSegmentMode
+          ? (segmentText || activeResult.caption || nextResult.caption || "")
+          : (nextResult.caption || activeResult.caption || ""),
       });
     } catch (err) {
       console.error("Cannot load frame info:", err);
@@ -267,10 +278,10 @@ export default function DetailPanel({ result, dataset, onClose, onSubmit }) {
         </div>
 
         <div className="detail-section">
-          <h4>Caption</h4>
+          <h4>{activeResult.search_mode === "asr" ? "Transcript" : "Caption"}</h4>
 
           <p className="detail-caption">
-            {activeResult.caption || "No caption available for this frame."}
+            {detailText || (activeResult.search_mode === "asr" ? "No transcript available for this segment." : "No caption available for this frame.")}
           </p>
         </div>
       </aside>

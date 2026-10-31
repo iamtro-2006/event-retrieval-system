@@ -9,6 +9,8 @@ FE cũ có thể đã gửi kèm.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from src.retrieval.retriever.common.orchestrator import SearchMode
@@ -28,6 +30,7 @@ class SearchRequest(BaseModel):
     reasoning: bool = False
     use_translate: bool | None = None
     search_mode: SearchMode | None = "semantic"
+    direction: Literal["top_down", "bottom_up"] = "top_down"
     model_key: str | None = None
     duration_limit: float | None = -1
     translate_api_key: str | None = None

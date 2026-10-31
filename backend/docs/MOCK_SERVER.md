@@ -97,8 +97,10 @@ Startup may take several seconds on large datasets. Images always belong to the
 selected physical dataset; video filters apply. Empty datasets return no images,
 never images borrowed from another dataset or remote placeholders.
 
-Semantic/temporal/OCR/ASR/auto/fusion/color/multimodal/similarity searches return
-random samples. Scores, transcripts and event labels are simulated. Playback timing comes from
+Semantic/temporal/OCR/ASR/caption/auto/fusion/color/multimodal/similarity searches return
+random samples. ASR and caption results use sequence-shaped cards with a random
+1–4 adjacent frames from one video; the transcript/caption text and scores are simulated.
+Other modes use their normal mock result shape. Playback timing comes from
 `data/map_keyframes/{V3C,LHE}/<video_id>.csv` under the same `MOCK_DATA_ROOT`.
 CSV columns are `keyframe_id,video_id,frame_idx,timestamp_sec,fps`; invalid or
 missing rows fall back to numeric filename seconds and set `synthetic_timing=true`.

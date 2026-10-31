@@ -341,6 +341,7 @@ async def search_api(
         results_df, query_plan = await run_in_threadpool(
             with_video_filter, payload.video_ids, orchestrator.run_search, query=search_query, mode=mode, use_split=use_split,
             reasoning=bool(payload.reasoning),
+            direction=payload.direction if mode == "hierarchical" else "top_down",
             top_k=top_k, candidate_multiplier=candidate_multiplier, duration_limit=duration_limit,
             model_key=payload.model_key,
         )

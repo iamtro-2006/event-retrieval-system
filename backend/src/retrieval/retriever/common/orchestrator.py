@@ -417,6 +417,7 @@ class Orchestrator:
         duration_limit: float = -1,
         model_key: str | None = None,
         reasoning: bool = False,
+        direction: str = "top_down",
     ) -> tuple[pd.DataFrame, QueryPlan]:
         """Execute a search based on the specified mode and query plan.
 
@@ -428,7 +429,7 @@ class Orchestrator:
         """
         if mode in ("asr", "caption", "hierarchical") and hasattr(self, "mapped_search"):
             plan = QueryPlan(query=query, mode=mode, use_split=False, events=[[query]])
-            result = (self.mapped_search.search(query=query, top_k=top_k, model_key=model_key)
+            result = (self.mapped_search.search(query=query, top_k=top_k, model_key=model_key, direction=direction)
                       if mode == "hierarchical" else self.mapped_search.segment_search(mode, query, top_k))
             return result, plan
         plan = self.build_query_plan(query, mode, use_split, reasoning=reasoning)

@@ -3660,7 +3660,7 @@ img {
 .result-list {
   min-height: 0;
   flex: 1 1 auto;
-  overflow-y: auto;
+  overflow: auto;
   padding-right: 4px;
   padding-bottom: 150px !important;
   scroll-padding-bottom: 170px;
@@ -3908,8 +3908,8 @@ img {
 .temporal-sequence-count { opacity: .62; font-size: .76rem; }
 .temporal-carousel-shell { position: relative; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 8px; min-width: 0; }
 .temporal-carousel-shell.is-fluid { grid-template-columns: minmax(0,1fr); }
-.temporal-frame-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - (var(--event-count) - 1) * 12px) / var(--event-count)); grid-template-columns: none !important; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; min-width: 0; padding: 4px 2px 10px; }
-.temporal-carousel-shell.is-fluid .temporal-frame-row { grid-auto-columns: minmax(0, 1fr); grid-template-columns: repeat(var(--event-count), minmax(0, 1fr)) !important; overflow: visible; }
+.temporal-frame-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 24px) / 3); grid-template-columns: none !important; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; min-width: 0; padding: 4px 2px 10px; }
+.temporal-carousel-shell.is-fluid .temporal-frame-row { grid-auto-columns: calc((100% - 24px) / 3); grid-template-columns: repeat(3, minmax(0, 1fr)) !important; overflow: visible; }
 .temporal-frame-card { min-width: 0 !important; width: auto !important; scroll-snap-align: start; }
 .temporal-carousel-nav { width: 36px; height: 58px; border-radius: 14px; display: grid; place-items: center; z-index: 2; }
 .temporal-carousel-nav:disabled { opacity: .25; cursor: default; }
@@ -3960,7 +3960,7 @@ img {
 @media (max-width: 760px) {
   .temporal-sequence-header { grid-template-columns: 1fr auto; }
   .temporal-sequence-meta { grid-column: 1 / -1; }
-  .temporal-carousel-shell.is-fluid .temporal-frame-row { grid-template-columns: none !important; grid-auto-columns: minmax(260px, 85vw); overflow-x: auto; }
+  .temporal-carousel-shell.is-fluid .temporal-frame-row { grid-template-columns: none !important; grid-auto-columns: calc((100% - 24px) / 3); overflow-x: auto; }
   .video-seek-row { grid-template-columns: 1fr 1fr; }
   .video-seek-row input { grid-column: 1 / -1; grid-row: 1; }
   .video-submit-row { grid-template-columns: 1fr; }
@@ -5446,6 +5446,134 @@ img {
 
 @container temporal-sequence (max-width: 520px) {
   .temporal-sequence-actions .action-label { display: none; }
+}
+
+/* Sequences size to their content; frames stay uniform on one horizontal row. */
+.temporal-flat-sequences-grid,
+.grouped-temporal-sequences-grid {
+  display: flex !important;
+  flex-flow: row wrap !important;
+  align-items: flex-start !important;
+  gap: 18px !important;
+}
+.grouped-temporal-sequences-grid {
+  flex-flow: row nowrap !important;
+  align-items: flex-start !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+.grouped-temporal-sequences-grid > .temporal-sequence-block {
+  flex: 0 0 auto !important;
+  scroll-snap-align: start;
+}
+.temporal-flat-sequences-grid > .result-card,
+.grouped-temporal-sequences-grid > .result-card {
+  flex: 0 0 clamp(240px, 25vw, 360px);
+}
+.video-group-viewport:has(.grouped-temporal-sequences-grid) {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.video-group-viewport.is-expanded:has(.grouped-temporal-sequences-grid) {
+  overflow-x: auto !important;
+}
+.video-group-viewport:has(.grouped-temporal-sequences-grid)::-webkit-scrollbar { display: none; }
+.video-group-stage.has-sequence-carousel {
+  position: relative;
+  min-width: 0;
+}
+.sequence-carousel-nav {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 44px;
+  padding: 0;
+  color: #eaf2ff;
+  background: rgba(12, 22, 42, .86);
+  border: 1px solid rgba(116, 161, 231, .55);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.sequence-carousel-nav:hover { background: rgba(35, 78, 139, .96); }
+.sequence-carousel-nav.is-left { left: 4px; }
+.sequence-carousel-nav.is-right { right: 4px; }
+.temporal-sequence-block {
+  --temporal-frame-width: clamp(100px, 8vw, 150px);
+  flex: 0 0 max-content !important;
+  width: max-content !important;
+  max-width: none !important;
+  min-width: max-content !important;
+  box-sizing: border-box !important;
+  container-type: normal !important;
+  display: block !important;
+  position: relative !important;
+  overflow: visible !important;
+  align-self: flex-start !important;
+  margin: 0 0 12px !important;
+  border: 1px solid var(--temporal-border) !important;
+  border-radius: 22px !important;
+  background: var(--temporal-block-bg) !important;
+  box-shadow: var(--temporal-shadow) !important;
+  /* Do not let the old virtualized 360px placeholder set the sequence width. */
+  content-visibility: visible !important;
+  contain-intrinsic-size: none !important;
+}
+.temporal-sequence-block > .temporal-sequence-header {
+  position: absolute !important;
+  inset: 0 0 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: 42px !important;
+  padding: 6px 9px !important;
+  overflow: hidden;
+}
+.temporal-sequence-block .temporal-sequence-header > div:first-child {
+  min-width: 0 !important;
+  overflow: hidden;
+}
+.temporal-sequence-block .temporal-sequence-meta {
+  display: none !important;
+}
+.temporal-sequence-block .temporal-sequence-actions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 3px !important;
+}
+.temporal-sequence-block .temporal-sequence-actions .action-label {
+  display: none !important;
+}
+.temporal-sequence-block .temporal-pill-btn {
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 24px !important;
+  padding: 0 !important;
+}
+.temporal-sequence-block .temporal-frame-row {
+  display: grid !important;
+  grid-auto-flow: column !important;
+  grid-template-columns: none !important;
+  grid-auto-columns: var(--temporal-frame-width) !important;
+  gap: 12px !important;
+  width: max-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+  padding: 50px 12px 12px !important;
+}
+.temporal-sequence-block .temporal-frame-card {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+@media (max-width: 420px) {
+  .temporal-sequence-block { --temporal-frame-width: clamp(68px, 22vw, 92px); }
 }
 
 

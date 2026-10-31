@@ -119,7 +119,7 @@ class SearchPayload(BaseModel):
     dataset: Dataset
     query: str = Field(default="Mock sample", max_length=4000)
     top_k: int = Field(default=20, ge=1, le=500)
-    search_mode: Literal["semantic", "temporal", "ocr", "asr", "auto", "fusion", "color", "similarity"] = "semantic"
+    search_mode: Literal["semantic", "temporal", "ocr", "asr", "caption", "hierarchical", "auto", "fusion", "color", "similarity"] = "semantic"
     model_key: str | None = Field(default=None, max_length=200)
     video_ids: list[str] = Field(default_factory=list, max_length=10000)
     video_id: str | None = None
@@ -278,10 +278,11 @@ class ChatPayload(BaseModel):
     model: str | None = Field(default=None, max_length=120, pattern=r"^[a-zA-Z0-9._:/-]+$")
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] | None = None
     session_id: str | None = Field(default=None, max_length=100)
-    top_k: int = Field(default=12, ge=1, le=100)
+    top_k: int = Field(default=200, ge=1, le=500)
+    top_k_limit: int = Field(default=200, ge=1, le=500)
     video_ids: list[str] = Field(default_factory=list, max_length=10000)
     max_workers: int = Field(default=3, ge=1, le=3)
-    search_mode: Literal["semantic", "temporal", "ocr", "asr", "auto", "fusion", "color", "similarity"] = "semantic"
+    search_mode: Literal["semantic", "temporal", "ocr", "asr", "caption", "hierarchical", "auto", "fusion", "color", "similarity"] = "semantic"
     context_frame_ids: list[str] = Field(default_factory=list, max_length=100)
     color_cells: list[ColorCell] = Field(default_factory=list, max_length=25)
     images: list[Annotated[str, Field(max_length=3_000_000,

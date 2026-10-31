@@ -1,5 +1,5 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Images, ListPlus, Play, Search, Send } from "lucide-react";
+import { memo, useMemo } from "react";
+import { Images, ListPlus, Play, Search, Send } from "lucide-react";
 import HighlightedSnippet from "./HighlightedSnippet";
 import { VideoVotes } from "./VideoFilter";
 
@@ -10,6 +10,11 @@ function makeFrameResult(result, frame, idx) {
   return {
     ...result,
     ...frame,
+    search_mode: frame.search_mode ?? result.search_mode,
+    matched_texts: frame.matched_texts ?? result.matched_texts ?? [],
+    caption: ["asr", "caption"].includes(result.search_mode)
+      ? (result.matched_texts?.join(" ") || result.caption || frame.caption || "")
+      : (frame.caption || result.caption || ""),
     id: `${result.id}_q${frame.sub_query_idx ?? idx}_${frameId}`,
     video_id: frame.video_id || result.video_id,
     video_url: frame.video_url || result.video_url,
@@ -38,75 +43,14 @@ const TemporalSequence = memo(function TemporalSequence({
     () => Array.isArray(result?.matched_sequence) ? result.matched_sequence : [],
     [result?.matched_sequence]
   );
-  // ASR hits share ONE transcript across every frame in the sequence (see
-  // FaissRetrievalSystem._enrich_asr_hits) and already show it once in the
-  // header below, so the per-frame caption would just repeat it 3x. Real
-  // temporal search hits don't set `matched_texts`, so this only affects ASR.
+  // ASR and caption hits share ONE segment text across every frame in the
+  // sequence and show it once in the header below. Temporal hits don't set
+  // `matched_texts`.
   const hasSharedSegmentText = Array.isArray(result?.matched_texts) && result.matched_texts.length > 0;
-  const viewportRef = useRef(null);
-  const scrollRafRef = useRef(0);
-  const [page, setPage] = useState(0);
   const frameResults = useMemo(
     () => sequence.map((frame, idx) => makeFrameResult(result, frame, idx)),
     [result, sequence]
   );
-
-  const isCarousel = sequence.length > 3;
-  const visibleCount = Math.min(sequence.length, 3);
-  const maxPage = Math.max(0, sequence.length - visibleCount);
-
-  function move(direction) {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const next = Math.max(0, Math.min(page + direction, maxPage));
-    const cards = viewport.querySelectorAll(".temporal-frame-card");
-    const target = cards[next];
-
-    setPage(next);
-
-    if (target) {
-      const left = target.offsetLeft - viewport.offsetLeft;
-      viewport.scrollTo({ left, behavior: "smooth" });
-      return;
-    }
-
-    const firstCard = cards[0];
-    const styles = window.getComputedStyle(viewport);
-    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
-    const step = (firstCard?.getBoundingClientRect().width || viewport.clientWidth / visibleCount) + gap;
-    viewport.scrollTo({ left: next * step, behavior: "smooth" });
-  }
-
-  function syncPageFromScroll() {
-    // Scroll fires many times per frame; only do the DOM-measuring work once
-    // per animation frame so it can't fall behind and stack up jank.
-    if (scrollRafRef.current) return;
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = 0;
-      const viewport = viewportRef.current;
-      if (!viewport || !isCarousel) return;
-
-      const cards = Array.from(viewport.querySelectorAll(".temporal-frame-card"));
-      if (!cards.length) return;
-
-      const currentLeft = viewport.scrollLeft;
-      let nearestIndex = 0;
-      let nearestDistance = Number.POSITIVE_INFINITY;
-
-      cards.forEach((card, index) => {
-        const distance = Math.abs(card.offsetLeft - viewport.offsetLeft - currentLeft);
-        if (distance < nearestDistance) {
-          nearestDistance = distance;
-          nearestIndex = index;
-        }
-      });
-
-      setPage(Math.min(nearestIndex, maxPage));
-    });
-  }
-
-  useEffect(() => () => cancelAnimationFrame(scrollRafRef.current), []);
 
   if (!sequence.length) return null;
 
@@ -135,31 +79,7 @@ const TemporalSequence = memo(function TemporalSequence({
         </div>
       </div>
 
-      {hasSharedSegmentText && (
-        <div className="temporal-sequence-transcript">
-          <HighlightedSnippet
-            text={result.matched_texts.join(" ")}
-            query={query}
-            maxLength={200}
-            quoted
-            highlight={false}
-          />
-        </div>
-      )}
-
-      <div className={`temporal-carousel-shell ${isCarousel ? "is-carousel" : "is-fluid"}`}>
-        {isCarousel && (
-          <button className="temporal-carousel-nav left" type="button" disabled={page === 0} onClick={() => move(-1)}>
-            <ChevronLeft size={22} />
-          </button>
-        )}
-
-        <div
-          ref={viewportRef}
-          className="temporal-frame-row"
-          style={{ "--event-count": visibleCount }}
-          onScroll={syncPageFromScroll}
-        >
+      <div className="temporal-frame-row">
           {sequence.map((frame, idx) => {
             const frameResult = frameResults[idx];
             const isSelected = frameResult.id === selectedId;
@@ -217,15 +137,7 @@ const TemporalSequence = memo(function TemporalSequence({
               </article>
             );
           })}
-        </div>
-
-        {isCarousel && (
-          <button className="temporal-carousel-nav right" type="button" disabled={page >= maxPage} onClick={() => move(1)}>
-            <ChevronRight size={22} />
-          </button>
-        )}
       </div>
-      {isCarousel && <div className="temporal-carousel-status">{page + 1}–{Math.min(page + visibleCount, sequence.length)} / {sequence.length}</div>}
     </section>
   );
 });

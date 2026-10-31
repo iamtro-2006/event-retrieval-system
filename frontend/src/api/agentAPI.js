@@ -14,7 +14,13 @@ export async function streamAgentChat(payload, { signal, onEvent }) {
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(typeof data.detail === "string" ? data.detail : `Chat request failed (${response.status})`);
+    const detail = Array.isArray(data.detail)
+      ? data.detail.map((item) => {
+        const field = Array.isArray(item.loc) ? item.loc.filter((part) => part !== "body").join(".") : "request";
+        return `${field}: ${item.msg || "Invalid value"}`;
+      }).join("; ")
+      : data.detail;
+    throw new Error(typeof detail === "string" ? detail : `Chat request failed (${response.status})`);
   }
   if (!response.body) throw new Error("Streaming is not supported by this browser.");
   const reader = response.body.getReader();

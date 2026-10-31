@@ -27,7 +27,7 @@ data/
     └── faiss_qwen3_vl_embedding_2b_lhe_vllm/   # LHE
 ```
 
-V3C dùng `video_id` năm chữ số, ví dụ `00001`; LHE dùng `LHE01`, `LHE02`, v.v. Notebook [host_server.ipynb](backend/notebooks/host_server.ipynb) cho chọn V3C hoặc LHE để tải embedding/map và build index trước khi host.
+V3C dùng `video_id` năm chữ số, ví dụ `00001`; LHE dùng `LHE01`, `LHE02`, v.v. Notebook Kaggle hiện hành là [hierarchical_search_kaggle.ipynb](backend/notebooks/hierarchical_search_kaggle.ipynb), gồm chuẩn bị dữ liệu/index và khởi chạy API.
 
 ## Chạy UI và Codex bằng mock server
 

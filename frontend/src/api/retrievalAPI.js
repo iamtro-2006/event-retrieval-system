@@ -229,6 +229,7 @@ export async function searchRetrieval({
   useSplit = true,
   useTranslate = true,
   searchMode = "semantic",
+  direction = "top_down",
   modelKey,
   durationLimit = -1,
   reasoning = false,
@@ -254,6 +255,7 @@ export async function searchRetrieval({
     use_translate: useTranslate,
     translate_api_key: import.meta.env.VITE_GOOGLE_TRANSLATE,
     search_mode: searchMode,
+    direction,
     model_key: modelKey,
     duration_limit: durationLimit,
   };

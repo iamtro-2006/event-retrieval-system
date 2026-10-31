@@ -11,6 +11,7 @@ import {
 import Sidebar from "./components/Sidebar";
 import AgentChat from "./components/AgentChat";
 import { selectAgentSettings } from "./utils/agentModels";
+import { getAgentStatus } from "./api/agentAPI";
 import { VideoFilterProvider, VideoFilterBar, useVideoFilter } from "./components/VideoFilter";
 import SearchBar from "./components/SearchBar";
 import ResultToolbar from "./components/ResultToolbar";
@@ -248,11 +249,12 @@ function RetrievalApp() {
   } = useRetrievalSearch();
   const loading = retrievalLoading || agentBusy;
 
-  const handleAgentResults = useCallback((rows, chatQuery) => {
+  const handleAgentResults = useCallback((rows, chatQuery, resultMode) => {
     setSelected(null);
     setRerankResultsData(null);
     setGroupSearchOverrides({});
     setGodModeResults([]);
+    setGrouped(["caption", "temporal", "asr"].includes(resultMode));
     startTransition(() => applyExternalResults(normalizeResults(rows, settings.dataset), chatQuery));
   }, [applyExternalResults, settings.dataset]);
 
@@ -597,7 +599,10 @@ function RetrievalApp() {
 
         if (!alive) return;
         setMockServer(Boolean(config.mock));
-        setAgentAvailable(Boolean(config.agent?.available));
+        setAgentAvailable(false);
+        getAgentStatus().then((agentStatus) => {
+          if (alive) setAgentAvailable(Boolean(agentStatus.codex?.available));
+        }).catch(() => { if (alive) setAgentAvailable(false); });
         setSemanticModelRoles(config.semantic_model_roles || { local: null, global: null });
         if (Array.isArray(config.datasets?.available)) setAvailableDatasets(config.datasets.available);
 
@@ -799,7 +804,7 @@ function RetrievalApp() {
 
       if (payload?.reasoning ?? reasoningEnabled) {
         if (!agentAvailable) {
-          pushToast("warning", "Assistant unavailable", "Start the mock backend to use Reasoning.");
+          pushToast("warning", "Assistant unavailable", "Codex is not ready. Check the agent status endpoint and sign in with `codex login` on the backend host.");
           return;
         }
         await agentControllerRef.current?.send(cleanQuery, {
@@ -824,6 +829,8 @@ function RetrievalApp() {
         typeof payload === "object" && payload?.searchMode
           ? payload.searchMode
           : resolvedMode;
+
+      setGrouped(["caption", "temporal", "asr"].includes(searchMode));
 
       const nextDurationLimit =
         typeof payload === "object" && payload?.durationLimit !== undefined
@@ -882,6 +889,7 @@ function RetrievalApp() {
             useSplit: true,
             useTranslate: settings.useTranslate,
             searchMode,
+            direction: payload?.direction || "top_down",
             modelKey: model,
             durationLimit: nextDurationLimit,
              reasoning: false,

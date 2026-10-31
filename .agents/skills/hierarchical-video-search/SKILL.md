@@ -9,12 +9,14 @@ Read `list_capabilities` first. Respect selected dataset, video filters, availab
 
 Generate 1–6 genuinely different plausible strategies, most promising first. Register them using `register_plans`, then call `run_next_plan` sequentially until all queued plans have run. Every completed plan publishes an independently selectable pool immediately. Do not merge all strategies into one pool. Do not inspect images or verify candidates. Explain unavailable sources and failed plans briefly; continue useful remaining strategies.
 
+Result limits: obey `top_k_limit` returned by `list_capabilities`; never request more results than the UI limit. For semantic/temporal/similarity/color plans, target 200 results when the limit permits. For segment-based ASR/caption/OCR and hierarchical top-down plans, choose 50–100: use about 50 for a specific query and move toward 100 as the request gets broader or more ambiguous. Hierarchical bottom-up is visual-first, so use the semantic target. When a pool is too broad or too small, refine query wording and adjust `top_k` within these ranges and the user limit.
+
 Routing:
 - Clear visual query: semantic. Images are embedded directly by the tool; do not invent a textual description of an attached image. Use `visual_queries=[]` for image-only search.
 - Meaning of speech: ASR embedding directly. Scene/narrative: caption embedding directly. These return segment sequences via prebuilt CSV maps. Neither is literal speech matching.
 - Distinct events with required before/after ordering: temporal; express events with uppercase THEN. Simultaneous aspects use AND. For attached images, image_event_indices assigns each image to its zero-based event (default first event). A short continuous action chain often benefits from caption or hierarchical top-down instead.
 - On-screen words: OCR Elasticsearch directly, or `ocr_query` with `ocr_match=phrase` to constrain a hierarchical pool. Preserve quoted text, names and numbers. Never silently relax a required constraint.
-- Top-down hierarchical: search source-specific ASR/caption queries, set source weights, select sequences, map into a frame pool, rank frames with visual clues. Final output is ranked keyframes only.
+- Top-down hierarchical: search source-specific ASR/caption queries, set source weights, select sequences, map into a frame pool, rank frames with visual clues. Use at least twice the requested final `top_k` for both `sequence_top_k` and `pool_k` so segment retrieval and mapped-frame candidates do not bottleneck reranking. Final output is ranked keyframes only.
 - Bottom-up hierarchical: visual/image search first, then score linked caption/ASR context. `visual_weight` controls visual versus context importance; source_weights split context contribution. These are weights, not confidence probabilities. Use `parent_pool_id` plus `restrict_to_parent=true` to rerank an existing pool; false permits a fresh dataset search while retaining branch lineage.
 - Preserve color and existing-frame similarity when useful; supply color_cells or reference_video/reference_frame.
 

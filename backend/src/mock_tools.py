@@ -19,7 +19,7 @@ from src.api.legacy.video_keyframes import finite_number
 
 DATASETS = ("v3c", "lhe")
 MODEL = "qwen3-vl-embedding-2b"
-MODES = ("semantic", "temporal", "ocr", "asr", "auto", "fusion", "color", "similarity")
+MODES = ("semantic", "temporal", "ocr", "asr", "caption", "hierarchical", "auto", "fusion", "color", "similarity")
 
 
 class ToolArgs(BaseModel):
@@ -32,7 +32,7 @@ class CapabilitiesArgs(ToolArgs):
 
 class SearchArgs(ToolArgs):
     query: str = Field(min_length=1, max_length=4000)
-    mode: Literal["semantic", "temporal", "ocr", "asr", "auto", "fusion", "color", "similarity"] = "semantic"
+    mode: Literal["semantic", "temporal", "ocr", "asr", "caption", "hierarchical", "auto", "fusion", "color", "similarity"] = "semantic"
     top_k: int = Field(default=12, ge=1, le=100)
 
 
@@ -199,10 +199,35 @@ class MockCatalog:
         results = []
         for index, row in enumerate(chosen):
             score = round(1 - index / max(len(chosen), 1) * .65, 4)
-            result = {**row, "rank": index + 1, "similarity": score, "retrieval_score": score,
-                      "search_mode": mode, "model_key": model_key,
-                      "source_models": [model_key]}
-            if mode in {"ocr", "asr"}:
+            if mode in {"asr", "caption"}:
+                # Model each matched segment as 1-4 adjacent frames from the
+                # same video. Keep the sampled hit inside its sequence as the
+                # representative frame shown in the result header/card.
+                video_frames = self.by_video[(dataset, row["video_id"])]
+                center = next(i for i, frame in enumerate(video_frames) if frame["id"] == row["id"])
+                sequence_size = random.randint(1, min(4, len(video_frames)))
+                first_min = max(0, center - sequence_size + 1)
+                first_max = min(center, len(video_frames) - sequence_size)
+                first = random.randint(first_min, first_max)
+                sequence = [dict(frame) for frame in video_frames[first:first + sequence_size]]
+                text = f"[MOCK {mode.upper()}] {query}"
+                sequence = [
+                    {**item, "sub_query_idx": frame_index, "sub_query": text, "score": score}
+                    for frame_index, item in enumerate(sequence)
+                ]
+                anchor = next(frame for frame in sequence if frame["id"] == row["id"])
+                start = float(sequence[0]["timestamp_sec"])
+                end = float(sequence[-1]["timestamp_sec"])
+                result = {**anchor, "matched_sequence": sequence, "matched_texts": [text],
+                          "caption": text, "temporal_start_time": start,
+                          "temporal_end_time": end, "temporal_duration_sec": max(0.0, end - start)}
+                if mode == "asr":
+                    result["playback_start"] = start
+            else:
+                result = dict(row)
+            result.update(rank=index + 1, similarity=score, retrieval_score=score,
+                          search_mode=mode, model_key=model_key, source_models=[model_key])
+            if mode == "ocr":
                 result["matched_texts"] = [f"[MOCK {mode.upper()}] {query}"]
             if mode == "temporal":
                 sequence = self.surrounding(dataset, row["video_id"], row["frame_id"], 1)

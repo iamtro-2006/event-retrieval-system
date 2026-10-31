@@ -126,6 +126,6 @@ Script in ra URL, index name và số document trước khi vào vòng nhập qu
 
 ## Chạy dịch vụ
 
-Backend dùng vLLM server riêng cho Qwen; xem `requirements-vllm.txt`. `host_server.ipynb` có lựa chọn `DATASET=V3C` hoặc `DATASET=LHE`, tải ZIP embedding/map tương ứng rồi build index và cache. Khi chọn LHE cần điền Drive folder ID embedding/map LHE ở cell cấu hình. Nếu thiếu index LHE, API vẫn có thể phục vụ V3C; request tìm kiếm LHE trả 503 cho đến khi index và vLLM sẵn sàng.
+Backend dùng vLLM server riêng cho Qwen; xem `requirements-vllm.txt`. Notebook `notebooks/hierarchical_search_kaggle.ipynb` tải dữ liệu theo dataset/range và build các index cần thiết trước khi khởi chạy API. Nếu thiếu index hoặc dịch vụ cần thiết, dataset tương ứng sẽ không sẵn sàng.
 
 Frontend đọc danh sách dataset từ `/api/config`, cho phép chọn V3C hoặc LHE. URL media có dạng `/keyframes/LHE/...`, `/videos/LHE/...`, `/mapkeyframes/LHE/...` hoặc URL từ host media riêng. OCR, ASR và color là các nguồn tùy chọn với index tách riêng theo dataset; xem mục Elasticsearch ở trên để bật và seed.

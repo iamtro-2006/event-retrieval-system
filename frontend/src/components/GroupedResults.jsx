@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, LoaderCircle, Search, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LoaderCircle, Search, X } from "lucide-react";
 import ResultCard from "./ResultCard";
 import TemporalSequence from "./TemporalSequence";
 import { groupByVideoSorted } from "../utils/groupByVideo";
@@ -80,6 +80,25 @@ export default function GroupedResults({
     setExpandedByVideo((previous) => ({ ...previous, [videoId]: !previous[videoId] }));
   }
 
+  function moveSequence(event, direction) {
+    const viewport = event.currentTarget.closest(".video-strip-main")?.querySelector(".video-group-viewport");
+    const list = viewport?.querySelector(".grouped-temporal-sequences-grid");
+    if (!viewport || !list) return;
+
+    const viewportLeft = viewport.getBoundingClientRect().left;
+    const sequences = Array.from(list.querySelectorAll(":scope > .temporal-sequence-block"));
+    const target = direction > 0
+      ? sequences.find((sequence) => sequence.getBoundingClientRect().left > viewportLeft + 8)
+      : sequences.filter((sequence) => sequence.getBoundingClientRect().left < viewportLeft - 8).at(-1);
+
+    if (target) {
+      const offset = target.getBoundingClientRect().left - viewportLeft;
+      viewport.scrollTo({ left: viewport.scrollLeft + offset, behavior: "smooth" });
+    } else {
+      viewport.scrollBy({ left: direction * viewport.clientWidth * 0.85, behavior: "smooth" });
+    }
+  }
+
   return (
     <div className="grouped-results">
       {verified.length > 0 && (
@@ -102,7 +121,7 @@ export default function GroupedResults({
           (item) => Array.isArray(item.matched_sequence) && item.matched_sequence.length > 0
         );
         const isExpanded = Boolean(expandedByVideo[videoId]);
-        const visibleItems = isExpanded ? items : items.slice(0, Math.max(1, columns));
+        const visibleItems = hasTemporal || isExpanded ? items : items.slice(0, Math.max(1, columns));
         const cardGridStyle = hasTemporal
           ? { "--sequence-cols": columns }
           : { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` };
@@ -124,21 +143,33 @@ export default function GroupedResults({
                 </div>
               </div>
 
-              <div className={`video-group-viewport ${isExpanded ? "is-expanded" : ""}`}>
-                <div className={`video-group-items ${hasTemporal ? "temporal-sequences-grid grouped-temporal-sequences-grid" : ""}`}
-                  style={cardGridStyle}>
-                  {visibleItems.map((result, index) => hasTemporal ? (
-                    <TemporalSequence key={result.id} result={result} sequenceIndex={index}
-                      selectedId={selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay}
-                      onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />
-                  ) : (
-                    <ResultCard key={result.id} result={result} selected={result.id === selectedId}
-                      onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch}
-                      onSurroundingImages={onSurroundingImages} query={query} />
-                  ))}
+              <div className={`video-group-stage ${hasTemporal ? "has-sequence-carousel" : ""}`}>
+                <div className={`video-group-viewport ${isExpanded ? "is-expanded" : ""}`}>
+                  <div className={`video-group-items ${hasTemporal ? "temporal-sequences-grid grouped-temporal-sequences-grid" : ""}`}
+                    style={cardGridStyle}>
+                    {visibleItems.map((result, index) => hasTemporal ? (
+                      <TemporalSequence key={result.id} result={result} sequenceIndex={index}
+                        selectedId={selectedId} onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay}
+                        onSimilaritySearch={onSimilaritySearch} onSurroundingImages={onSurroundingImages} query={query} />
+                    ) : (
+                      <ResultCard key={result.id} result={result} selected={result.id === selectedId}
+                        onSelect={onSelect} onSubmit={onSubmit} onPlay={onPlay} onSimilaritySearch={onSimilaritySearch}
+                        onSurroundingImages={onSurroundingImages} query={query} />
+                    ))}
+                  </div>
                 </div>
+                {hasTemporal && items.length > 1 && (
+                  <>
+                    <button type="button" className="sequence-carousel-nav is-left" onClick={(event) => moveSequence(event, -1)} aria-label={`Previous sequence in ${videoId}`} title="Previous sequence">
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button type="button" className="sequence-carousel-nav is-right" onClick={(event) => moveSequence(event, 1)} aria-label={`Next sequence in ${videoId}`} title="Next sequence">
+                      <ChevronRight size={20} />
+                    </button>
+                  </>
+                )}
               </div>
-              {items.length > Math.max(1, columns) && (
+              {!hasTemporal && items.length > Math.max(1, columns) && (
                 <div className="video-group-expand-footer">
                   <button type="button" className="video-group-expand-toggle"
                     onClick={() => toggleExpanded(videoId)} aria-expanded={isExpanded}
