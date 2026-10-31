@@ -42,7 +42,8 @@ TASKS = {}
 class SearchPlan(BaseModel):
     model_config = ConfigDict(extra='forbid')
     label: str = Field(default='Search', max_length=200)
-    query: str = Field(min_length=1, max_length=4000)
+    query: str | None = Field(default=None, min_length=1, max_length=4000,
+        description='General text query. Semantic visual plans can omit it when visual_queries is provided; hierarchical plans can omit it when source_queries and visual_queries are provided. Similarity uses reference_video/reference_frame; color uses color_cells.')
     mode: Literal['semantic', 'temporal', 'asr', 'caption', 'ocr', 'hierarchical', 'similarity', 'color'] = 'semantic'
     direction: Literal['top_down', 'bottom_up'] = 'top_down'
     visual_queries: list[str] | None = Field(default=None, max_length=8)
@@ -62,7 +63,7 @@ class SearchPlan(BaseModel):
     speed: Literal['normal', 'timelapse', 'slow_motion', 'unknown'] | None = None
     ocr_query: str | None = Field(default=None, max_length=1000)
     ocr_match: Literal['terms', 'phrase'] = 'phrase'
-    duration_limit: float = -1
+    duration_limit: float = Field(default=-1, ge=-1)
     parent_pool_id: str | None = None
     restrict_to_parent: bool = False
     reference_video: str | None = None
@@ -72,6 +73,18 @@ class SearchPlan(BaseModel):
     @model_validator(mode='after')
     def constraints(self):
         import math
+        if not self.label.strip():
+            raise ValueError('label must not be blank')
+        if self.query is not None and not self.query.strip():
+            raise ValueError('query must not be blank')
+        if self.mode == 'semantic' and not self.query and self.visual_queries is None:
+            raise ValueError('Semantic plans without query must provide the visual_queries field; use an empty list only with an attached image')
+        if self.mode == 'hierarchical' and not self.query:
+            has_sources = bool(self.source_queries and any(self.source_queries.values()))
+            if not (has_sources and self.visual_queries is not None):
+                raise ValueError('Hierarchical plans without query must provide source_queries and the visual_queries field')
+        if self.mode not in ('semantic', 'hierarchical', 'similarity', 'color') and not self.query:
+            raise ValueError('query is required for text-based plans')
         if self.source_queries is not None:
             if not self.source_queries or set(self.source_queries) - {'asr', 'caption'}:
                 raise ValueError('Sources must be asr/caption')
@@ -80,6 +93,10 @@ class SearchPlan(BaseModel):
         for values in (self.source_weights.values() if self.source_weights else None, self.query_weights):
             if values is not None and (any(not math.isfinite(v) or v<0 for v in values) or sum(values)<=0):
                 raise ValueError('Weights must be finite, nonnegative and have positive sum')
+        if self.source_weights is not None and self.source_queries is not None and set(self.source_weights) != set(self.source_queries):
+            raise ValueError('source_weights must have exactly the same keys as source_queries')
+        if self.source_weights is not None and self.source_queries is None:
+            raise ValueError('source_weights requires source_queries')
         if self.source_query_weights:
             if not self.source_queries or set(self.source_query_weights) - set(self.source_queries):
                 raise ValueError('source_query_weights needs matching source_queries')
@@ -88,10 +105,53 @@ class SearchPlan(BaseModel):
                     raise ValueError('Invalid source query weights')
         if self.visual_queries is not None and any(not q.strip() for q in self.visual_queries):
             raise ValueError('Empty visual query')
+        if self.mode != 'hierarchical' and any(value is not None for value in (
+                self.source_queries, self.source_weights, self.source_query_weights)):
+            raise ValueError('source_queries and source weights require hierarchical mode')
+        if self.mode not in ('semantic', 'hierarchical') and any(value is not None for value in (
+                self.visual_queries, self.query_weights)):
+            raise ValueError('visual_queries and query_weights require semantic or hierarchical mode')
+        if self.mode != 'hierarchical' and (self.direction != 'top_down' or self.speed is not None or self.ocr_query):
+            raise ValueError('direction, speed, and ocr_query filters require hierarchical mode')
+        if self.mode != 'temporal' and (self.duration_limit != -1 or self.image_event_indices is not None):
+            raise ValueError('duration_limit and image_event_indices require temporal mode')
+        if self.mode != 'hierarchical' and self.visual_weight != .7:
+            raise ValueError('visual_weight requires hierarchical mode')
+        if self.mode != 'hierarchical' and self.sequence_top_k != 30:
+            raise ValueError('sequence_top_k requires hierarchical mode')
+        if self.mode not in ('semantic', 'temporal', 'hierarchical') and self.pool_k != 300:
+            raise ValueError('pool_k is only used by semantic visual, temporal image, or hierarchical plans')
+        if self.mode not in ('semantic', 'hierarchical') and self.operation != 'weighted':
+            raise ValueError('operation requires semantic visual or hierarchical mode')
+        if self.mode != 'color' and self.color_cells:
+            raise ValueError('color_cells require color mode')
+        if self.mode != 'similarity' and (self.reference_video is not None or self.reference_frame is not None):
+            raise ValueError('reference_video/reference_frame require similarity mode')
+        if self.image_event_indices is not None and any(isinstance(index, bool) or index < 0 for index in self.image_event_indices):
+            raise ValueError('image_event_indices must be nonnegative event indexes')
         if self.restrict_to_parent and (not self.parent_pool_id or self.direction != 'bottom_up' or self.mode != 'hierarchical'):
             raise ValueError('Parent pool restriction requires hierarchical bottom_up')
-        if self.mode != 'hierarchical' and (self.speed is not None or self.ocr_query):
-            raise ValueError('speed/ocr_query filters currently require hierarchical mode')
+        if self.ocr_query is not None and not self.ocr_query.strip():
+            raise ValueError('ocr_query must not be blank')
+        if self.mode not in ('ocr', 'hierarchical') and self.ocr_match != 'phrase':
+            raise ValueError('ocr_match requires OCR or hierarchical mode')
+        if self.mode == 'similarity' and (not self.reference_video or not self.reference_video.strip() or self.reference_frame is None):
+            raise ValueError('Similarity plans require reference_video and reference_frame')
+        if self.mode == 'color':
+            if not self.color_cells:
+                raise ValueError('Color plans require at least one selected color cell')
+            allowed_colors = {'black', 'blue', 'brown', 'grey', 'green', 'orange', 'pink', 'purple', 'red', 'white', 'yellow'}
+            positions = set()
+            for cell in self.color_cells:
+                if (not isinstance(cell, dict) or isinstance(cell.get('row'), bool) or isinstance(cell.get('col'), bool)
+                        or not isinstance(cell.get('row'), int) or not 0 <= cell['row'] < 5
+                        or not isinstance(cell.get('col'), int) or not 0 <= cell['col'] < 5
+                        or not isinstance(cell.get('color'), str) or cell.get('color') not in allowed_colors):
+                    raise ValueError('Each color cell needs row/col in 0..4 and a supported color name')
+                position = (cell['row'], cell['col'])
+                if position in positions:
+                    raise ValueError('Color plans may select each grid cell only once')
+                positions.add(position)
         return self
 
 
@@ -145,6 +205,8 @@ def execute(plan, system, paths, video_ids=None, session=None, image_paths=None)
         parent = pool_by_id(session, plan.parent_pool_id) if session else None
         if parent is None:
             raise ValueError('Parent pool requires a session')
+        if not image_paths:
+            image_paths = parent.get('image_paths', [])
         if plan.restrict_to_parent:
             initial = []
             for row in parent['records']:
@@ -232,6 +294,25 @@ def execute(plan, system, paths, video_ids=None, session=None, image_paths=None)
 
 @router.post('/api/search/plan')
 def execute_manual(payload: ExecuteRequest, request: Request):
+    if payload.parent_pool_id:
+        raise HTTPException(422, 'parent_pool_id is available only in an agent search session')
+    if payload.mode == 'semantic' and not payload.query and not payload.visual_queries:
+        raise HTTPException(422, 'Semantic plans without query require visual_queries')
+    if payload.mode == 'hierarchical':
+        visuals = payload.visual_queries if payload.visual_queries is not None else ([payload.query] if payload.query else [])
+        if not visuals:
+            raise HTTPException(422, 'Hierarchical plans require visual_queries or a text query')
+    if payload.mode == 'temporal' and (payload.image_event_indices is not None or payload.pool_k != 300):
+        raise HTTPException(422, 'image_event_indices and custom pool_k require attached images, which this endpoint does not accept')
+    if payload.query_weights is not None:
+        if payload.mode == 'hierarchical':
+            visuals = payload.visual_queries if payload.visual_queries is not None else ([payload.query] if payload.query else [])
+        elif payload.mode == 'semantic' and payload.visual_queries:
+            visuals = payload.visual_queries
+        else:
+            raise HTTPException(422, 'query_weights requires semantic visual_queries or a hierarchical plan')
+        if len(payload.query_weights) != len(visuals):
+            raise HTTPException(422, 'query_weights must contain one value per visual query')
     system, config, paths = get_dataset_resources(request, payload.dataset)
     records, results = _run_or_503(lambda: execute(payload, system, paths, payload.video_ids,
         {'config': config}), feature_name=payload.mode)
@@ -301,49 +382,72 @@ class RealTools:
         if self.calls > self.max_calls:
             raise ValueError('Tool budget exceeded')
         if name == 'list_capabilities':
-            return {'sources': self.system.text_search_health(), 'models': self.system.available_models(), 'modes': ['semantic', 'temporal', 'asr', 'caption', 'ocr', 'hierarchical', 'similarity', 'color'],
+            sources = self.system.text_search_health()
+            models = self.system.available_models()
+            ocr = sources.get('ocr', {})
+            segment_available = {
+                name: bool(sources.get(name, {}).get('available')) and int(sources.get(name, {}).get('documents') or 0) > 0
+                for name in ('asr', 'caption')
+            }
+            color_path = self.session.get('config', {}).get('color', {}).get('index_path')
+            color_available = False
+            if color_path:
+                color_path = Path(color_path)
+                if not color_path.is_absolute():
+                    color_path = self.paths.backend_dir / color_path
+                color_available = color_path.is_file()
+            mode_availability = {
+                'semantic': bool(models),
+                'temporal': bool(models),
+                'asr': segment_available['asr'] and bool(models),
+                'caption': segment_available['caption'] and bool(models),
+                'ocr': bool(models) and bool(ocr.get('available') and ocr.get('reachable')
+                    and ocr.get('index_exists') and int(ocr.get('documents') or 0) > 0),
+                'hierarchical': bool(models) and any(segment_available.values()),
+                'similarity': bool(models),
+                'color': color_available and bool(models),
+            }
+            return {'sources': sources, 'models': models,
+                    'modes': [mode for mode, available in mode_availability.items() if available],
+                    'mode_availability': mode_availability,
                     'images_attached': len(self.image_paths), 'selected_frame_references': getattr(self, 'frame_references', []),
                     'color_cells': getattr(self, 'color_cells', []), 'preferred_mode': getattr(self, 'preferred_search_mode', 'semantic'),
                     'top_k_limit': self.top_k_limit,
                     'plans': [{k: p.get(k) for k in ('id','plan','status','error')} for p in self.session['plans']]}, []
         if name == 'register_plans':
-            # Models occasionally emit an empty query for an unused modality.
-            # Drop that source before validation so valid sibling sources still run.
-            if isinstance(arguments, dict) and isinstance(arguments.get('plans'), list):
-                for raw_plan in arguments['plans']:
-                    if not isinstance(raw_plan, dict) or not isinstance(raw_plan.get('source_queries'), dict):
-                        continue
-                    original = raw_plan['source_queries']
-                    cleaned = {
-                        source: [query.strip() for query in queries if isinstance(query, str) and query.strip()]
-                        for source, queries in original.items()
-                        if isinstance(queries, list)
-                    }
-                    cleaned = {source: queries for source, queries in cleaned.items() if queries}
-                    if cleaned:
-                        raw_plan['source_queries'] = cleaned
-                    else:
-                        raw_plan.pop('source_queries', None)
-                    active_sources = set(cleaned)
-                    if isinstance(raw_plan.get('source_weights'), dict):
-                        weights = {key: value for key, value in raw_plan['source_weights'].items() if key in active_sources}
-                        if weights:
-                            raw_plan['source_weights'] = weights
-                        else:
-                            raw_plan.pop('source_weights', None)
-                    if isinstance(raw_plan.get('source_query_weights'), dict):
-                        focused_weights = {
-                            key: value for key, value in raw_plan['source_query_weights'].items()
-                            if key in active_sources and len(value) == len(cleaned[key])
-                        }
-                        if focused_weights:
-                            raw_plan['source_query_weights'] = focused_weights
-                        else:
-                            raw_plan.pop('source_query_weights', None)
             batch = PlanBatch.model_validate(arguments)
             if len(self.session['plans']) + len(batch.plans) > 60:
                 raise ValueError('Session plan limit reached; start a new session')
+            prepared = []
             for plan in batch.plans:
+                parent = pool_by_id(self.session, plan.parent_pool_id) if plan.parent_pool_id else None
+                inherited_images = self.image_paths or (parent.get('image_paths', []) if parent else [])
+                if plan.mode == 'semantic' and not plan.query and not (plan.visual_queries or inherited_images):
+                    raise ValueError('Semantic plan without query requires visual_queries or an attached search image')
+                if plan.mode == 'semantic' and not (plan.visual_queries or inherited_images):
+                    if plan.query_weights is not None or plan.operation != 'weighted' or plan.pool_k != 300:
+                        raise ValueError('query_weights, operation, and pool_k require semantic visual queries or an attached search image')
+                if plan.mode == 'temporal' and not inherited_images and plan.pool_k != 300:
+                    raise ValueError('pool_k is only used by temporal plans with attached images')
+                if plan.image_event_indices is not None:
+                    if plan.mode != 'temporal' or not inherited_images:
+                        raise ValueError('image_event_indices require a temporal plan with attached images')
+                    if len(plan.image_event_indices) != len(inherited_images):
+                        raise ValueError('image_event_indices must contain one event index per attached image')
+                if plan.mode == 'hierarchical':
+                    visual_queries = plan.visual_queries if plan.visual_queries is not None else ([plan.query] if plan.query else [])
+                    if not visual_queries and not inherited_images:
+                        raise ValueError('Hierarchical plans require visual_queries, a text query, or an attached search image')
+                if plan.query_weights is not None:
+                    if plan.mode == 'hierarchical':
+                        visual_queries = plan.visual_queries if plan.visual_queries is not None else ([plan.query] if plan.query else [])
+                    elif plan.mode == 'semantic' and (plan.visual_queries or inherited_images):
+                        visual_queries = plan.visual_queries or ([] if inherited_images else [plan.query])
+                    else:
+                        raise ValueError('query_weights is only used for semantic visual queries or hierarchical plans')
+                    expected_weights = len(visual_queries) + len(inherited_images)
+                    if len(plan.query_weights) != expected_weights:
+                        raise ValueError(f'query_weights must contain one weight per visual query/image ({expected_weights} total)')
                 segment_first = plan.mode in ('asr', 'caption', 'ocr') or (
                     plan.mode == 'hierarchical' and plan.direction == 'top_down')
                 if segment_first:
@@ -356,15 +460,12 @@ class RealTools:
                 if plan.mode == 'hierarchical' and plan.direction == 'top_down':
                     plan.sequence_top_k = max(plan.sequence_top_k, 2 * plan.top_k)
                     plan.pool_k = max(plan.pool_k, 2 * plan.top_k)
-                if not plan.parent_pool_id:
-                    plan.parent_pool_id = self.session.get('parent_pool_id')
-                if plan.parent_pool_id:
-                    pool_by_id(self.session, plan.parent_pool_id)
-                self.session['plans'].append({'id': uuid.uuid4().hex, 'plan': plan.model_dump(), 'status': 'queued', 'image_paths': self.image_paths})
+                prepared.append({'id': uuid.uuid4().hex, 'plan': plan.model_dump(), 'status': 'queued', 'image_paths': self.image_paths})
             if load(self.session['id']).get('stop_requested'):
                 raise ValueError('User stopped this turn')
+            self.session['plans'].extend(prepared)
             save(self.session)
-            return {'plans': [{k:v for k,v in p.items() if k != 'image_paths'} for p in self.session['plans'][-len(batch.plans):]]}, []
+            return {'plans': [{k:v for k,v in p.items() if k != 'image_paths'} for p in prepared]}, []
         if name != 'run_next_plan':
             raise ValueError('Unknown tool')
         RunNext.model_validate(arguments)
@@ -461,8 +562,6 @@ async def chat(payload: ChatRequest, request: Request):
         try:
             with tempfile.TemporaryDirectory(prefix='ers-images-') as temporary:
                 images = []
-                if not payload.images and payload.parent_pool_id:
-                    images = pool_by_id(session, payload.parent_pool_id).get('image_paths', [])
                 image_root = ROOT / 'images' / session['id']
                 image_root.mkdir(parents=True, exist_ok=True)
                 for number, value in enumerate(payload.images):
@@ -495,12 +594,22 @@ async def chat(payload: ChatRequest, request: Request):
                 tools.reasoning_effort = payload.reasoning_effort
                 tools.instructions = (Path(__file__).resolve().parents[4] / '.agents/skills/hierarchical-video-search/SKILL.md').read_text(encoding='utf-8')
                 # Do not ask Codex to inspect input pixels: the image is passed to the visual encoder.
-                text = payload.message + f'\nFeedback parent pool: {payload.parent_pool_id}. Attached search images: {len(images)}.'
+                text = (payload.message + f'\nSelected pool for possible feedback: {payload.parent_pool_id or "none"}. '
+                    'Use it as parent only if the user asks to refine, continue, or give feedback on that pool; '
+                    'otherwise create independent search plans. '
+                    f'Attached search images: {len(images)}.')
                 async for event in stream_codex(ROOT, tools, text, session['history'], payload.model):
                     await queue.put(event)
                 # Finish queued strategies even if the model ends after publishing the first pool.
                 while any(p['status']=='queued' for p in session['plans']):
-                    data, _ = await asyncio.to_thread(tools.execute, 'run_next_plan', {})
+                    await queue.put({'type': 'tool_start', 'name': 'run_next_plan', 'arguments': {}})
+                    try:
+                        data, _ = await asyncio.to_thread(tools.execute, 'run_next_plan', {})
+                    except Exception as exc:
+                        await queue.put({'type': 'tool_end', 'name': 'run_next_plan', 'success': False, 'error': str(exc)})
+                        raise
+                    await queue.put({'type': 'tool_end', 'name': 'run_next_plan', 'count': data.get('count'),
+                        'success': data.get('status') == 'completed', 'error': data.get('error')})
                     await queue.put({'type': 'pool', **data})
                 session['history'] = (session['history'] + [{'role': 'user', 'text': payload.message}])[-16:]
                 save(session)

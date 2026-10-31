@@ -358,11 +358,15 @@ async def search_api(
     latency_ms = round((time.perf_counter() - start) * 1000)
     candidate_k = max(top_k * candidate_multiplier, top_k)
 
+    effective_search_mode = (
+        "temporal" if mode == "auto" and len(query_plan.events) > 1
+        else ("semantic" if mode == "auto" else mode)
+    )
     response_base = {
         "original_query": original_query, "query": search_query,
         "translated_query": search_query if should_translate else None,
         "use_translate": should_translate, "use_split": use_split, "reasoning": payload.reasoning,
-        "mode": mode, "search_mode": mode,
+        "mode": mode, "search_mode": mode, "effective_search_mode": effective_search_mode,
         "duration_limit": duration_limit, "top_k": top_k, "candidate_multiplier": candidate_multiplier,
         "candidate_k": candidate_k, "latency_ms": latency_ms,
         "model_key": (
