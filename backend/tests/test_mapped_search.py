@@ -11,7 +11,7 @@ import numpy as np
 
 from src.retrieval.segment_data import build_maps, load_segments, SegmentMaps, choose_asr_fallback
 from src.retrieval.hierarchical import HierarchicalSearch, weighted_scores
-from src.retrieval.retriever.common.video_filter import with_video_filter
+from src.retrieval.retriever.common.candidate_filter import with_video_filter
 
 
 class MappedSearchTests(unittest.TestCase):

@@ -23,3 +23,6 @@ backend/.kaggle-check-tools/
 backend/.kaggle-check311/
 backend/.venv-mock/
 backend/notebooks/.resolve-output.txt
+
+# Local scope regression dependencies
+.scope-test-deps/

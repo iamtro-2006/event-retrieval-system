@@ -2,8 +2,10 @@
 
 Standalone entrypoint: `backend/mock_server.py`. No real retrieval imports,
 FAISS, Elasticsearch, model loading, or API key required. Use port **8001**;
-the real backend remains on 8000. The Codex integration has not been connected to
-`RetrievalSystem`: retrieval/embedding/index pipelines are separate. The real
+the real backend remains on 8000. This mock entrypoint does not call `RetrievalSystem`. The real agent in
+`src/api/routers/plans.py` does call the scoped plan pipeline; see
+[HIERARCHICAL_SEARCH.md](HIERARCHICAL_SEARCH.md). Do not infer real runtime
+capabilities from the synthetic mock tools. The real
 Surrounding Frames route also accepts `all_frames=true` for the video browser;
 that small API extension does not change the retrieval pipelines.
 

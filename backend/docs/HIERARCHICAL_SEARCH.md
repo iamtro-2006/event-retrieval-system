@@ -51,7 +51,68 @@ The real API exposes `/api/agent/status` and streamed `/api/agent/chat`. Codex C
 
 The tools are `list_capabilities`, `register_plans`, `run_next_plan`. Plans run sequentially. Each pool is stored in `data/search_state/sessions.sqlite3` and emitted immediately as a `pool` event. The producer is independent of the client stream, so switching pools or losing the connection does not interrupt an active search. A stopped turn prevents subsequent plans; current model inference may finish before stopping. Keep one Uvicorn worker for this local agent queue.
 
-`GET /api/agent/sessions/{id}` restores plans/results. `POST /api/agent/sessions/{id}/stop` stops queued work cooperatively. Feedback supplies `parent_pool_id`; a bottom-up plan with `restrict_to_parent=true` ranks that pool's frames, while false searches anew and retains lineage. Pools are snapshots and are not overwritten by child branches. A server restart preserves completed pools, but does not automatically resume interrupted inference. The UI persists session IDs locally and lets users inspect/select plans and give feedback while later plans run.
+The runtime skill is self-contained because the bridge loads only its `SKILL.md` text. Its decision order is: establish evidence/requirements, choose scope, choose evidence path, write modality-specific queries and weights, register/execute, refine/report. Keep schema examples aligned with `SearchPlan`; adding a separate reference file does not automatically make it visible to the runtime.
+
+Multi-query in one plan yields one pool; different plans yield independent pools. `query_weights` combines visual text queries followed by attached images. `source_query_weights` combines queries within an ASR/caption source, `source_weights` combines active sources, and `visual_weight` mixes visual/context only in bottom-up. Default optional weights are equal. Unequal weights should reflect user emphasis or distinguishing clues, not invented confidence. Visual `operation=and` is a soft geometric conjunction, never an exact constraint. Direct ASR/caption takes one query; source-specific multi-query is hierarchical. Runtime capabilities and actual source readiness always take precedence over examples. Skill structure/schema checks do not measure retrieval accuracy; real query evaluation remains necessary before claiming improved accuracy.
+
+`GET /api/agent/sessions/{id}` restores plans/results. `POST /api/agent/sessions/{id}/stop` stops queued work cooperatively. `parent_pool_id` records branch lineage only. Use `scope` and `scope_pool_id` explicitly to restrict retrieval (see below). Pools are snapshots and are not overwritten by child branches. A server restart preserves completed pools, but does not automatically resume interrupted inference. The UI persists session IDs locally and lets users inspect/select plans and give feedback while later plans run.
+
+## Scope contract and module ownership
+
+This section describes the implemented real runtime, not a proposed tool design. Start here when continuing scope work without chat history.
+
+| Scope | Required plan fields | Meaning | Supported modes |
+| --- | --- | --- | --- |
+| `dataset` (default) | No `video_ids` or `scope_pool_id` | Current dataset within outer UI/session limits | All available modes |
+| `videos` | Nonempty `video_ids` | Specified videos intersected with outer limits | All available modes |
+| `pool_frames` | `scope_pool_id` | Only mapped frame identities already in that completed pool | `semantic`, `hierarchical` |
+| `pool_videos` | `scope_pool_id` | All frames in videos represented by that completed pool; can discover new moments | All available modes |
+
+Available modes are semantic, temporal, ASR, caption, OCR, hierarchical, similarity and color, subject to source readiness. Pool-frame semantics for direct segment/OCR/temporal/similarity/color modes are not implemented and are rejected, never substituted. A pool scope is available only in an agent session: the manual plan endpoint rejects pool references. `video_ids` is a per-plan field for `videos`; the chat request's `video_ids` is the outer session limit. Pool references must resolve to completed entries in the same session/dataset. A selected pool is context, never an automatic restriction.
+
+Examples of agent plan fields (pool identifiers come from capabilities):
+
+```json
+{"query":"skateboarder near graffiti", "mode":"semantic", "scope":"videos", "video_ids":["00001"]}
+```
+
+```json
+{"query":"skateboarder near graffiti", "mode":"semantic", "scope":"pool_frames", "scope_pool_id":"<completed-pool-id>"}
+```
+
+Use `pool_videos` instead of `pool_frames` in the second example to find additional moments in those videos. Add `parent_pool_id` separately if recording branch lineage is desired.
+
+Execution ownership:
+
+1. `api/routers/plans.py`: request schema, validation, tool registration, session persistence, response serialization. `list_capabilities` exposes `scope_modes`, `current_scope`, and `referenceable_pools`.
+2. `retrieval/search_scope.py`: scope/mode support matrix, completed-pool validation, expansion of sequence cards using their existing `matched_sequence`, outer-limit intersection, explicit empty scope. Does not invent neighboring frames.
+3. `retrieval/system.py::search_plan`: API facade.
+4. `retrieval/plan_search.py`: shared dispatch for manual/agent retrieval. Empty scopes return no results without calling backends.
+5. `retrieval/retriever/common/candidate_filter.py`: request-local video/frame constraints through ContextVars, with restoration on exit/failure. This module was renamed from `video_filter.py`; use the new import path. It accepts IDs/identities, not pool IDs.
+6. Semantic FAISS selects all allowed vector rows before top-k; segment retrieval scores eligible segments before truncation. Hierarchical top-down excludes segments without an eligible mapped frame and clips mapped frame expansion to scope. Bottom-up visual retrieval is scoped before context scoring. OCR video restrictions enter the Elasticsearch query; color restricts candidate rows before ranking. Temporal event candidate retrieval uses the scoped semantic search.
+7. `frontend/src/components/AgentChat.jsx`: passes outer video and selected pool context, displays each plan's scope and persisted `resolved_scope` (videos/frame count), and permits revisiting completed pools.
+
+Do not search global top-k and then filter: an in-scope candidate may be absent from the global list. Do not change the hierarchical score formulas as part of scope maintenance. `visual_weight` applies to bottom-up; top-down final ranking is visual only. Context weights are not confidence probabilities.
+
+Compatibility: legacy `restrict_to_parent=true` with `parent_pool_id` normalizes to `scope=pool_frames`, `scope_pool_id=parent_pool_id`. Conflicting explicit fields are rejected. New agents must use explicit scope fields. Legacy manual requests with video IDs and no scope normalize to `videos`; an empty legacy video list means the default dataset scope. Empty resolved intersections and empty pools remain empty; they must never become unrestricted searches. ContextVar video allowlists retain legacy empty-means-unrestricted semantics internally, so always resolve and short-circuit empty scopes before backend dispatch.
+
+## Mapping policy and regression checks
+
+Nearby boundary frame fallback when a caption shot has no representative keyframe is intentional. Multiple captions may map to one frame. Preserve existing mapping relations and offsets; do not remove valid fallback links merely to enforce in-shot-only mapping.
+
+`tests/test_csv_roundtrip_boundaries_empty_reverse_and_stale` is shorthand for the method of that name in `tests/test_mapped_search.py`. It currently expects an older in-shot-only mapping for one fixture and fails against the existing boundary fallback policy, including with the committed hierarchical implementation. This is a stale test expectation, not evidence that fallback mappings should be removed. Scope/scoring checks are independent of that fixture. Updating the fixture expectations to the accepted mapping policy remains follow-up work.
+
+From `backend/`, with dependencies installed:
+
+```bash
+python -m unittest discover -s tests -p test_search_scope.py
+python -m unittest discover -s tests -p test_search_plans.py
+python -m unittest discover -s tests -p test_mapped_search.py
+```
+
+The mapping suite includes the stale expectation above; do not claim the full suite passes until it is updated. Scope tests cover pre-top-k retrieval, pool/video expansion, empty intersections, invalid pool references, legacy conversion, capability registration, context cleanup, and hierarchical scoring. No live model/GPU/index integration is implied by these unit tests.
+
+From `frontend/`, run `npm run test:agent` and `npm run build`. On the current development workspace, isolated Python test dependencies may exist in ignored `.scope-test-deps/`; they are local tooling, not production dependencies or a required repository layout.
 
 ## Kaggle
 

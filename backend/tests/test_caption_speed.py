@@ -61,6 +61,8 @@ class OriginalSpeedTests(unittest.TestCase):
         with patch.dict(sys.modules, {"PyNvVideoCodec":codec}), \
              patch("torch.cuda.is_available", return_value=True), \
              patch("torch.cuda.current_device", return_value=0), \
+             patch("src.utils.frame_sampling.video_timeline_info", return_value={
+                 "timestamps": list(range(150)), "packet_count": 150, "discard_count": 0}), \
              patch("torch.cuda.synchronize"):
             with CudaVideoReader(Path("video.mp4"), backend="simple") as reader:
                 self.assertEqual(reader.total,150)

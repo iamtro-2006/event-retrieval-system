@@ -51,3 +51,6 @@
 .sidebar.is-chat-open .sidebar-top { flex-shrink:0; }
 .sidebar.is-chat-open .sidebar-top > .sidebar-button:not(.sidebar-expand-button),
 .sidebar.is-chat-open .sidebar-bottom { display:none; }
+
+.agent-scope-history { padding: 8px 12px; border-bottom: 1px solid #334155; max-height: 180px; overflow: auto; font-size: 12px; }
+.agent-scope-history details { margin-top: 6px; }

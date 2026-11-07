@@ -91,6 +91,7 @@ def encode_sampled_with_quality(model, video_path, output_path, batch_size, imag
     indexes = plan['frame_indexes']
     scenes = np.asarray(scenes, dtype=np.int64).reshape(-1, 2)
     selected = np.zeros(len(indexes), dtype=bool)
+    quality_scores = np.empty(len(indexes), dtype=np.float32)
     sharpness_scores = np.empty(len(indexes), dtype=np.float32)
     features = None
     pending_images, pending_rows = [], []
@@ -164,6 +165,7 @@ def encode_sampled_with_quality(model, video_path, output_path, batch_size, imag
                 continue
             sample = rgb[torch.as_tensor(indexes[left:right] - start, device=rgb.device)]
             accepted, scores, nonflat, sharpness = score_batch(sample, min_hist_bins)
+            quality_scores[left:right] = scores
             sharpness_scores[left:right] = sharpness
             for local, row in enumerate(range(left, right)):
                 frame_index = indexes[row]
@@ -192,11 +194,12 @@ def encode_sampled_with_quality(model, video_path, output_path, batch_size, imag
     if features is None or not selected.any():
         raise RuntimeError('All sampled shots contain only uniform-color frames; no keyframes to export')
     result = dict(filter_sample_plan(plan, selected), features=features[selected],
+                  quality=quality_scores[selected],
                   sharpness=sharpness_scores[selected],
                   source_frame_indexes=indexes.copy(),
                   source_scenes=scenes.copy(),
                   kept_scenes=np.asarray(kept_scenes, dtype=np.int64).reshape(-1, 2),
-                  quality_policy=f'fused-v5-sharpness-{min_hist_bins}bins')
+                  quality_policy=f'fused-v7-display-p3-{min_hist_bins}bins')
     save_embedding_cache(result, output_path)
     print(f'Quality + embed: {int(selected.sum())}/{len(indexes)} samples; '
           f'shot fallbacks: {fallbacks}; uniform-only shots dropped: {dropped_shots}', flush=True)

@@ -1,6 +1,6 @@
 # Notebooks
 
-- `vlm_keyframes.ipynb`: tải từng video từ Drive, OmniShotCut → lấy mẫu 3 FPS → lọc chất lượng trên GPU → PE-Core-L14-336 → clustering → anchor theo shot + MMR → dedup 0,97 theo độ mới và độ nét → JPEG/ZIP → upload → cleanup.
+- `vlm_keyframes.ipynb`: từng video Drive → OmniShotCut clean_shot → timestamp 3 FPS / vùng tối đa 30 giây → GPU quality + PE-Core-L14-336 → P3 common/medoid/unique + MMR budget=None → dedup cosine >0,96 chỉ giữa shot kề nhau → JPG → scene cuối → ZIP/upload/cleanup.
 - `compress_video.ipynb`: tải từng video từ Drive nguồn, NVDEC → CUDA resize → HEVC NVENC 480p, upload vào `videos/` của Drive đích. Cell cuối in tiến độ rclone và FFmpeg.
 - `extract_embedding.ipynb`: chọn `DATASET=V3C` hoặc `DATASET=LHE`, trích xuất Qwen3-VL-Embedding-2B qua vLLM từ ZIP keyframe và upload ZIP vector.
 - `extract_ocr_paddle.ipynb`: tải ZIP keyframe theo dải video ID từ Drive, clone nhánh `vbs-dev`, cài PP-OCRv6 trong venv riêng để tránh xung đột NCCL với Torch GPU của Kaggle, dùng model chọn trong `configs/ocr_extraction.yaml`, rồi upload JSON OCR thô theo lô 10 video.
@@ -15,43 +15,88 @@ Caption speed labels: sau shot detection, SpeedPredictor gắn nhãn toàn bộ 
 
 ## VLM keyframes trên Kaggle T4
 
-Notebook có 5 cell code:
-1. Config: mặc định chỉ LHE01 (`START_VIDEO_ID=END_VIDEO_ID=1`), có thể chọn range đến LHE75; sample_fps=3.0, batch embedding 16, decode batch 8, mmr_budget_fraction=.5, anchors_per_shot=3, `mmr_relevance_weight=.4`, `final_similarity_threshold=.97`, max scene 20 giây và source/output folder IDs. Cell in `pipeline_id` để dễ nhận ra notebook cũ.
-2. Cài dependencies trực tiếp bằng pip vào Python hiện tại của Kaggle; dùng PyTorch/torchvision và scientific stack sẵn có, không tạo venv hoặc ép Python 3.11.
-3. Rclone config và danh sách video. Nguồn `1yPb3EQBPKfKtlP0PGGZHmKDF3pghnRCN`; đích `11__IfRj1eLK4GZWEeNLs1SQK-DowEU1K`.
-4. Source canonical nhúng sẵn và kiểm tra imports/CUDA. Khi cập nhật source thì chạy lại cell 4 trước cell 5.
-5. Từng video: download → extract → package → upload bốn file → xóa job; lỗi thì giữ job và dừng. Chạy lại cell 5 để tiếp tục.
+`vlm_keyframes.ipynb` là notebook duy nhất cho bản VLM mới hợp nhất V3C.
+Luồng canonical: OmniShotCut clean_shot → lấy mẫu theo PTS 3 FPS → GPU quality
++ PE-Core-L14-336 → P3 common/medoid/unique, MMR budget=None → dedup cosine
+>0.96 chỉ giữa shot kề nhau → CUDA JPEG → scene/map → ZIP/upload/cleanup.
+Giữ clean shot gốc, vùng sampling tối đa 30 giây; không gộp shot ngắn và không
+dedup trong cùng shot. Shot toàn mẫu đồng màu bị bỏ, shot còn tín hiệu có
+fallback nonflat. Không còn notebook thử nghiệm V3C hoặc đường clustering cũ.
 
-Rclone remote mặc định `iamtro`. Gắn rclone.conf hoặc tạo Kaggle Secret `RCLONE_CONFIG`. T4 GPU 0 được dùng; hai T4 không tự gộp VRAM hoặc tăng gấp đôi tốc độ.
+### Chạy notebook
 
-NVDEC decode/RGB conversion vào GPU; PyTorch GPU resize/normalize, PE-Core-L embedding, clustering, histogram và JPEG encoding qua torchvision CUDA/nvJPEG. Bộ đệm decoder tối đa 2 × batch, window Omni giữ hữu hạn; không có cache toàn bộ RGB trên RAM/đĩa. Chỉ preprocess/embedding mẫu 3 FPS trong general shots. Decode NVDEC vẫn đọc stream liên tục; bộ đệm theo decode batch 8, không tăng theo FPS. Các mẫu được gom đủ batch embedding 16 trước khi inference. Embedding float32 giữ trong RAM: M × 1024 × 4 byte với M là số mẫu, không phải số frame nguồn. Đoạn 20 giây ở 60 FPS có khoảng 60 mẫu thay vì 1200 frame; ma trận khoảng cách clustering cũng giảm tương ứng. Scene quá ngắn lấy một frame giữa. Model detector được giải phóng trước khi load PE-Core. PE-Core được giải phóng trước clustering. CPU còn demux/điều phối, xử lý các tie số học gần nhau, ghi byte JPEG đã encode trên GPU với tối đa hai tác vụ, pickle, ZIP STORE và upload. Không cam kết GPU utilization 100%.
+1. Config: chọn `DATASET="V3C"` hoặc `LHE`; mặc định V3C2 07476–07485.
+   `DATASET_GROUPS`, `VIDEO_ID_RANGES`, `VIDEO_ID_LIST` chọn nguồn V3C (list ghi đè range).
+   LHE dùng START_VIDEO_ID/END_VIDEO_ID trong 1..75. Pipeline ID `vlm-p3-quality-v2`.
+2. Cài trực tiếp vào Python Kaggle, dùng scientific/PyTorch stack sẵn có.
+3. Rclone: V3C dùng SFTP config `/kaggle/input/datasets/khanho/sftp-rclone/rclone.conf`,
+   remote `stfp`, layout `V3C1|V3C2|V3C3/videos/<ID>/<ID>.<extension>`.
+   ID giới hạn trong collection, ưu tiên MP4 → MOV → MKV → WEBM → AVI;
+   liệt kê đệ quy theo chunk 200, dự phòng từng folder. Hỗ trợ các đuôi trong
+   `remote_jobs.VIDEO_EXTENSIONS`; nhận đuôi không đảm bảo codec được NVDEC hỗ trợ.
+   LHE dùng Drive nguồn `1yPb3EQBPKfKtlP0PGGZHmKDF3pghnRCN`, tên `LHE##.mp4`.
+   Drive đích `11__IfRj1eLK4GZWEeNLs1SQK-DowEU1K`, remote `iamtro`;
+   gắn rclone.conf hoặc Kaggle Secret `RCLONE_CONFIG`. SFTP/Drive dùng config riêng.
+4. Giải nén source canonical nhúng sẵn, kiểm tra imports/CUDA. Không cần clone repo.
+5. Chạy batch: `VIDEO_BATCH_SIZE=1`, `UPLOAD_WORKERS=4` mặc định.
+   Tải đủ batch → extract tuần tự trong một persistent worker → package cả batch →
+   upload song song trong từng folder, chờ xong lần lượt keyframes → scenes →
+   embeddings → map_keyframes → cleanup. Không thêm tầng V3C/LHE trên Drive.
+   `UPLOAD_DONE` chỉ cập nhật sau upload đủ bốn folder và cleanup thành công.
+   Lỗi giữ workspace `jobs/<V3C|LHE>/<id>` để chạy lại; chưa tải batch tiếp.
 
-OmniShotCut dùng checkpoint v1.5 pin revision và cùng loop inference, overlap/padding/query decoding/stitching upstream. Chỉ thay frame iterable và validation transform để xử lý tensor GPU. Tensor resize/NVDEC color conversion có thể khác pixel nhỏ với FFmpeg/PIL; không hứa kết quả bitwise hoặc biên cut trùng tuyệt đối. Không hỗ trợ NVDEC thì fail rõ ràng, không fallback CPU. Cần NVIDIA driver/libnvcuvid và codec được T4 hỗ trợ; import smoke test chưa thay thế kiểm tra decode thật.
+### Model, timeline và input
 
-Omni shot ngắn dưới 1 giây được gộp với shot kế bên đến khi không còn shot dưới ngưỡng (trừ video chỉ có một shot rất ngắn). Quality gate và PE-Core chạy trong cùng một lượt NVDEC trên GPU. Gate đếm bin màu trên toàn khung hình (<=5 là gần đồng màu), còn cháy sáng, tương phản grayscale và variance of Laplacian dùng vùng giữa; không loại chỉ vì ảnh tối. Shot có toàn bộ mẫu 3 FPS đồng màu bị bỏ. Nếu shot còn mẫu không đồng màu nhưng tất cả trượt các tiêu chí chất lượng khác, giữ mẫu không đồng màu có điểm cao nhất. Ảnh được xuất bằng lượt NVDEC riêng và mã hóa JPEG trên CUDA; CPU chỉ ghi byte ảnh. Clustering theo chunk 20 giây tạo candidate; mỗi shot còn lại giữ tối đa ba anchor, rồi MMR toàn cục chọn thêm đến 50% tổng candidate (hoặc nhiều hơn nếu anchor bắt buộc vượt ngân sách), dùng công thức 0,4 đại diện - 0,6 giống ảnh đã chọn. Cuối cùng, mọi cặp PE-Core cosine >0,97 được xét theo độ khác biệt với keyframe lân cận (60%) và độ nét đo ở quality gate (40%); không decode hay embed lại. Shot có thể mất ảnh nếu ảnh trùng với shot khác. Chưa có GPU T4 tại máy local để xác nhận inference end-to-end.
+OmniShotCut v1.5 pin revision, cùng overlap/padding/stitching upstream;
+clean_shot lọc intra label general. Omni và PE-Core load lazy một lần, cùng giữ
+trên GPU 0 qua các video và batch, inference tuần tự. Worker đóng khi xong/lỗi/interrupt.
+NVDEC decode/RGB, resize/normalize, quality, embedding và nvJPEG chạy GPU;
+P3/k-medoids/AUCC, demux/điều phối, ZIP STORE và ghi byte ảnh dùng CPU.
+Decode batch 8, embedding batch 16, tối đa hai tác vụ ghi ảnh; không cache toàn bộ RGB.
+Hai T4 không tự gộp VRAM. Chưa benchmark tốc độ/VRAM hay chạy end-to-end GPU local.
 
-Output mỗi video (LHE chỉ là tên dataset, không còn method/pipeline riêng):
+Quality: RGB histogram 8×8×8 (>5 bin); ảnh rộng tối đa 320, Laplacian >=20,
+brightness 10..245, loại khi entropy <1.2 đồng thời edge density <.002.
+Canny PyTorch GPU 80/160; điểm .35 sharpness + .25 exposure + .20 entropy + .20 edge.
+Resize/color conversion có thể lệch OpenCV/PIL, không bảo đảm kết quả bitwise.
+Dedup ưu tiên quality rồi frame sớm, chỉ so với ảnh đã giữ; không gộp bắc cầu.
+
+Timeline dùng ffprobe packet PTS/flags, không decode CPU để kiểm tra.
+Loại packet discard; chỉ bỏ PTS trùng cuối của AVC MP4/MOV khi byte NAL xác nhận
+end-of-sequence/stream. Duplicate khác và mismatch frame vẫn báo lỗi.
+SimpleDecoder giới hạn batch cuối theo display total; ThreadedDecoder kiểm tra EOF.
+Raw shot cache ở `.cache/omni_clean_shot_timeline_v2/`; scene inclusive chỉ được
+publish sau export và chỉ giữ shot có keyframe cuối, map publish sau cùng.
+
+Codec/profile không hỗ trợ T4 NVDEC (DNxHD/ProRes, H.264 10-bit/4:4:4,
+HEVC 4:2:2...) chuyển tạm trong `jobs/.../transcoded/`: FFmpeg CPU decode →
+h264_nvenc, p1/CQ18/yuv420p, không ép FPS/resize. Kiểm tra frame count/PTS tương đối
+(tolerance 2 microseconds), rồi smoke test NVDEC/JPEG trước model. OOM, mismatch
+và error 300 chung chung không kích hoạt chuyển mã. Bản gốc giữ nguyên;
+manifest cho retry, cleanup sau upload thành công. Cần FFmpeg có h264_nvenc.
+Chuyển màu/nén có thể ảnh hưởng pixel và lựa chọn keyframe.
+
+### Mã nguồn và kiểm tra
+
+- `src/keyframe_extraction/`: thuật toán P3, quality, export, model cache,
+  worker protocol, input codec và remote jobs.
+- `scripts/keyframe_extraction/vlm_worker.py`: worker GPU canonical.
+- `scripts/keyframe_extraction/vlm_run_cell.py`: cell xử lý notebook.
+- `scripts/keyframe_extraction/build_vlm_keyframes.py`: đóng gói trực tiếp từ
+  source repo theo manifest; không lấy source từ ZIP cũ, không giữ code merge/migration.
+
+Sau sửa source, từ backend chạy:
+
+```bash
+python scripts/keyframe_extraction/build_vlm_keyframes.py
+python -m unittest tests.test_vlm_keyframes tests.test_vlm_remote_jobs tests.test_video_io -q
 ```
-keyframes/LHE/LHE01.zip
-map_keyframes/LHE/LHE01.csv
-scenes/LHE/LHE01.scenes.txt
-embeddings/LHE/LHE01.pkl
-```
-Scene TXT ghi các khoảng general sau khi gộp shot ngắn, trước quality gate. Shot bị gate loại vẫn có thể còn trong TXT; CSV map hiện không có `scene_id`.
-ZIP chỉ chứa ảnh JPG flat. Map cột `keyframe_id,video_id,frame_idx,timestamp_sec,fps`; scene inclusive start/end chỉ các range general; PKL là dict `format=vlm-sampled-v1`, `features` numpy float32 M×1024, `sharpness` float32 M, `frame_indexes`, `timestamps`, `sample_ranges`, `sample_fps`, `source_total_frames`, `source_fps`, `model_name`. Dòng i là mẫu thứ i; `frame_indexes[i]` và `timestamps[i]` mới là định danh/thời gian gốc. CSV map vẫn có cùng cột, frame_idx và fps gốc; timestamp_sec lấy từ PTS thực, không lấy chỉ số mẫu hoặc chia cho 3. Cấu trúc bốn file upload không đổi, nhưng consumer đọc PKL phải dùng schema sampled mới. Ảnh gốc quality95. Không xuất shot MP4. Upload map sau cùng, chỉ xóa workspace sau cả 4 copyto thành công; lỗi giữ nguyên workspace. Không xóa file Drive. Workspace mới `/kaggle/working/vlm_pipeline`, không dùng cache SurgVLP cũ. Cache full-frame cũ hoặc khác sampling plan tự được tính lại; scene vẫn dùng lại. Cache trước khi thêm điểm nét cần tính lại quality+embedding một lần. Map cũ chỉ được skip nếu cache sampled và selection_policy cùng khớp. Đổi ngân sách MMR, số anchor hoặc ngưỡng dedup sẽ dùng lại embedding và chọn/xuất ảnh lại; đổi tiêu chí lọc chất lượng có thể cần tính lại embedding. selection_policy được lưu trong cùng PKL, không sinh sidecar; chỉ áp dụng khi cache/video còn local. Video đã upload/cleanup thì không còn cache local để dùng lại. Timestamp lấy từ packet PTS qua ffprobe (chỉ demux, không CPU decode), sắp theo presentation order và chuẩn hóa về frame đầu. Timeline yêu cầu mỗi displayed frame có một packet PTS duy nhất, kiểm tra số lượng theo metadata và NVDEC. Video có PTS thiếu/trùng hoặc packet/frame không khớp sẽ báo lỗi thay vì ghi map sai; VFR được hỗ trợ khi thỏa điều kiện đó. Cache hiện chưa xác minh hash nội dung source; dùng cùng video khi resume.
 
-Notebook VLM và HEVC chứa sẵn mã cần chạy trên Kaggle, gồm rclone và các helper. Notebook VLM cũng nhúng bản source pipeline dưới dạng ZIP trong cell 4; khi sửa pipeline ở repo, phải cập nhật payload trong cell đó trước khi chạy bản mới. Các bước smoke/worker chạy bằng `sys.executable` trong process mới để đọc packages sau cài đặt.
+Chạy lại cell code 4 rồi 5 để dùng bundle mới. Ba suite kiểm tra P3/quality,
+source notebook, resident worker, thứ tự upload/cleanup, packet timeline và codec
+fallback. Kiểm tra CPU/mock không thay thế chạy pipeline thật trên Kaggle T4.
 
-
-
-
-
-
-NVDEC caption predictor: cấu hình `speed_predictor.decoder: simple` dùng SimpleDecoder (NVDEC đồng bộ, GPU RGBP, primary CUDA context). Đây là đường thay cho ThreadedDecoder gặp SIGSEGV trong constructor ở môi trường Kaggle đã báo (PyNvVideoCodec 2.2.3 / Torch 2.11 cu130 / Python 3.13). Không khẳng định nguyên nhân sâu hoặc đã sửa lỗi trên GPU khi chưa chạy lại. Các pipeline khác vẫn giữ decoder mặc định của chúng. Cập nhật notebook và chạy lại cell setup/config để helper run() mới có heartbeat/exit code.
-
-SpeedPredictor/NVDEC chạy trong worker process mới không import Decord/PyAV/OpenCV/torchvision/OmniShotCut. Pipeline chính chỉ import Decord sau khi worker đã thoát. Kết quả nhãn truyền qua RAM/stdin/stdout, không lưu file trung gian. Worker crash được chuyển thành lỗi rõ ràng ở parent, log worker vẫn stream trực tiếp. Cách ly xử lý khả năng xung đột native; chưa có kiểm chứng GPU cho môi trường Kaggle gây lỗi.
-
-### Caption InternVL3.5 + vLLM
+## Caption InternVL3.5 + vLLM
 
 Notebook `extract_caption.ipynb` dùng duy nhất `OpenGVLab/InternVL3_5-2B` qua vLLM; đã bỏ backend Transformers tuần tự và notebook thử nghiệm model cũ. Chạy lại cell 2 → 3 → 4 → 5 khi nâng cấp. Sửa prompt/batch/FPS ở cell 3 rồi chạy lại cell 5 trong cùng phiên.
 
@@ -88,5 +133,3 @@ SpeedPredictor, prefix timelapse/slow-motion và JSON bốn trường giữ nguy
 Frame caption được lọc trước resize bằng histogram **RGB 8×8×8, [0,256)** trên toàn frame, cùng cách chia bin của quality gate keyframe; gồm cả giá trị kênh 255. Chỉ áp dụng tiêu chí màu này, không thêm lọc độ nét/sáng/tương phản. Ngưỡng caption theo yêu cầu là **<5 thì loại, ≥5 giữ**, khác điều kiện `>5` ở gate keyframe. Không resize trước khi đếm vì nội suy có thể tạo thêm màu. Giữ nguyên tập mẫu 1.5 FPS, không lấy bù hoặc lặp frame; timestamp các frame còn lại vẫn là thời gian gốc.
 
 Khi VERBOSE_LOGS=True, `CAPTION-FILTER` in frame index/timestamp/bin count cho frame bị loại và tổng sampled/kept/dropped; mặc định các dòng này ẩn. Shot bị loại hết frame mẫu không gọi generate và không xuất segment; toàn video bị loại thì JSON là `[]` hợp lệ. Checkpoint nội bộ vẫn đánh dấu cửa sổ skipped để resume đúng vị trí và không lệch nhãn speed ở shot sau; JSON cuối chỉ có bốn trường cũ. Run ID và checkpoint signature chứa version/ngưỡng filter để tách khỏi kết quả trước khi lọc.
-
-

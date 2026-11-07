@@ -35,7 +35,7 @@ function displayToolArguments(value, key = "") {
       displayToolArguments(child, childKey),
     ]));
   }
-  if (key === "parent_pool_id" && typeof value === "string" && /^[a-f0-9]{32}$/i.test(value)) {
+  if (["parent_pool_id", "scope_pool_id"].includes(key) && typeof value === "string" && /^[a-f0-9]{32}$/i.test(value)) {
     return "selected pool";
   }
   return value;
@@ -264,6 +264,21 @@ export default function AgentChat({ ref, dataset, topK, videoIds, enabled, provi
         <div><button type="button" title="New chat" aria-label="New chat" onClick={clearChat}><Plus size={17} /></button>
           <button type="button" aria-label="Close AI chat" onClick={() => onOpenChange(false)}><X size={17} /></button></div>
       </header>
+      <div className="agent-scope-history" aria-label="Phạm vi tìm kiếm">
+        <small>Giới hạn: {dataset.toUpperCase()} · {videoIds?.length ? `Video: ${videoIds.join(", ")}` : "Tất cả video"}</small>
+        {plans.map((entry) => {
+          const scope = entry.resolved_scope || entry.plan || {};
+          const labels = { dataset: "Dataset trong giới hạn đã chọn", videos: "Các video chỉ định", pool_frames: "Trong các frame của pool", pool_videos: "Trong các video của pool" };
+          const source = plans.find((candidate) => candidate.id === scope.scope_pool_id);
+          return <details key={entry.id}>
+            <summary>{entry.plan?.label || "Search"} · {labels[scope.scope || "dataset"]} · {entry.status}</summary>
+            {source && <p>Pool nguồn: {source.plan?.label}</p>}
+            {scope.video_ids && <p>Video: {scope.video_ids.join(", ") || "Phạm vi rỗng"}</p>}
+            {scope.frame_count != null && <p>{scope.frame_count} frame trong phạm vi</p>}
+            {entry.status === "completed" && <button type="button" disabled={busy} onClick={() => showPool(entry)}>Xem kết quả</button>}
+          </details>;
+        })}
+      </div>
       <div className="agent-messages" ref={viewport} onScroll={() => {
         const node = viewport.current; follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
       }}>

@@ -13,6 +13,14 @@ Giao diện React 19 + Vite 8 cho tìm kiếm video V3C và LHE. Cần Node.js 2
 - Trang kết quả cho ảnh cuộn phía sau composer nổi. Composer cách đáy 18 px, mờ nhẹ khi không tương tác (opacity 0.68), hiện rõ khi hover/focus/chạy hoặc mở popup. Hiệu ứng đang xử lý là glow tím; Stop màu đỏ. Queue màu xanh ở góc phải ngoài.
 - Style composer hiện tại nằm ở `SearchBar.css`; log ở `AgentChat.css`, Markdown ở `AssistantMarkdown.css`, popup ở `AgentReasoningPicker.css`. Tránh thêm các lớp ghi đè composer vào `index.css`.
 
+## Scope và pool trong agent thật
+
+`AgentChat.jsx` gửi dataset/video_ids làm giới hạn session và pool đang chọn làm context. Agent đăng ký scope riêng cho từng plan; chọn pool không tự giới hạn truy vấn mới. `parent_pool_id` là nhánh lịch sử; `scope_pool_id` là pool làm phạm vi.
+
+Assistant log hiển thị scope từng plan, pool nguồn và `resolved_scope` (video IDs, số frame) sau thực thi; có thể chọn xem lại pool đã hoàn tất. Phân biệt “Trong các frame của pool” (chỉ frame cũ) và “Trong các video của pool” (có thể tìm frame mới). `pool_frames` chỉ hỗ trợ semantic/hierarchical; không tự đổi mode khi backend từ chối. Mock demo không chứng minh các hành vi retrieval thật.
+
+Xem [contract backend](../backend/docs/HIERARCHICAL_SEARCH.md) và [AGENTS.md](../AGENTS.md) để tiếp tục triển khai.
+
 ## Chạy và kiểm tra
 
 ```powershell

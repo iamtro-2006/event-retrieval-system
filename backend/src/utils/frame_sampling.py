@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from fractions import Fraction
+from functools import lru_cache
 import json
 from pathlib import Path
 import pickle
 import subprocess
 import numpy as np
 
-CACHE_FORMAT = 'vlm-sampled-v1'
+CACHE_FORMAT = 'vlm-sampled-v2'
 
 
 def merge_consecutive_short_scenes(scenes: np.ndarray, timestamps: np.ndarray,
@@ -54,15 +55,56 @@ def save_embedding_cache(data, path: Path) -> None:
 
 
 def probe_video_timeline(video: Path) -> tuple[np.ndarray, float]:
-    """Read packet PTS in presentation order, without CPU decoding RGB frames.
+    """Return packet-derived display PTS; NVDEC independently validates output count."""
+    info = video_timeline_info(video)
+    return info['timestamps'], info['fps']
 
-    This path requires one timestamped video packet per displayed frame (normal
-    MP4/H.264/H.265). Counts are checked against metadata and again against NVDEC;
-    missing/duplicate PTS or unmatched counts fail instead of inventing timestamps.
+
+def video_timeline_info(video: Path) -> dict:
+    """Cache only small metadata arrays by source identity, never RGB frames."""
+    path = Path(video).resolve()
+    stat = path.stat()
+    return _probe_video_timeline(str(path), stat.st_size, stat.st_mtime_ns)
+
+
+def _is_avc_end_marker(video: str, packet: dict, stream: dict,
+                       format_name: str, file_size: int) -> bool:
+    """Recognize a standalone AVC end marker in an MP4/MOV sample, without decoding.
+
+    Do not infer an empty picture from size or duplicate PTS alone. MP4 sample
+    positions point to contiguous bytes; this is not safe for arbitrary demuxers.
+    Only a single length-prefixed end-of-sequence/stream NAL is accepted.
+    """
+    if (stream.get('codec_name') != 'h264' or str(stream.get('is_avc')).lower() != 'true'
+            or not {'mov', 'mp4'}.intersection(format_name.split(','))):
+        return False
+    try:
+        length_size = int(stream.get('nal_length_size', 0))
+        size, pos = int(packet.get('size', 0)), int(packet.get('pos', -1))
+    except (ValueError, TypeError):
+        return False
+    if (length_size not in {1, 2, 4} or size != length_size + 1
+            or pos < 0 or pos + size > file_size):
+        return False
+    with Path(video).open('rb') as handle:
+        handle.seek(pos)
+        data = handle.read(size)
+    return (len(data) == size and int.from_bytes(data[:length_size], 'big') == 1
+            and data[length_size:] in {b'\x0a', b'\x0b'})
+
+
+@lru_cache(maxsize=4)
+def _probe_video_timeline(video: str, size: int, mtime_ns: int) -> dict:
+    """Demux packet PTS/flags without a CPU frame-decode pass.
+
+    Discard PTS and a verified duplicate-PTS AVC end marker at the tail are
+    excluded; original packet bytes still go to NVDEC. Matching counts do not
+    prove per-frame PTS identity.
     """
     info = json.loads(subprocess.check_output([
         'ffprobe','-v','error','-select_streams','v:0','-show_entries',
-        'stream=avg_frame_rate,nb_frames','-of','json',str(video),
+        'stream=avg_frame_rate,nb_frames,codec_name,is_avc,nal_length_size:format=format_name',
+        '-of','json',str(video),
     ],text=True))
     streams = info.get('streams',[])
     if not streams:
@@ -73,26 +115,43 @@ def probe_video_timeline(video: Path) -> tuple[np.ndarray, float]:
         raise ValueError('Video has no valid original FPS')
     result = subprocess.run([
         'ffprobe','-v','error','-select_streams','v:0','-show_entries',
-        'packet=pts_time','-of','csv=p=0',str(video),
+        'packet=pts_time,flags,size,pos','-of','json',str(video),
     ],capture_output=True,text=True,check=True)
     try:
-        timestamps = np.asarray([float(line.split(',')[0])
-                                 for line in result.stdout.splitlines() if line.strip()],dtype=np.float64)
-    except ValueError as exc:
+        packets = json.loads(result.stdout).get('packets', [])
+        if any('C' in p.get('flags', '') for p in packets):
+            raise ValueError('Corrupt video packet')
+        retained = [p for p in packets if 'D' not in p.get('flags', '')]
+        discard_count = len(packets) - len(retained)
+        timestamps = np.asarray([float(p['pts_time']) for p in retained], dtype=np.float64)
+    except (ValueError, KeyError, TypeError) as exc:
         raise ValueError('Video packets contain missing/invalid PTS; cannot map sampled frames safely') from exc
+    non_picture_count = 0
+    if (len(timestamps) > 1 and retained[-1] is packets[-1]
+            and timestamps[-1] == np.max(timestamps[:-1])
+            and _is_avc_end_marker(video, retained[-1], stream,
+                                   info.get('format', {}).get('format_name', ''), size)):
+        timestamps = timestamps[:-1].copy()
+        non_picture_count = 1
     timestamps.sort()  # Compressed packets can be in B-frame decode order.
     if (not len(timestamps) or not np.isfinite(timestamps).all()
             or np.any(np.diff(timestamps) <= 0)):
         raise ValueError('Video requires unique increasing presentation timestamps')
     declared = stream.get('nb_frames')
-    if declared not in (None,'N/A','0') and int(declared) != len(timestamps):
+    if declared not in (None,'N/A','0') and int(declared) != len(packets):
         raise ValueError('Packet/frame counts differ; cannot use packet PTS as the frame timeline')
+    if discard_count or non_picture_count:
+        print(f'[Timeline] {Path(video).name}: packets={len(packets)}, discard={discard_count}, '
+              f'non_picture_tail={non_picture_count}, '
+              f'expected display frames={len(timestamps)}', flush=True)
     timestamps -= timestamps[0]  # Time relative to the first displayed video frame.
-    return timestamps,fps
+    timestamps.setflags(write=False)
+    return dict(timestamps=timestamps, fps=fps, packet_count=len(packets),
+                discard_count=discard_count, non_picture_count=non_picture_count)
 
 
 def build_sample_plan(scenes: np.ndarray, timestamps: np.ndarray, source_fps: float,
-                      sample_fps: float = 3., max_scene_seconds: float | None = 20.,
+                      sample_fps: float = 3., max_scene_seconds: float | None = 30.,
                       max_gap: int = 5000) -> dict:
     times = np.asarray(timestamps,dtype=np.float64)
     scenes = np.asarray(scenes,dtype=np.int64).reshape(-1,2)
@@ -186,7 +245,7 @@ def load_quality_sampled_cache(path: Path, source_plan: dict, source_scenes: np.
     try:
         with path.open('rb') as handle:
             data = pickle.load(handle)
-        if not isinstance(data, dict) or data.get('quality_policy') != f'fused-v5-sharpness-{min_hist_bins}bins':
+        if not isinstance(data, dict) or data.get('quality_policy') != f'fused-v7-display-p3-{min_hist_bins}bins':
             return None
         if not np.array_equal(data.get('source_scenes'), source_scenes):
             return None
@@ -215,6 +274,10 @@ def load_quality_sampled_cache(path: Path, source_plan: dict, source_scenes: np.
             return None
         features = data['features']
         if not isinstance(features, np.ndarray) or features.dtype != np.float32 or features.shape != (len(chosen), 1024):
+            return None
+        quality = data.get('quality')
+        if (not isinstance(quality, np.ndarray) or quality.shape != (len(chosen),)
+                or not np.isfinite(quality).all()):
             return None
         sharpness = data.get('sharpness')
         if (not isinstance(sharpness, np.ndarray) or sharpness.shape != (len(chosen),)

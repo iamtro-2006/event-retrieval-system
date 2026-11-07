@@ -56,7 +56,9 @@ class SearchPlanTests(unittest.TestCase):
             saved = client.get(f'/api/agent/sessions/{identifier}').json()
             self.assertEqual(len(saved['plans']),4)
             self.assertEqual(saved['plans'][0]['id'],original_id)
-            self.assertEqual(saved['plans'][2]['plan']['parent_pool_id'],original_id)
+            # Selecting a pool does not attach it to independent plans emitted
+            # by the bridge. Branch lineage must be explicitly requested.
+            self.assertIsNone(saved['plans'][2]['plan']['parent_pool_id'])
             self.assertEqual(client.post('/api/agent/chat',json={'dataset':'lhe','message':'q',
                 'session_id':identifier}).status_code,409)
 

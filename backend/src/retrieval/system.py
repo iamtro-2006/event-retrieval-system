@@ -287,6 +287,11 @@ class RetrievalSystem:
     def search_hierarchical(self, **kwargs):
         return self._orchestrator.mapped_search.search(**kwargs)
 
+    def search_plan(self, plan, paths, scope, session=None, image_paths=None):
+        """Shared scoped-plan pipeline used by manual and agent API requests."""
+        from src.retrieval.plan_search import search_plan
+        return search_plan(plan, self, paths, scope, session, image_paths)
+
     def search_caption(self, query, top_k=10):
         return self._orchestrator.run_search(query, mode="caption", top_k=top_k)
 

@@ -193,7 +193,7 @@ class ElasticsearchService:
         return matched
 
     def search(self, query: str, size: int = 10, match: str | None = None) -> list[dict]:
-        from src.retrieval.retriever.common.video_filter import video_ids_context
+        from src.retrieval.retriever.common.candidate_filter import video_ids_context
         video_ids = video_ids_context.get()
         if match is not None:
             if match not in ('terms', 'phrase'):

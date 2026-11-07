@@ -10,6 +10,15 @@ import torch
 from tqdm import tqdm
 
 
+def clean_shot_ranges(ranges, intra_labels, general_id):
+    """Match OmniShotCut.inference(mode='clean_shot') without host RGB decoding.
+
+    Upstream clean_shot keeps general intra labels and returns ranges only.
+    Source ranges are end-exclusive; conversion to inclusive happens below.
+    """
+    return [span for span, label in zip(ranges, intra_labels) if label == general_id]
+
+
 @contextmanager
 def _cuda_inputs(engine, windows):
     """Only used in a sequential worker; restore upstream globals even on error."""
@@ -23,10 +32,8 @@ def _cuda_inputs(engine, windows):
         engine.split_videos, engine.video_transform = split, transform
 
 
-def detect_omni_scenes(video: Path, scene_path: Path, cfg, backend: str = 'nvdec') -> np.ndarray:
+def load_omni_detector(cfg):
     import omnishotcut
-    from omnishotcut import engine
-    from omnishotcut.label_correspondence import unique_intra_label_mapping
     if cfg.weights_path:
         weights = str(cfg.weights_path)
     else:
@@ -35,7 +42,15 @@ def detect_omni_scenes(video: Path, scene_path: Path, cfg, backend: str = 'nvdec
             repo_id='uva-cv-lab/OmniShotCut_v1.5', filename='OmniShotCut_ckpt.pth',
             revision='1bc678977ad48c65d57d600296d95f97c1be293f', cache_dir=str(cfg.cache_dir),
         )
-    detector = omnishotcut.load(weights)
+    return omnishotcut.load(weights)
+
+
+def detect_omni_scenes(video: Path, scene_path: Path, cfg, backend: str = 'nvdec',
+                       model_cache=None) -> np.ndarray:
+    from omnishotcut import engine
+    from omnishotcut.label_correspondence import unique_intra_label_mapping
+    detector = (load_omni_detector(cfg) if model_cache is None
+                else model_cache.omni(cfg, load_omni_detector))
     try:
         if backend == 'nvdec':
             from src.utils.gpu_video import CudaVideoReader, iter_gpu_windows, resized_batches
@@ -56,15 +71,16 @@ def detect_omni_scenes(video: Path, scene_path: Path, cfg, backend: str = 'nvdec
                     ranges, labels, _ = engine._windows_to_ranges(
                         range(total), detector._model, args, overlap,
                     )
-                general = unique_intra_label_mapping['general']
+                # Same postprocessing as public mode='clean_shot', with bounded
+                # GPU windows instead of its full-video host decode/resize.
+                ranges = clean_shot_ranges(ranges, labels, unique_intra_label_mapping['general'])
         else:
             from src.utils.omni_progress import inference_with_progress
-            ranges, labels, _ = inference_with_progress(detector, video, overlap=cfg.overlap)
-            general = 'general'
-        scenes = np.asarray([[int(a), int(b)-1] for (a,b), label in zip(ranges, labels)
-                             if label == general and b > a], dtype=np.int32).reshape(-1, 2)
+            ranges = inference_with_progress(detector, video, overlap=cfg.overlap, mode='clean_shot')
+        scenes = np.asarray([[int(a), int(b)-1] for a, b in ranges
+                             if b > a], dtype=np.int32).reshape(-1, 2)
         if not len(scenes):
-            raise RuntimeError('OmniShotCut returned no general shots')
+            raise RuntimeError('OmniShotCut returned no clean shots')
         if np.any(scenes < 0) or np.any(scenes[:, 0] > scenes[:, 1]):
             raise RuntimeError('Invalid OmniShotCut ranges')
         scene_path.parent.mkdir(parents=True, exist_ok=True)
@@ -77,6 +93,7 @@ def detect_omni_scenes(video: Path, scene_path: Path, cfg, backend: str = 'nvdec
         return scenes
     finally:
         del detector
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        if model_cache is None:
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

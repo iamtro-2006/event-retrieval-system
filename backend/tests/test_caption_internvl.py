@@ -109,7 +109,7 @@ class InternVLTests(unittest.TestCase):
             pipeline._sample_frames(Reader(), **windows[0])
             self.assertEqual(selected[-1], 31)
 
-    def test_long_shot_split_has_exact_shared_edges(self):
+    def test_long_shot_preserves_source_boundaries_and_shared_edges(self):
         from src.caption_extraction.pipeline.speed import speed_segment_bounds
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -119,7 +119,8 @@ class InternVLTests(unittest.TestCase):
             fps = 30000 / 1001
             with patch("src.caption_extraction.pipeline.extract_caption._probe_video", return_value=(fps, 40)):
                 windows = pipeline._windows(video)
-            self.assertEqual(len(windows), 4)
+            self.assertEqual(windows, [dict(start=0., end=657/fps),
+                                       dict(start=657/fps, end=900/fps)])
             for left, right in zip(windows, windows[1:]):
                 self.assertEqual(left["end"], right["start"])
             bounds = speed_segment_bounds(windows, fps)

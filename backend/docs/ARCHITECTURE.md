@@ -1,8 +1,9 @@
 # Backend Architecture — Event Retrieval System
 
 > Phạm vi: tài liệu này mô tả backend retrieval thật (`main:app` / `src.api.main:app`,
-> cổng 8000). Mock server và agent Codex chạy riêng ở cổng 8001, chưa nối vào pipeline
-> retrieval. Xem [MOCK_SERVER.md](MOCK_SERVER.md) cho kiến trúc và cách chạy phần đó.
+> cổng 8000), bao gồm agent thật trong `api/routers/plans.py`. Mock server cổng 8001
+> là demo riêng; xem [MOCK_SERVER.md](MOCK_SERVER.md). Contract search/scope hiện hành
+> nằm trong [HIERARCHICAL_SEARCH.md](HIERARCHICAL_SEARCH.md).
 
 **Tài liệu handover kỹ thuật chi tiết.** README.md ở root là bản tóm tắt
 "đọc trong 5 phút"; tài liệu này là bản đầy đủ để một team mới có thể tiếp
@@ -51,14 +52,14 @@ Hệ thống retrieval video theo 4 kiểu truy vấn trên cùng 1 tập keyfra
 | Web framework | **FastAPI** + Pydantic (`BaseModel`) | REST API, validate request |
 | Vector search | **FAISS** (`faiss`), HNSW index | ANN search trên embedding CLIP |
 | Embedding model | **PE-Core**, **OpenCLIP**, **Qwen3-VL-Embedding-2B** qua model registry | encode text/ảnh thành vector |
-| Deep learning runtime | **PyTorch** (`torch`, `torchvision`) | chạy CLIP, TransNet, reranker |
+| Deep learning runtime | **PyTorch** (`torch`, `torchvision`) | chạy embedding model, OmniShotCut, reranker |
 | Numeric tăng tốc | **NumPy**, **SciPy**, **scikit-learn** (`sklearn`), **Numba** (`@njit`) | xử lý ma trận, DP tốc độ C |
 | Dữ liệu bảng | **pandas** | toàn bộ kết quả search là `pd.DataFrame` |
 | Full-text search | **Elasticsearch** (`elasticsearch` client) | index/search OCR & ASR |
 | Vector DB thay thế | **Milvus** (`pymilvus` qua `src/retrieval/indexer/milvus`) | backend ghi index thay thế cho FAISS (hiện có indexer, chưa thấy retriever tương ứng — xem mục 10) |
 | OCR | **PaddleOCR** (detect) + **VietOCR** (`vietocr`, nhận dạng ký tự tiếng Việt) | trích chữ trên khung hình |
 | ASR (speech-to-text) | **faster-whisper** (`faster_whisper`) | model Whisper tối ưu CTranslate2, dùng cho cả pipeline offline lẫn endpoint `/api/speech/transcribe` (query bằng giọng nói) |
-| Scene/keyframe detection | **TransNetV2** (custom, load qua `torch.hub`-style loader trong `detector.py`) + thuật toán cluster riêng | phát hiện chuyển cảnh, chọn keyframe đại diện |
+| Scene/keyframe detection | **OmniShotCut clean_shot** + PE-Core quality/P3 | phát hiện chuyển cảnh, chọn keyframe đại diện |
 | Video I/O | **decord**, **ffmpeg-python**, **OpenCV** (`cv2`) | đọc frame video hiệu quả |
 | Rerank (tuỳ chọn, CHƯA wire) | **InternVL** qua `transformers` | rerank kết quả bằng VLM — xem mục 10 |
 | Dịch câu truy vấn | Google Cloud Translation Basic v2 | dịch query VI→EN khi người dùng chủ động bật; khóa lấy từ biến môi trường |
@@ -67,6 +68,14 @@ Hệ thống retrieval video theo 4 kiểu truy vấn trên cùng 1 tập keyfra
 
 > `requirements.txt` trong `backend/` là snapshot môi trường Python backend hiện tại.
 > PE-Core được pin trong cùng file và có license riêng; xem `docs/PE_CORE.md`.
+
+### Scope và pipeline plan hiện hành
+
+API `routers/plans.py` validate/resolve scope và serialize; `RetrievalSystem.search_plan` gọi `retrieval/plan_search.py` để dispatch backend. `retrieval/search_scope.py` giải completed pool, tập video/frame và giao với giới hạn session. `retriever/common/candidate_filter.py` giữ constraints qua ContextVars và lọc trước top-k; không nhận pool ID. Không import tên cũ `video_filter.py`.
+
+`scope` độc lập `mode`; `parent_pool_id` chỉ là lineage, `scope_pool_id` chọn phạm vi. `pool_frames` chỉ hỗ trợ semantic/hierarchical, còn `pool_videos` có thể tìm frame mới trong các video của pool. Phạm vi rỗng không được mở rộng; top-down vẫn chỉ xếp hạng cuối bằng visual, bottom-up giữ default visual/context 0.7/0.3. Xem ma trận, ví dụ và tests tại [HIERARCHICAL_SEARCH.md](HIERARCHICAL_SEARCH.md).
+
+Mapping fallback gần biên khi thiếu frame đại diện là hành vi chủ đích. Không thay mapping policy chỉ để làm một test cũ qua.
 
 ### 1.2 Nguyên tắc kiến trúc xuyên suốt (bắt buộc phải hiểu trước khi sửa code)
 
@@ -97,8 +106,8 @@ Hệ thống retrieval video theo 4 kiểu truy vấn trên cùng 1 tập keyfra
 ```
 ┌─────────────┐   ┌────────────────────┐   ┌─────────────────────┐
 │   video/*    │──▶│ keyframe_extraction │──▶│ embedding_extraction │
-│ (raw videos) │   │ (TransNetV2 + DP    │   │ (OpenCLIP encode     │
-│              │   │  cluster + histo    │   │  từng keyframe ->    │
+│ (raw videos) │   │ (OmniShotCut + P3   │   │ (Qwen3-VL encode     │
+│              │   │  quality + cosine   │   │  từng keyframe ->    │
 │              │   │  dedup)             │   │  vector .npy)        │
 └─────────────┘   └────────────────────┘   └──────────┬───────────┘
                                                         │
@@ -155,32 +164,32 @@ trong `scripts/`.
 **Output:** danh sách file ảnh keyframe (`data/processed/keyframes/<video_id>/*.jpg`)
 + 1 file `map_keyframes/<video_id>.csv` map `keyframe_id -> frame_idx, timestamp_sec, fps`.
 
-Thuật toán VLM (mã giả, xem `models/omni_detector.py`, `models/clustering.py`,
-`models/selector.py` và đường CUDA trong `models/gpu_selection.py`):
+VLM hiện chỉ có một luồng đã hợp nhất V3C, notebook `vlm_keyframes.ipynb`.
+Code nằm trong `models/omni_detector.py`, `models/quality.py`, `models/p3.py`
+và `models/export.py`; điều phối bởi `pipeline/extract_keyframes.py`.
 
-```
-scenes = merge_subsecond_shots(OmniShotCut(video).general_ranges_inclusive())
-plan = sample_general_shots_by_pts(scenes, sample_fps=3, max_seconds=20)
+```python
+scenes = OmniShotCut(video).clean_shot_ranges_inclusive()
+plan = sample_clean_shots_by_pts(scenes, sample_fps=3, max_seconds=30)
 plan, features, kept_scenes = quality_and_PE_Core_L_one_nvdec_pass(video, plan)
-candidate_indexes = []
-
-for sample_start, sample_end in plan.sample_ranges:
-    local = features[sample_start:sample_end + 1]
-    indexes = select_cluster_keyframes(local, min_frames=3)
-    candidate_indexes.extend(plan.frame_indexes[sample_start + indexes])
-
-mmr_indexes = select_shot_mmr(candidate_indexes, candidate_features, kept_scenes)
-final_indexes = dedup_selected_keyframes(mmr_indexes, PE_embeddings, sharpness,
-                                         threshold=.97, novelty_weight=.6)
-
-export_selected_cuda(video, final_indexes, output_dir, image_quality)
-save_keyframe_map(final_indexes, video_path, csv_path, timestamps=source_pts)
+primary = select_sampled_p3(plan, features, quality)  # common/medoid/unique, MMR budget=None
+indexes = cosine_dedup(primary, kept_scenes, threshold=.96)  # adjacent shots only
+export_selected_cuda(video, indexes, output_dir, image_quality)
+save_final_scenes(kept_scenes_with_exported_keyframes)
+save_keyframe_map(indexes, video, csv_path, timestamps=source_pts)
 ```
 
-VLM dùng OmniShotCut v1.5 thay TransNetV2 và PE-Core-L14-336 lấy mẫu 3 FPS. Mọi shot ngắn dưới 1 giây được gộp với shot kế bên; shot toàn mẫu đồng màu (<=5 bin) bị bỏ, shot trượt các gate khác giữ mẫu không đồng màu tốt nhất. Clustering và shot MMR chọn keyframe, sau đó xử lý các cặp cosine >0,97 theo độ mới so với keyframe lân cận (60%) và độ nét (40%) đã lưu từ quality gate. Đường NVDEC chạy decode/preprocess/inference/quality/JPEG encode trên GPU với bộ đệm hữu hạn; ghi file/ZIP/upload vẫn dùng CPU. Notebook và giới hạn được mô tả trong [notebooks/README.md](../notebooks/README.md).
+Giữ nguyên clean shot, không gộp shot ngắn. Quality dùng histogram, độ nét,
+brightness, entropy và cạnh; shot toàn mẫu đồng màu bị bỏ, shot còn tín hiệu
+có fallback nonflat. P3 chạy trên các mẫu đạt quality trong từng vùng 30 giây.
+Chỉ dedup giữa hai shot kề nhau, ưu tiên quality rồi frame sớm; không dedup
+nội bộ shot. Decode/preprocess/quality/embedding/JPEG dùng GPU; P3 dùng CPU.
+OmniShotCut và PE-Core giữ trong một persistent worker qua các video.
 
-Điều phối bởi `KeyframeExtractionPipeline` (`pipeline/extract_keyframes.py`),
-config ở `configs/kf_extraction.yaml`. Chạy: `python scripts/keyframe_extraction/run.py`.
+Không còn đường selection dense/clustering/shot-MMR hoặc detector TransNet cũ.
+Config ở `configs/kf_extraction.yaml`; CLI: `python scripts/keyframe_extraction/run.py --method vlm --input-dir <videos>`. Notebook standalone được tạo lại bằng
+`python scripts/keyframe_extraction/build_vlm_keyframes.py` từ backend.
+Chi tiết input, upload và giới hạn GPU ở [notebooks/README.md](../notebooks/README.md).
 
 ### 3.2 Embedding extraction — `src/embedding_extraction/`
 
@@ -678,7 +687,7 @@ hoặc muốn test CLIP trực tiếp).
 | `asr_extraction.yaml` | offline ASR pipeline | tham số faster-whisper cho batch transcribe |
 | `embeddings.yaml` | offline embedding pipeline | model CLIP, batch size, device |
 | `indexing.yaml` | build FAISS index | tham số HNSW (M, efConstruction...), đường dẫn output |
-| `kf_extraction.yaml` | offline keyframe pipeline | threshold TransNetV2, `max_gap`, `histogram threshold` |
+| `kf_extraction.yaml` | offline keyframe pipeline | OmniShotCut, sampling PTS 3 FPS, quality/P3, adjacent-shot dedup |
 
 > Cấu hình runtime OCR/ASR được trỏ từ `configs/app.yaml` tới
 > `configs/ocr_extraction.yaml` và `configs/asr_extraction.yaml`.

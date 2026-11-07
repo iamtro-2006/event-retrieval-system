@@ -6,7 +6,6 @@ import logging
 import subprocess
 
 import cv2
-import ffmpeg
 import numpy as np
 
 VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".webm")
@@ -14,18 +13,6 @@ VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".webm")
 
 def list_videos(input_dir: Path) -> list[Path]:
     return sorted(p for p in input_dir.rglob("*") if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS)
-
-
-def decode_for_transnet(video_path: Path, width: int = 48, height: int = 27) -> np.ndarray:
-    stream, _ = (
-        ffmpeg.input(str(video_path))
-        .output("pipe:", format="rawvideo", pix_fmt="rgb24", s=f"{width}x{height}")
-        .run(capture_stdout=True, capture_stderr=True)
-    )
-    arr = np.frombuffer(stream, np.uint8)
-    if arr.size == 0:
-        raise RuntimeError(f"FFmpeg decoded no frames from {video_path}")
-    return arr.reshape([-1, height, width, 3])
 
 
 def get_video_fps(video_path: Path) -> float:

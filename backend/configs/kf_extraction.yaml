@@ -34,21 +34,17 @@ embedding:
   backend: perception_encoder
   pretrained: "true"
   batch_size: 16
-  sample_fps: 3.0  # Only embed/sample candidates inside general shots, in source timestamps.
+  sample_fps: 3.0  # Sample inside clean shots using source timestamps.
   device: cuda
   precision: fp16
   skip_existing: true
 
 keyframe:
-  min_scene_frames: 3
   # Keep max_scene_gap_frames as a compatibility fallback. The PE-Core path
   # now prefers the FPS-aware duration limit below.
   max_scene_gap_frames: 5000
-  max_scene_seconds: 20.0
-  mmr_budget_fraction: 0.50  # Final keyframes / clustered candidates; anchors can exceed budget.
-  anchors_per_shot: 3
-  mmr_relevance_weight: 0.40  # 0.4 representative - 0.6 similarity to selected.
-  final_similarity_threshold: 0.97  # Global PE-Core cosine dedup after MMR.
+  max_scene_seconds: 30.0
+  final_similarity_threshold: 0.96  # PE-Core cosine dedup between adjacent clean shots.
   min_hist_bins: 5  # Reject only nearly uniform color; no dark-pixel gate.
   image_quality: 95
   save_images: true

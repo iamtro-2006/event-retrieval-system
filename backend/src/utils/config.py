@@ -27,20 +27,9 @@ class LoggingConfig:
 
 
 @dataclass
-class TransNetConfig:
-    repo_dir: Path
-    weights_path: Path
-    threshold: float = 0.5
-    batch_size: int = 500
-    context_frames: int = 25
-    device: str = "auto"
-    skip_existing: bool = True
-
-
-@dataclass
 class FrameLoaderConfig:
-    backend: str = "decord"
-    image_size: int | None = None
+    backend: str = "nvdec"
+    image_size: int | None = 336
     num_workers: int = 0
     pin_memory: bool = True
     persistent_workers: bool = False
@@ -48,26 +37,21 @@ class FrameLoaderConfig:
 
 @dataclass
 class EmbeddingConfig:
-    model_name: str = "MobileCLIP2-S4"
+    model_name: str = "PE-Core-L14-336"
     backend: str | None = None
-    pretrained: str = "dfndr2b"
-    batch_size: int = 256
+    pretrained: str = "true"
+    batch_size: int = 16
     device: str = "auto"
     precision: str = "fp16"
     skip_existing: bool = True
-    sample_fps: float | None = None
+    sample_fps: float | None = 3.0
 
 
 @dataclass
 class KeyframeConfig:
-    min_scene_frames: int = 3
     max_scene_gap_frames: int = 5000
-    max_scene_seconds: float | None = 20.0
-    dedup_threshold: float = 0.98
-    mmr_budget_fraction: float = 0.5
-    anchors_per_shot: int = 3
-    mmr_relevance_weight: float = 0.4
-    final_similarity_threshold: float = 0.97
+    max_scene_seconds: float | None = 30.0
+    final_similarity_threshold: float = 0.96
     min_hist_bins: int = 5
     image_quality: int = 95
     save_images: bool = True
@@ -88,7 +72,6 @@ class AppConfig:
     project: ProjectConfig
     paths: PathConfig
     logging: LoggingConfig
-    transnet: TransNetConfig
     frame_loader: FrameLoaderConfig
     embedding: EmbeddingConfig
     keyframe: KeyframeConfig
@@ -118,7 +101,6 @@ def load_config(config_path: str | Path) -> AppConfig:
     project = raw.get("project", {})
     paths = raw.get("paths", {})
     logging = raw.get("logging", {})
-    transnet = raw.get("transnet", {})
     frame_loader = raw.get("frame_loader", {})
     embedding = raw.get("embedding", {})
     keyframe = raw.get("keyframe", {})
@@ -139,45 +121,31 @@ def load_config(config_path: str | Path) -> AppConfig:
             log_to_file=_as_bool(logging.get("log_to_file", True), True),
             filename=str(logging.get("filename", "extract_keyframes.log")),
         ),
-        transnet=TransNetConfig(
-            repo_dir=_resolve(root, transnet.get("repo_dir", "external/TransNetV2")),
-            weights_path=_resolve(root, transnet.get("weights_path", "weights/transnetv2-pytorch-weights.pth")),
-            threshold=float(transnet.get("threshold", 0.5)),
-            batch_size=int(transnet.get("batch_size", 500)),
-            context_frames=int(transnet.get("context_frames", 25)),
-            device=str(transnet.get("device", "auto")),
-            skip_existing=_as_bool(transnet.get("skip_existing", True), True),
-        ),
         frame_loader=FrameLoaderConfig(
-            backend=str(frame_loader.get("backend", "decord")),
-            image_size=frame_loader.get("image_size", None),
+            backend=str(frame_loader.get("backend", "nvdec")),
+            image_size=frame_loader.get("image_size", 336),
             num_workers=int(frame_loader.get("num_workers", 0)),
             pin_memory=_as_bool(frame_loader.get("pin_memory", True), True),
             persistent_workers=_as_bool(frame_loader.get("persistent_workers", False), False),
         ),
         embedding=EmbeddingConfig(
-            model_name=str(embedding.get("model_name", "MobileCLIP2-S4")),
+            model_name=str(embedding.get("model_name", "PE-Core-L14-336")),
             backend=embedding.get("backend"),
-            pretrained=str(embedding.get("pretrained", "dfndr2b")),
-            batch_size=int(embedding.get("batch_size", 256)),
+            pretrained=str(embedding.get("pretrained", "true")),
+            batch_size=int(embedding.get("batch_size", 16)),
             device=str(embedding.get("device", "auto")),
             precision=str(embedding.get("precision", "fp16")),
             skip_existing=_as_bool(embedding.get("skip_existing", True), True),
-            sample_fps=float(embedding['sample_fps']) if embedding.get('sample_fps') is not None else None,
+            sample_fps=float(embedding.get('sample_fps', 3.0)) if embedding.get('sample_fps', 3.0) is not None else None,
         ),
         keyframe=KeyframeConfig(
-            min_scene_frames=int(keyframe.get("min_scene_frames", 3)),
             max_scene_gap_frames=int(keyframe.get("max_scene_gap_frames", 5000)),
             max_scene_seconds=(
                 None
-                if keyframe.get("max_scene_seconds", 20.0) is None
-                else float(keyframe.get("max_scene_seconds", 20.0))
+                if keyframe.get("max_scene_seconds", 30.0) is None
+                else float(keyframe.get("max_scene_seconds", 30.0))
             ),
-            dedup_threshold=float(keyframe.get("dedup_threshold", 0.98)),
-            mmr_budget_fraction=float(keyframe.get("mmr_budget_fraction", 0.5)),
-            anchors_per_shot=int(keyframe.get("anchors_per_shot", 3)),
-            mmr_relevance_weight=float(keyframe.get("mmr_relevance_weight", 0.4)),
-             final_similarity_threshold=float(keyframe.get("final_similarity_threshold", 0.97)),
+            final_similarity_threshold=float(keyframe.get("final_similarity_threshold", 0.96)),
             min_hist_bins=int(keyframe.get("min_hist_bins", 5)),
             image_quality=int(keyframe.get("image_quality", 95)),
             save_images=_as_bool(keyframe.get("save_images", True), True),

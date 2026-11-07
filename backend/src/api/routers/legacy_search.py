@@ -50,7 +50,7 @@ from src.color_retrieval.palette import COLOR_NAMES, PALETTE_RGB
 from src.color_retrieval.search import get_color_index
 from src.retrieval.retriever.temporal_search.pipeline.search import temporal_search_from_events
 from src.retrieval.system import RetrievalSystem
-from src.retrieval.retriever.common.video_filter import with_video_filter
+from src.retrieval.retriever.common.candidate_filter import with_video_filter
 
 router = APIRouter(tags=["legacy-search"])
 

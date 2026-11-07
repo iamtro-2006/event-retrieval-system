@@ -36,8 +36,8 @@ retrieval thật ở cổng **8000**. Cài Codex CLI và đăng nhập trên má
 cài `backend/requirements-mock.txt`, rồi chạy frontend bằng `npm ci` và
 `npm run dev:mock`. Không cần GPU/model/index cho chế độ này.
 
-Codex chat và xem ảnh thật; search vẫn lấy mẫu ngẫu nhiên từ ảnh dataset. Agent
-hiện dùng prompt + tool Python, chưa có skill nghiệp vụ hay adapter retrieval thật.
+Codex chat và xem ảnh thật; search vẫn lấy mẫu ngẫu nhiên từ ảnh dataset. Mô tả này chỉ áp dụng cho mock. Backend thật có agent gọi RetrievalSystem qua
+plan pipeline và skill hierarchical-video-search; xem [hợp đồng search/scope](backend/docs/HIERARCHICAL_SEARCH.md).
 Xem [hướng dẫn mock/Codex](backend/docs/MOCK_SERVER.md) để dựng môi trường trên máy
 mới, chuẩn bị ảnh, kiểm tra kết nối và hiểu các giới hạn.
 
@@ -60,6 +60,8 @@ query từ React -> frontend/src/api -> backend/src/api -> backend/src/retrieval
 Runtime đăng ký V3C và LHE theo `backend/configs/app.yaml`, mặc định V3C. Frontend gọi API; URL ảnh, video, map có thể trỏ đến server media riêng qua các biến `VITE_*` trong `frontend/.env.example`.
 
 ## Đọc tiếp cho agent
+
+Bắt đầu từ [AGENTS.md](AGENTS.md), sau đó đọc [search, scope và pool](backend/docs/HIERARCHICAL_SEARCH.md). Tài liệu này mô tả module ownership, giới hạn hiện tại, mapping fallback và lệnh kiểm thử để tiếp tục công việc không cần lịch sử chat.
 
 - [README backend](backend/README.md): entrypoint, ranh giới module, API và cấu hình runtime.
 - [README frontend](frontend/README.md): UI, API client, biến môi trường và lệnh kiểm tra.

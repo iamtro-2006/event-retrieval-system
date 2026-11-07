@@ -22,6 +22,7 @@ class CudaVideoReader:
             print(f'[NVDEC] {path.name} importing PyNvVideoCodec', flush=True)
         import PyNvVideoCodec as nvc
         self.batch_size = batch_size
+        self.backend = backend
         self.decoder = None
         try:
             decoder_name = 'SimpleDecoder' if backend == 'simple' else 'ThreadedDecoder'
@@ -46,16 +47,30 @@ class CudaVideoReader:
                 )
             if diagnostics:
                 print(f'[NVDEC] {path.name} decoder created; reading stream metadata', flush=True)
-            self.total = int(self.decoder.get_stream_metadata().num_frames)
-            if self.total < 1:
+            self.metadata_total = int(self.decoder.get_stream_metadata().num_frames)
+            if self.metadata_total < 1:
                 raise ValueError('Decoder metadata contains no frames')
+            from src.utils.frame_sampling import video_timeline_info
+            timeline = video_timeline_info(path)
+            self.total = len(timeline['timestamps'])
+            allowed_counts = {self.total}
+            if timeline['discard_count'] or timeline.get('non_picture_count', 0):
+                allowed_counts.add(timeline['packet_count'])
+            if self.metadata_total not in allowed_counts:
+                raise ValueError(f'NVDEC metadata={self.metadata_total} disagrees with packet-derived '
+                                 f'display={self.total}, packets={timeline["packet_count"]}')
+            if self.metadata_total != self.total:
+                print(f'[NVDEC] {path.name}: metadata={self.metadata_total}; '
+                      f'using {self.total} expected display frames '
+                      f'({timeline["discard_count"]} discard, '
+                      f'{timeline.get("non_picture_count", 0)} non-picture tail packets)', flush=True)
             if diagnostics:
                 print(f'[NVDEC] {path.name} ready total_frames={self.total}', flush=True)
         except Exception as exc:
             self.close()
             raise RuntimeError(
                 'Cannot initialize NVDEC. Check T4, NVIDIA driver, libnvcuvid and codec support. '
-                'CPU fallback is disabled.'
+                f'CPU fallback is disabled. Details: {exc}'
             ) from exc
 
     def __enter__(self):
@@ -66,12 +81,18 @@ class CudaVideoReader:
 
     def __iter__(self):
         count = 0
-        while True:
+        while count < self.total:
             if self.diagnostics and count == 0:
                 print(f'[NVDEC] {self.path.name} requesting first batch', flush=True)
-            frames = self.decoder.get_batch_frames(self.batch_size)
+            # SimpleDecoder seeks by index and raises rather than returning an
+            # empty batch past EOF. Its metadata can include an AVC end marker.
+            requested = min(self.batch_size, self.total - count)
+            frames = self.decoder.get_batch_frames(requested)
             if not frames:
                 break
+            if count + len(frames) > self.total:
+                raise RuntimeError(f'NVDEC decoded {count + len(frames)}/{self.total} frames; '
+                                   'refusing misaligned embeddings')
             if self.diagnostics and count == 0:
                 print(f'[NVDEC] {self.path.name} first batch received frames={len(frames)}; DLPack -> torch', flush=True)
             batch = torch.stack([torch.from_dlpack(frame) for frame in frames])
@@ -84,6 +105,13 @@ class CudaVideoReader:
             del batch, frames
         if count != self.total:
             raise RuntimeError(f'NVDEC decoded {count}/{self.total} frames; refusing misaligned embeddings')
+        # ThreadedDecoder supports sequential EOF reads: retain the extra-frame
+        # guard. SimpleDecoder cannot probe EOF without an out-of-range seek.
+        if self.backend == 'threaded':
+            extra = self.decoder.get_batch_frames(1)
+            if extra:
+                raise RuntimeError(f'NVDEC decoded {count + len(extra)}/{self.total} frames; '
+                                   'refusing misaligned embeddings')
 
     def close(self):
         if self.decoder is not None:

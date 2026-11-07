@@ -23,7 +23,7 @@ from threading import RLock
 import numpy as np
 import pandas as pd
 from numba import njit, prange
-from src.retrieval.retriever.common.video_filter import video_ids_context, filtered_faiss_search
+from src.retrieval.retriever.common.candidate_filter import video_ids_context, frame_keys_context, filtered_faiss_search
 
 
 DEFAULT_MULTI_QUERY_BETA = 0.8
@@ -64,7 +64,7 @@ def faiss_search(index, search_lock: RLock, embeddings: np.ndarray, k: int, meta
     """
     k = min(max(1, int(k)), index.ntotal)
     embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
-    if video_ids_context.get():
+    if video_ids_context.get() or frame_keys_context.get() is not None:
         return filtered_faiss_search(index, search_lock, embeddings, k, metadata_records)
     with search_lock:
         return index.search(embeddings, k)

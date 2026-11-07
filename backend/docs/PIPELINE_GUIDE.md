@@ -2,6 +2,12 @@
 
 Hai dataset vật lý của API là `v3c` và `lhe`. CAM là tên nhánh cũ, không dùng trong cấu hình runtime. Mỗi dataset chỉ bật một model semantic: `Qwen/Qwen3-VL-Embedding-2B`, engine `vllm`. PE-Core trong notebook VLM dùng để **chọn keyframe**, không phải embedding cho FAISS retrieval.
 
+## Phân biệt dữ liệu và phạm vi search
+
+Tài liệu này mô tả pipeline offline. Search runtime dùng `search_scope.py` → `RetrievalSystem.search_plan` → `plan_search.py` → backend với `retriever/common/candidate_filter.py`. Scope video/frame được áp dụng trước top-k, không sửa index chung và không yêu cầu build lại embedding khi đổi phạm vi. Pool ID chỉ được giải trong session; không phải tên index/dataset.
+
+Contract scope/mode, chính sách mapping và checks ở [HIERARCHICAL_SEARCH.md](HIERARCHICAL_SEARCH.md). Mapping gần biên khi segment không có frame đại diện là chủ đích; không xóa fallback để chỉ giữ frame nằm trong shot.
+
 ## Cây dữ liệu
 
 ```text
@@ -19,7 +25,7 @@ data/
     └── asr/{V3C,LHE}/asr.faiss
 ```
 
-`vlm_keyframes.ipynb` tạo keyframe, map và scene của LHE. PKL PE-Core mà notebook tạo ra không thay cho file Qwen `.npy`. Dùng `extract_embedding.ipynb` để tạo vector Qwen vLLM cho từng ảnh keyframe, và `embed_asr_caption_kaggle.ipynb` để tạo một vector riêng cho mỗi segment theo ordinal JSON: `asr/V3C/00001/000042.npy` hoặc `caption/V3C/00001/000042.npy`. Caption shot rỗng được map tới keyframe trước/sau gần nhất; chỉ segment text rỗng không tạo vector. Không trộn vector của V3C và LHE.
+`vlm_keyframes.ipynb` là notebook duy nhất cho luồng VLM/V3C hợp nhất, tạo keyframe, map và scene của V3C hoặc LHE. PKL PE-Core mà notebook tạo ra không thay cho file Qwen `.npy`. Dùng `extract_embedding.ipynb` để tạo vector Qwen vLLM cho từng ảnh keyframe, và `embed_asr_caption_kaggle.ipynb` để tạo một vector riêng cho mỗi segment theo ordinal JSON: `asr/V3C/00001/000042.npy` hoặc `caption/V3C/00001/000042.npy`. Caption shot rỗng được map tới keyframe trước/sau gần nhất; chỉ segment text rỗng không tạo vector. Không trộn vector của V3C và LHE.
 
 ## Build FAISS và vector cache
 

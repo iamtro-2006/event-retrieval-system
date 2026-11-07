@@ -11,7 +11,7 @@ import pandas as pd
 from src.retrieval.segment_data import (
     SegmentMaps, build_maps, fingerprint, load_indexable_segments, load_segments,
 )
-from src.retrieval.retriever.common.video_filter import video_ids_context
+from src.retrieval.retriever.common.candidate_filter import video_ids_context, frame_keys_context, frame_allowed
 
 log = logging.getLogger(__name__)
 QWEN_MODEL_ID = 'Qwen/Qwen3-VL-Embedding-2B'
@@ -101,11 +101,16 @@ class HierarchicalSearch:
         vectors = self.encode(source, queries)
         store = self.sources[source]
         allowed = video_ids_context.get()
-        # FAISS candidate union; filtered retrieval must search enough to avoid filter starvation.
-        count = store.index.ntotal if allowed else min(store.index.ntotal, max(top_k * 5, 100))
-        _, ids = store.index.search(vectors, count)
-        candidates = sorted({int(i) for i in ids.flat if i >= 0 and
-                             (not allowed or store.records[int(i)]['video_id'] in allowed)})
+        if allowed or frame_keys_context.get() is not None:
+            # Resolve eligible segments before scoring: no global top-k cutoff.
+            candidates = [i for i, record in enumerate(store.records)
+                if (not allowed or record['video_id'] in allowed) and
+                (frame_keys_context.get() is None or any(frame_allowed(*key)
+                 for key in store.maps.forward[record['segment_id']]))]
+        else:
+            count = min(store.index.ntotal, max(top_k * 5, 100))
+            _, ids = store.index.search(vectors, count)
+            candidates = sorted({int(i) for i in ids.flat if i >= 0})
         if not candidates:
             return []
         scores = weighted_scores(vectors @ store.vectors[candidates].T, weights, operation)
@@ -198,6 +203,8 @@ class HierarchicalSearch:
             rows, seen = [], set()
             for _, source, segment in sorted(segments, key=lambda x: -x[0])[:sequence_top_k]:
                 for key in self.sources[source].maps.forward[segment['segment_id']]:
+                    if not frame_allowed(*key):
+                        continue
                     if key not in seen:
                         seen.add(key)
                         row = self.frame(key, model_key)
@@ -221,7 +228,7 @@ class HierarchicalSearch:
                 unique = {(str(r['video_id']), int(r['keyframe_id'])): r for r in rows}
                 rows = list(unique.values())
         allowed = video_ids_context.get()
-        rows = [r for r in rows if not allowed or str(r['video_id']) in allowed]
+        rows = [r for r in rows if frame_allowed(r['video_id'], r['keyframe_id'])]
         log.info('Hierarchical direction=%s mapped_frame_pool=%s', direction, len(rows))
         if speed:
             if 'caption' not in self.sources:

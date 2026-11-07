@@ -1,12 +1,31 @@
-"""Request-local video allowlist, propagated into worker threads by AnyIO.
+"""Request-local video and frame candidate constraints, propagated by AnyIO.
 
-Never mutate shared indexes: concurrent searches may use different filters.
+Pool IDs are resolved upstream by search_scope.py; this module accepts only
+video IDs and frame identities. Never mutate shared indexes across requests.
+An absent frame filter is None; an empty frame set matches nothing. Legacy
+empty video allowlists mean unrestricted; resolve_scope short-circuits empty
+video intersections before entering this layer.
 """
 from contextvars import ContextVar
 import numpy as np
 import faiss
 
 video_ids_context: ContextVar[frozenset[str]] = ContextVar("video_ids", default=frozenset())
+frame_keys_context: ContextVar[frozenset | None] = ContextVar('frame_keys', default=None)
+
+
+def with_frame_filter(keys, function, *args, **kwargs):
+    token = frame_keys_context.set(keys)
+    try:
+        return function(*args, **kwargs)
+    finally:
+        frame_keys_context.reset(token)
+
+
+def frame_allowed(video, frame):
+    videos, frames = video_ids_context.get(), frame_keys_context.get()
+    return (not videos or str(video) in videos) and (
+        frames is None or (str(video), int(frame)) in frames)
 
 
 def with_video_filter(video_ids, function, *args, **kwargs):
@@ -19,10 +38,11 @@ def with_video_filter(video_ids, function, *args, **kwargs):
 
 def filtered_faiss_search(index, search_lock, embeddings, k, metadata_records):
     allowed = video_ids_context.get()
-    if allowed:
+    frames = frame_keys_context.get()
+    if allowed or frames is not None:
         if metadata_records is None:
-            raise ValueError("Video filtering requires metadata")
-        allowed_rows = np.fromiter((str(row.get("video_id")) in allowed for row in metadata_records), dtype=bool)
+            raise ValueError("Candidate filtering requires metadata")
+        allowed_rows = np.fromiter((frame_allowed(row['video_id'], row['keyframe_id']) for row in metadata_records), dtype=bool)
         if len(allowed_rows) and allowed_rows.all():
             with search_lock:
                 return index.search(embeddings, min(k, index.ntotal))
@@ -38,7 +58,7 @@ def filtered_faiss_search(index, search_lock, embeddings, k, metadata_records):
                 vectors = np.stack([index.reconstruct(int(row_id)) for row_id in allowed_ids])
             except Exception as exc:
                 raise RuntimeError(
-                    "Video-filtered search requires reconstructable FAISS vectors"
+                    "Candidate-filtered search requires reconstructable FAISS vectors"
                 ) from exc
             subset_index = faiss.IndexFlat(index.d, index.metric_type)
             subset_index.add(np.ascontiguousarray(vectors, dtype=np.float32))
@@ -47,4 +67,4 @@ def filtered_faiss_search(index, search_lock, embeddings, k, metadata_records):
         output_ids = np.full(local_rows.shape, -1, dtype=np.int64)
         output_ids[valid] = allowed_ids[local_rows[valid]]
         return scores, output_ids
-    raise ValueError("Filtered search requires a nonempty allowlist")
+    raise ValueError("Filtered search requires a video or frame constraint")

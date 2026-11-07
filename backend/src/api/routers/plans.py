@@ -15,12 +15,11 @@ from pathlib import Path
 from threading import RLock
 from typing import Literal
 
-import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src.retrieval.retriever.common.video_filter import with_video_filter
+from src.retrieval.search_scope import SCOPE_MODES, completed_pool, resolve_scope
 
 def get_dataset_resources(request, dataset):
     from src.api.legacy.deps import get_dataset_resources as resolve
@@ -65,6 +64,9 @@ class SearchPlan(BaseModel):
     ocr_match: Literal['terms', 'phrase'] = 'phrase'
     duration_limit: float = Field(default=-1, ge=-1)
     parent_pool_id: str | None = None
+    scope: Literal['dataset', 'videos', 'pool_frames', 'pool_videos'] = 'dataset'
+    scope_pool_id: str | None = None
+    video_ids: list[str] | None = None
     restrict_to_parent: bool = False
     reference_video: str | None = None
     reference_frame: int | None = Field(default=None, ge=0)
@@ -129,8 +131,26 @@ class SearchPlan(BaseModel):
             raise ValueError('reference_video/reference_frame require similarity mode')
         if self.image_event_indices is not None and any(isinstance(index, bool) or index < 0 for index in self.image_event_indices):
             raise ValueError('image_event_indices must be nonnegative event indexes')
-        if self.restrict_to_parent and (not self.parent_pool_id or self.direction != 'bottom_up' or self.mode != 'hierarchical'):
-            raise ValueError('Parent pool restriction requires hierarchical bottom_up')
+        if self.restrict_to_parent:
+            if not self.parent_pool_id:
+                raise ValueError('restrict_to_parent requires parent_pool_id')
+            if ('scope' in self.model_fields_set and self.scope != 'pool_frames') or self.video_ids is not None:
+                raise ValueError('restrict_to_parent conflicts with explicit scope')
+            if self.scope_pool_id and self.scope_pool_id != self.parent_pool_id:
+                raise ValueError('restrict_to_parent conflicts with scope_pool_id')
+            self.scope, self.scope_pool_id = 'pool_frames', self.parent_pool_id
+        if self.video_ids is not None:
+            if not self.video_ids or any(not v.strip() for v in self.video_ids):
+                raise ValueError('video_ids must contain nonblank video IDs')
+            self.video_ids = list(dict.fromkeys(v.strip() for v in self.video_ids))
+            if self.scope == 'dataset' and 'scope' not in self.model_fields_set:
+                self.scope = 'videos'  # Legacy manual request.
+        if (self.scope == 'videos') != (self.video_ids is not None):
+            raise ValueError('video_ids is required only for scope=videos')
+        if (self.scope in ('pool_frames', 'pool_videos')) != bool(self.scope_pool_id):
+            raise ValueError('scope_pool_id is required only for pool scopes')
+        if self.mode not in SCOPE_MODES[self.scope]:
+            raise ValueError(f'{self.mode} does not support scope={self.scope}')
         if self.ocr_query is not None and not self.ocr_query.strip():
             raise ValueError('ocr_query must not be blank')
         if self.mode not in ('ocr', 'hierarchical') and self.ocr_match != 'phrase':
@@ -157,7 +177,13 @@ class SearchPlan(BaseModel):
 
 class ExecuteRequest(SearchPlan):
     dataset: Literal['v3c', 'lhe']
-    video_ids: list[str] | None = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def legacy_empty_video_filter(cls, value):
+        if isinstance(value, dict) and 'scope' not in value and value.get('video_ids') == []:
+            return {k: v for k, v in value.items() if k != 'video_ids'}
+        return value
 
 
 @contextmanager
@@ -186,107 +212,19 @@ def load(identifier):
 
 
 def pool_by_id(session, identifier):
-    for plan in session['plans']:
-        if plan['id'] == identifier and plan.get('status') == 'completed':
-            return plan
-    raise ValueError('Unknown completed pool in this session')
+    return completed_pool(session, identifier)
 
 
 def execute(plan, system, paths, video_ids=None, session=None, image_paths=None):
     """Shared execution path for manual API requests and Codex tools."""
     from src.api.legacy.serializers import dict_to_result_FAST
     from src.api.routers.search import _records_from_df
-    engine = system.orchestrator.mapped_search
-    if plan.mode == 'hierarchical' and plan.direction == 'top_down':
-        plan.sequence_top_k = max(plan.sequence_top_k, 2 * plan.top_k)
-        plan.pool_k = max(plan.pool_k, 2 * plan.top_k)
-    initial = None
+    scope = resolve_scope(plan, session, video_ids)
     if plan.parent_pool_id:
-        parent = pool_by_id(session, plan.parent_pool_id) if session else None
-        if parent is None:
-            raise ValueError('Parent pool requires a session')
+        parent = pool_by_id(session, plan.parent_pool_id)
         if not image_paths:
             image_paths = parent.get('image_paths', [])
-        if plan.restrict_to_parent:
-            initial = []
-            for row in parent['records']:
-                initial.extend(row.get('matched_sequence') or [row])
-    def run():
-        if plan.mode == 'hierarchical':
-            kwargs = {k: getattr(plan, k) for k in ('query', 'direction', 'source_queries', 'source_weights',
-                'visual_queries', 'query_weights', 'operation', 'visual_weight', 'sequence_top_k',
-                'pool_k', 'top_k', 'model_key', 'speed', 'ocr_query', 'ocr_match', 'source_query_weights')}
-            return system.search_hierarchical(**kwargs, initial_frames=initial, image_paths=image_paths)
-        if plan.mode in ('asr', 'caption'):
-            return engine.segment_search(plan.mode, plan.query, plan.top_k)
-        if plan.mode == 'ocr':
-            pipeline = system.orchestrator.ocr_search_pipeline
-            if pipeline is None:
-                raise RuntimeError('OCR is unavailable')
-            hits = pipeline.search(plan.query, plan.top_k * 3, match=plan.ocr_match)
-            return system.orchestrator._enrich_ocr_hits(hits, plan.top_k)
-        if plan.mode == 'temporal' and image_paths:
-            import numpy as np
-            from src.retrieval.retriever.common.query_parser import parse_explicit_query
-            from src.retrieval.retriever.temporal_search.pipeline.search import temporal_search_from_events
-            events, _ = parse_explicit_query(plan.query)
-            event_images = plan.image_event_indices or [0] * len(image_paths)
-            if len(event_images) != len(image_paths) or any(i < 0 or i >= len(events) for i in event_images):
-                raise ValueError('image_event_indices must assign each image to an existing temporal event')
-            index = system.orchestrator.semantic_search._resolve(plan.model_key)
-            labels, embeddings = [], []
-            for event_number, texts in enumerate(events):
-                current = list(texts)
-                vectors = [index.encode_text(text) for text in texts]
-                for number, path in enumerate(image_paths):
-                    if event_images[number] == event_number:
-                        current.append(f'Image {number+1}')
-                        vectors.append(index.encode_image(path))
-                labels.append(current)
-                embeddings.extend(vectors)
-            df = temporal_search_from_events(index.index, index.search_lock, index.metadata_records,
-                index.index_vectors, index.allow_npy_fallback, labels, np.vstack(embeddings),
-                plan.top_k, plan.pool_k, plan.duration_limit)
-            if len(df):
-                df['model_key'] = index.model_key
-            return df
-        if plan.mode == 'semantic' and (plan.visual_queries or image_paths):
-            semantic = system.orchestrator.semantic_search
-            index = semantic._resolve(plan.model_key)
-            queries = plan.visual_queries or ([] if image_paths else [plan.query])
-            rows = []
-            for q in queries:
-                rows += semantic.multi_query_search([q], plan.pool_k, plan.pool_k, model_key=plan.model_key).to_dict('records')
-            for image in image_paths or []:
-                rows += semantic.multi_query_search(['image'], plan.pool_k, plan.pool_k,
-                    query_embeddings=index.encode_image(image), model_key=plan.model_key).to_dict('records')
-            rows = list({(str(r['video_id']), int(r['keyframe_id'])): r for r in rows}.values())
-            rows, scores = engine.visual_scores(rows, queries, plan.query_weights, plan.operation, plan.model_key, image_paths)
-            df = pd.DataFrame(rows)
-            if len(df):
-                df['retrieval_score'] = scores
-                df = df.sort_values('retrieval_score', ascending=False).head(plan.top_k).copy()
-                df['rank'] = df['display_rank'] = range(1, len(df)+1)
-            return df
-        if plan.mode == 'similarity':
-            if plan.reference_video is None or plan.reference_frame is None:
-                raise ValueError('Similarity requires reference_video and reference_frame')
-            return system.orchestrator.semantic_search.similarity_search_by_frame(
-                plan.reference_video, plan.reference_frame, top_k=plan.top_k, model_key=plan.model_key)
-        if plan.mode == 'color':
-            from src.color_retrieval.search import get_color_index
-            index = system.orchestrator.index
-            config = session.get('config', {}) if session else {}
-            color = config.get('color', {}).get('index_path')
-            if not color:
-                raise RuntimeError('Color index not configured')
-            color = Path(color)
-            if not color.is_absolute():
-                color = paths.backend_dir / color
-            return get_color_index(color, index.metadata_records).search(index.metadata_records, plan.color_cells, plan.top_k, video_ids)
-        return system.orchestrator.run_search(plan.query, mode=plan.mode, top_k=plan.top_k,
-            model_key=plan.model_key, duration_limit=plan.duration_limit)[0]
-    df = with_video_filter(video_ids, run)
+    df = system.search_plan(plan, paths, scope, session, image_paths)
     records = _records_from_df(df)
     results = [dict_to_result_FAST(r, paths.keyframes_root, paths.backend_dir, paths.dataset_key) for r in records]
     return records, results
@@ -294,7 +232,13 @@ def execute(plan, system, paths, video_ids=None, session=None, image_paths=None)
 
 @router.post('/api/search/plan')
 def execute_manual(payload: ExecuteRequest, request: Request):
-    if payload.parent_pool_id:
+    # Convenience routes can override mode via model_copy; revalidate the final
+    # request so unsupported mode/scope pairs fail with 422 before retrieval.
+    try:
+        payload = ExecuteRequest.model_validate(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if payload.parent_pool_id or payload.scope_pool_id:
         raise HTTPException(422, 'parent_pool_id is available only in an agent search session')
     if payload.mode == 'semantic' and not payload.query and not payload.visual_queries:
         raise HTTPException(422, 'Semantic plans without query require visual_queries')
@@ -316,7 +260,8 @@ def execute_manual(payload: ExecuteRequest, request: Request):
     system, config, paths = get_dataset_resources(request, payload.dataset)
     records, results = _run_or_503(lambda: execute(payload, system, paths, payload.video_ids,
         {'config': config}), feature_name=payload.mode)
-    return {'results': results, 'count': len(results), 'plan': payload.model_dump()}
+    return {'results': results, 'count': len(results), 'plan': payload.model_dump(),
+            'resolved_scope': resolve_scope(payload, outer_video_ids=payload.video_ids).describe(payload)}
 
 
 @router.post('/api/search/caption')
@@ -408,6 +353,9 @@ class RealTools:
                 'color': color_available and bool(models),
             }
             return {'sources': sources, 'models': models,
+                    'scope_modes': {scope: [m for m in modes if mode_availability[m]] for scope, modes in SCOPE_MODES.items()},
+                    'current_scope': {'dataset': self.dataset, 'video_ids': self.video_ids},
+                    'referenceable_pools': [{'id': p['id'], 'label': p['plan']['label']} for p in self.session['plans'] if p['status'] == 'completed'],
                     'modes': [mode for mode, available in mode_availability.items() if available],
                     'mode_availability': mode_availability,
                     'images_attached': len(self.image_paths), 'selected_frame_references': getattr(self, 'frame_references', []),
@@ -420,6 +368,7 @@ class RealTools:
                 raise ValueError('Session plan limit reached; start a new session')
             prepared = []
             for plan in batch.plans:
+                resolve_scope(plan, self.session, self.video_ids)
                 parent = pool_by_id(self.session, plan.parent_pool_id) if plan.parent_pool_id else None
                 inherited_images = self.image_paths or (parent.get('image_paths', []) if parent else [])
                 if plan.mode == 'semantic' and not plan.query and not (plan.visual_queries or inherited_images):
@@ -484,7 +433,9 @@ class RealTools:
         log.info('Plan %s starting mode=%s direction=%s', entry['id'], entry['plan']['mode'], entry['plan']['direction'])
         started = time.monotonic()
         try:
-            entry['records'], entry['results'] = execute(SearchPlan.model_validate(entry['plan']),
+            plan = SearchPlan.model_validate(entry['plan'])
+            entry['resolved_scope'] = resolve_scope(plan, self.session, self.video_ids).describe(plan)
+            entry['records'], entry['results'] = execute(plan,
                 self.system, self.paths, self.video_ids, self.session, entry.get('image_paths', self.image_paths))
             entry['status'] = 'completed'
         except Exception as exc:
@@ -594,7 +545,8 @@ async def chat(payload: ChatRequest, request: Request):
                 tools.reasoning_effort = payload.reasoning_effort
                 tools.instructions = (Path(__file__).resolve().parents[4] / '.agents/skills/hierarchical-video-search/SKILL.md').read_text(encoding='utf-8')
                 # Do not ask Codex to inspect input pixels: the image is passed to the visual encoder.
-                text = (payload.message + f'\nSelected pool for possible feedback: {payload.parent_pool_id or "none"}. '
+                text = (payload.message + f'\nOuter scope: dataset={payload.dataset}, video_ids={payload.video_ids or "all"}. '
+                    f'Selected pool for possible feedback or scope: {payload.parent_pool_id or "none"}. '
                     'Use it as parent only if the user asks to refine, continue, or give feedback on that pool; '
                     'otherwise create independent search plans. '
                     f'Attached search images: {len(images)}.')
