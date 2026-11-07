@@ -1,5 +1,8 @@
 # Local datasets, runtime state, screenshots and Python environment.
-/data/
+# Keep dataset directory placeholders only; generated data stays local.
+/data/**
+!/data/**/
+!/data/**/.gitkeep
 /env/
 
 # Machine-specific settings. Commit .env.example and the public .env.mock instead.

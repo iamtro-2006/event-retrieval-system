@@ -5,8 +5,8 @@
 #   data/{ocr,asr,captions,map_keyframes,embeddings}/<V3C|LHE>/
 #   data/{keyframes,videos,database}/
 #
-# Root .gitignore excludes /data/ from new tracking, including derived JSON/CSV.
-# Existing tracked artifacts stay tracked until explicitly removed from Git.
+# Root .gitignore tracks only .gitkeep placeholders under /data/.
+# Media, derived JSON/CSV, embeddings, indexes and runtime state stay local.
 #
 # backend/data is a leftover from the AIC-era layout: 6.2GB of CAM keyframes
 # that must never reach the remote.

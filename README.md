@@ -29,6 +29,11 @@ data/
 
 V3C dùng `video_id` năm chữ số, ví dụ `00001`; LHE dùng `LHE01`, `LHE02`, v.v. Notebook Kaggle hiện hành là [hierarchical_search_kaggle.ipynb](backend/notebooks/hierarchical_search_kaggle.ipynb), gồm chuẩn bị dữ liệu/index và khởi chạy API.
 
+Git chỉ lưu `.gitkeep` để giữ cấu trúc dữ liệu cho V3C/LHE. Video, ảnh,
+JSON/CSV, embedding, index và trạng thái runtime dưới `data/` được chuẩn bị
+riêng và không commit. Visual index dùng thư mục `keyframe/V3C_vllm` hoặc
+`keyframe/LHE_vllm` theo config; index ASR/caption dùng `asr|caption/V3C|LHE`.
+
 ## Chạy UI và Codex bằng mock server
 
 Chế độ mock dùng `backend/mock_server.py` ở cổng **8001**, độc lập với backend
